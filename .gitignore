@@ -2,5 +2,6 @@
 .idea
 .vscode
 data
+files
 
 src/search/node_modules
