@@ -39,7 +39,6 @@ func (t *torrentsManager) ParseReaderToTorrent(body io.Reader) (TorrentFile, err
 	return bto.toTorrentFile()
 }
 
-
 func GetManager() TorrentFilesManager {
 	return &torrentsManager{}
 }

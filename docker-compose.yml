@@ -26,6 +26,33 @@ services:
     networks:
       - docker_net
 
+  storage:
+    build:
+      context: ./src/storage
+      dockerfile: Dockerfile
+    ports:
+      - ${STORAGE_API_PORT}:2222
+    volumes:
+      - ${FILES_VOL_DIR}:${FILES_DIR}:rw
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_USER: ${REDIS_USER}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_DB: ${REDIS_DB}
+
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      FILES_DIR: ${FILES_DIR}
+      LOG_LEVEL: ${LOG_LEVEL}
+    networks:
+      - docker_net
+    restart: always
+
   nginx_server:
     build:
       context: ./src/nginx
@@ -35,6 +62,7 @@ services:
     networks:
       - docker_net
     depends_on:
+      - storage
       - search
 
   redis-db:
