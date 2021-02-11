@@ -1,13 +1,10 @@
 package server
 
 import (
-	"bytes"
-	"encoding/json"
-	"log"
 	"net/http"
-	"strings"
 
 	"torrent_client/parser/env"
+	"torrent_client/server/handlers"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -29,7 +26,7 @@ func Start() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", )
+	router.HandleFunc("/download", handlers.DownloadRequestsHandler)
 
 	logrus.Info("Listening localhost:2222")
 	if err := http.ListenAndServe(":2222", router); err != nil {

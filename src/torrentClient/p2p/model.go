@@ -1,6 +1,9 @@
 package p2p
 
-import "torrent_client/client"
+import (
+	"torrent_client/client"
+	"torrent_client/peers"
+)
 
 // MaxBlockSize is the largest number of bytes a request can ask for
 const MaxBlockSize = 16384
@@ -17,6 +20,7 @@ type Torrent struct {
 	PieceLength int
 	Length      int
 	Name        string
+	FileId		string
 }
 
 type pieceWork struct {

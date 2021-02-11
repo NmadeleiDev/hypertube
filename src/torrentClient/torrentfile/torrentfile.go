@@ -6,11 +6,15 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 
+	"torrent_client/db"
 	"torrent_client/p2p"
+	"torrent_client/parser/env"
 
 	"github.com/jackpal/bencode-go"
+	"github.com/sirupsen/logrus"
 )
 
 type torrentsManager struct {
@@ -35,6 +39,8 @@ func (t *torrentsManager) ParseReaderToTorrent(body io.Reader) (TorrentFile, err
 	err := bencode.Unmarshal(body, &bto)
 	if err != nil {
 		return TorrentFile{}, err
+	} else {
+		logrus.Infof("Parsed torrent!")
 	}
 	return bto.toTorrentFile()
 }
@@ -44,16 +50,16 @@ func GetManager() TorrentFilesManager {
 }
 
 // DownloadToFile downloads a torrent and writes it to a file
-func (t *TorrentFile) DownloadToFile(path string) error {
+func (t *TorrentFile) DownloadToFile() error {
 	var peerID [20]byte
 	_, err := rand.Read(peerID[:])
 	if err != nil {
-		return err
+		return fmt.Errorf("read rand error: %e", err)
 	}
 
 	peers, err := t.requestPeers(peerID, Port)
 	if err != nil {
-		return err
+		return fmt.Errorf("peers request error: %e", err)
 	}
 
 	torrent := p2p.Torrent{
@@ -64,21 +70,29 @@ func (t *TorrentFile) DownloadToFile(path string) error {
 		PieceLength: t.PieceLength,
 		Length:      t.Length,
 		Name:        t.Name,
-	}
-	buf, err := torrent.Download()
-	if err != nil {
-		return err
+		FileId: t.FileId,
 	}
 
-	outFile, err := os.Create(path)
+	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
+	logrus.Infof("Prepared table for parts,  starting download")
+
+	err = torrent.Download()
 	if err != nil {
-		return err
+		return fmt.Errorf("file download error: %e", err)
+	}
+
+	outFile, err := ioutil.TempFile(env.GetParser().GetFilesDir(), "loaded_*")
+	if err != nil {
+		return fmt.Errorf("create tempfile error: %e", err)
 	}
 	defer outFile.Close()
-	_, err = outFile.Write(buf)
-	if err != nil {
-		return err
-	}
+
+	db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.FileId)
+
+	db.GetFilesManagerDb().SaveFileNameForReadyFile(t.FileId, outFile.Name())
+
+	db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
+
 	return nil
 }
 

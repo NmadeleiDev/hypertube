@@ -28,6 +28,8 @@ func (f *fileReader) GetFileInRange(filePath string, description *model.FileRang
 		return nil, 0, err
 	}
 
+	defer file.Close()
+
 	info, err := file.Stat()
 	if err != nil {
 		logrus.Errorf("Error getting file info: %v", err)

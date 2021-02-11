@@ -12,6 +12,7 @@ type TorrentFile struct {
 	PieceLength int
 	Length      int
 	Name        string
+	FileId		string
 }
 
 type bencodeInfo struct {

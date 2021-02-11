@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"torrent_client/client"
+	"torrent_client/db"
 	"torrent_client/message"
 	"torrent_client/peers"
 )
@@ -147,7 +148,7 @@ func (t *Torrent) calculatePieceSize(index int) int {
 }
 
 // Download downloads the torrent. This stores the entire file in memory.
-func (t *Torrent) Download() ([]byte, error) {
+func (t *Torrent) Download() error {
 	log.Println("Starting download for", t.Name)
 	// Init queues for workers to retrieve work and send results
 	workQueue := make(chan *pieceWork, len(t.PieceHashes))
@@ -163,12 +164,17 @@ func (t *Torrent) Download() ([]byte, error) {
 	}
 
 	// Collect results into a buffer until full
-	buf := make([]byte, t.Length)
+	//buf := make([]byte, t.Length)
 	donePieces := 0
 	for donePieces < len(t.PieceHashes) {
 		res := <-results
 		begin, end := t.calculateBoundsForPiece(res.index)
-		copy(buf[begin:end], res.buf)
+		//copy(buf[begin:end], res.buf)
+
+		db.GetFilesManagerDb().SaveFilePart(t.FileId, res.buf, int64(begin), int64(end-begin), int64(res.index))
+		db.GetLoadedStateDb().AnnounceLoadedPart(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
+		db.GetLoadedStateDb().SaveLoadedPartInfo(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
+
 		donePieces++
 
 		percent := float64(donePieces) / float64(len(t.PieceHashes)) * 100
@@ -177,5 +183,9 @@ func (t *Torrent) Download() ([]byte, error) {
 	}
 	close(workQueue)
 
-	return buf, nil
+	return nil
+}
+
+func savePieceToFile()  {
+
 }

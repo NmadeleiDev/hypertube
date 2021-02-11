@@ -1,6 +1,9 @@
 package torrentfile
 
 import (
+	"bytes"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -19,7 +22,7 @@ type bencodeTrackerResp struct {
 func (t *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, error) {
 	base, err := url.Parse(t.Announce)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("url parse error: %s; src: %s", err.Error(), t.Announce)
 	}
 	params := url.Values{
 		"info_hash":  []string{string(t.InfoHash[:])},
@@ -35,22 +38,27 @@ func (t *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, err
 }
 
 func (t *TorrentFile) requestPeers(peerID [20]byte, port uint16) ([]peers.Peer, error) {
-	url, err := t.buildTrackerURL(peerID, port)
+	urlStr, err := t.buildTrackerURL(peerID, port)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &http.Client{Timeout: 15 * time.Second}
-	resp, err := c.Get(url)
+	resp, err := c.Get(urlStr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to send GET with client: %v; url: %v", err, urlStr)
 	}
 	defer resp.Body.Close()
 
-	trackerResp := bencodeTrackerResp{}
-	err = bencode.Unmarshal(resp.Body, &trackerResp)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading resp body: %v", err)
+	}
+
+	trackerResp := bencodeTrackerResp{}
+	err = bencode.Unmarshal(bytes.NewBuffer(body), &trackerResp)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshal bencode: %v; body: %v", err, string(body))
 	}
 
 	return peers.Unmarshal([]byte(trackerResp.Peers))
