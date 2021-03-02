@@ -30,7 +30,8 @@ func (d *manager) InitTables() {
 		constraint %s_pk
 			primary key,
 	file_id varchar(64) not null,
-	torrent_file bytea not null,
+	torrent_file bytea default NULL,
+	magnet_link varchar(2048) default NULL,
 	file_name varchar(256) default NULL
 )`
 

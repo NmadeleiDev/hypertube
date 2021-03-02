@@ -1,5 +1,5 @@
 # Compile stage
-FROM golang:1.15-alpine AS build-env
+FROM golang:1.16-alpine AS build-env
 
 #RUN apk add --no-cache build-base
 ADD . /go/src/application

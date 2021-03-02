@@ -16,18 +16,24 @@ type manager struct {
 	schemaName       string
 }
 
-func (d *manager) GetTorrentFileForByFileId(fileId string) []byte {
+func (d *manager) GetTorrentFileForByFileId(fileId string) ([]byte, string, bool) {
 	query := `
-SELECT torrent_file FROM %s WHERE file_id LIKE $1`
+SELECT coalesce(torrent_file, ''), coalesce(magnet_link, '') FROM %s 
+WHERE file_id LIKE $1 AND (torrent_file is not null OR magnet_link is not null)`
 
-	var cont []byte
+	var torrentFile []byte
+	var magnetLink string
 
-	if err := d.conn.QueryRow(fmt.Sprintf(query, d.LoadedFilesTablePath()), fileId).Scan(&cont); err != nil {
+	if err := d.conn.QueryRow(fmt.Sprintf(query, d.LoadedFilesTablePath()), fileId).Scan(&torrentFile, &magnetLink); err != nil {
 		logrus.Errorf("Error getting torrent file: %v", err)
-		return nil
+		return nil, "", false
 	}
 
-	return cont
+	if len(torrentFile) == 0 && len(magnetLink) == 0 {
+		return torrentFile, magnetLink, false
+	}
+
+	return torrentFile, magnetLink, true
 }
 
 func (d *manager) SaveFileNameForReadyFile(fileId, name string) {

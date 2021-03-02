@@ -53,13 +53,13 @@ func GetManager() TorrentFilesManager {
 func (t *TorrentFile) DownloadToFile() error {
 	var peerID [20]byte
 	_, err := rand.Read(peerID[:])
-	if err != nil {
-		return fmt.Errorf("read rand error: %e", err)
+	if err != nil{
+		return fmt.Errorf("read rand error: %v", err)
 	}
 
 	peers, err := t.requestPeers(peerID, Port)
 	if err != nil {
-		return fmt.Errorf("peers request error: %e", err)
+		return fmt.Errorf("peers request error: %v", err)
 	}
 
 	torrent := p2p.Torrent{

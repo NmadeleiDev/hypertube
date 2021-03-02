@@ -53,6 +53,16 @@ services:
       - docker_net
     restart: always
 
+  magnet-converter:
+    build:
+      context: ./src/magnetCoverter
+      dockerfile: Dockerfile
+    ports:
+      - ${MAGNET_CONVERTER_PORT}:50051
+    networks:
+      - docker_net
+    restart: always
+
   loader:
     build:
       context: ./src/torrentClient
@@ -88,6 +98,7 @@ services:
       - ${FRONT_PORT}:80
     networks:
       - docker_net
+    restart: always
     depends_on:
       - storage
       - search
