@@ -16,7 +16,7 @@ type manager struct {
 	schemaName       string
 }
 
-func (d *manager) GetTorrentFileForByFileId(fileId string) ([]byte, string, bool) {
+func (d *manager) GetTorrentOrMagnetForByFileId(fileId string) ([]byte, string, bool) {
 	query := `
 SELECT coalesce(torrent_file, ''), coalesce(magnet_link, '') FROM %s 
 WHERE file_id LIKE $1 AND (torrent_file is not null OR magnet_link is not null)`

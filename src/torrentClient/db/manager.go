@@ -32,7 +32,7 @@ type FilesDbManager interface {
 
 	SaveFileNameForReadyFile(fileId, name string)
 	SaveFilePartsToFile(dest *os.File, fileId string)
-	GetTorrentFileForByFileId(fileId string) ([]byte, string, bool)
+	GetTorrentOrMagnetForByFileId(fileId string) ([]byte, string, bool)
 
 	PreparePlaceForFile(fileId string)
 	SaveFilePart(fileId string, part []byte, start, size, index int64)

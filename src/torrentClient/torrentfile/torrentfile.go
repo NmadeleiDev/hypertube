@@ -70,7 +70,7 @@ func (t *TorrentFile) DownloadToFile() error {
 		PieceLength: t.PieceLength,
 		Length:      t.Length,
 		Name:        t.Name,
-		FileId: t.FileId,
+		FileId: 	 t.FileId,
 	}
 
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)

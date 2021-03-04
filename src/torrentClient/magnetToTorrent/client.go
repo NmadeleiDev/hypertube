@@ -29,28 +29,4 @@ func ConvertMagnetToTorrent(magnet string) []byte {
 		logrus.Fatalf("could not load torrent err=%s", err)
 	}
 	return r.GetTorrent()
-	//logrus.Printf("got request len=%v", len(r.GetTorrent()))
-	//reader := bytes.NewReader(r.GetTorrent())
-	//mi, err := metainfo.Load(reader)
-	//if err != nil {
-	//	logrus.Fatalf("error loading info: %s", err)
-	//}
-	//info, err := mi.UnmarshalInfo()
-	//if err != nil {
-	//	logrus.Fatalf("error unmarshalling info: %s", err)
-	//}
-	//logrus.Printf("got torrent name=%s", info.Name)
-	//f, err := os.Create(info.Name + ".torrent")
-	//if err != nil {
-	//	logrus.Fatalf("error creating torrent metainfo file=%s", err)
-	//}
-	//defer f.Close()
-	//err = bencode.NewEncoder(f).Encode(mi)
-	//if err != nil {
-	//	logrus.Fatalf("error writing torrent metainfo file: %s", err)
-	//}
-	//
-	//if err != nil {
-	//	logrus.Fatalf("could not load torrent err=%s", err)
-	//}
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 
 	"torrent_client/db"
@@ -29,26 +30,30 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			response.IsLoaded = false
 		}
 
-		torrentBytes, magnetLink, ok := db.GetFilesManagerDb().GetTorrentFileForByFileId(fileId)
+		torrentBytes, magnetLink, ok := db.GetFilesManagerDb().GetTorrentOrMagnetForByFileId(fileId)
 		if !ok {
 			SendFailResponseWithCode(w, "File not found or not downloadable", http.StatusNotFound)
 			return
 		}
 
 		if (torrentBytes == nil || len(torrentBytes) == 0) && len(magnetLink) > 0 {
-			logrus.Info("Started to convert!")
 			torrentBytes = magnetToTorrent.ConvertMagnetToTorrent(magnetLink)
 			logrus.Info("Converted! ", len(torrentBytes))
 		}
 
-		go func() {
-			torrent, err := torrentfile.GetManager().ReadTorrentFileFromHttpBody(bytes.NewBuffer(torrentBytes))
-			if err != nil {
-				logrus.Errorf("Error reading torrent file: %v", err)
-				SendFailResponseWithCode(w, "Error reading body: " + err.Error(), http.StatusInternalServerError)
-			}
+		torrent, err := torrentfile.GetManager().ReadTorrentFileFromHttpBody(bytes.NewBuffer(torrentBytes))
+		if err != nil {
+			logrus.Errorf("Error reading torrent file: %v", err)
+			SendFailResponseWithCode(w, fmt.Sprintf("Error reading body: %s; body: %s", err.Error(), string(torrentBytes)), http.StatusInternalServerError)
+			return
+		}
+		torrent.FileId = fileId
 
-			torrent.FileId = fileId
+		trackerUrl := GetTrackersFromMagnet(magnetLink)
+		logrus.Infof("Tracker url: %v", trackerUrl)
+		torrent.Announce = trackerUrl
+
+		go func() {
 
 			err = torrent.DownloadToFile()
 			if err != nil {
