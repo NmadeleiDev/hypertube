@@ -69,6 +69,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - ${TORRENT_CLIENT_API_PORT}:2222
+      - ${TORRENT_CLIENT_UDP_PORT}:${TORRENT_CLIENT_UDP_PORT}
     volumes:
       - ${FILES_VOL_DIR}:${FILES_DIR}:rw
     environment:

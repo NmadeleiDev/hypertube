@@ -36,9 +36,12 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		doChangeAnnounce := false
+
 		if (torrentBytes == nil || len(torrentBytes) == 0) && len(magnetLink) > 0 {
 			torrentBytes = magnetToTorrent.ConvertMagnetToTorrent(magnetLink)
 			logrus.Info("Converted! ", len(torrentBytes))
+			doChangeAnnounce = true
 		}
 
 		torrent, err := torrentfile.GetManager().ReadTorrentFileFromHttpBody(bytes.NewBuffer(torrentBytes))
@@ -47,14 +50,15 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			SendFailResponseWithCode(w, fmt.Sprintf("Error reading body: %s; body: %s", err.Error(), string(torrentBytes)), http.StatusInternalServerError)
 			return
 		}
-		torrent.FileId = fileId
+		torrent.SysInfo.FileId = fileId
 
-		trackerUrl := GetTrackersFromMagnet(magnetLink)
-		logrus.Infof("Tracker url: %v", trackerUrl)
-		torrent.Announce = trackerUrl
+		if doChangeAnnounce {
+			trackerUrl := GetTrackersFromMagnet(magnetLink)
+			logrus.Infof("Tracker url: %v", trackerUrl)
+			torrent.Announce = trackerUrl
+		}
 
 		go func() {
-
 			err = torrent.DownloadToFile()
 			if err != nil {
 				logrus.Errorf("Error downloading to file: %v", err)

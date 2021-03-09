@@ -12,7 +12,25 @@ type TorrentFile struct {
 	PieceLength int
 	Length      int
 	Name        string
+	SysInfo     SystemInfo
+	Download    DownloadUtils
+}
+
+type SystemInfo struct {
 	FileId		string
+}
+
+type DownloadUtils struct {
+	TransactionId	uint32
+	ConnectionId	uint64
+	UdpManager	*UdpConnManager
+}
+
+type UdpConnManager struct {
+	Receive chan []byte
+	Send chan []byte
+	ExitChan chan byte
+	IsValid	bool
 }
 
 type bencodeInfo struct {

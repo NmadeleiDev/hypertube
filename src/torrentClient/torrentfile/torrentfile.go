@@ -70,7 +70,7 @@ func (t *TorrentFile) DownloadToFile() error {
 		PieceLength: t.PieceLength,
 		Length:      t.Length,
 		Name:        t.Name,
-		FileId: 	 t.FileId,
+		FileId: 	 t.SysInfo.FileId,
 	}
 
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
@@ -87,9 +87,9 @@ func (t *TorrentFile) DownloadToFile() error {
 	}
 	defer outFile.Close()
 
-	db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.FileId)
+	db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.SysInfo.FileId)
 
-	db.GetFilesManagerDb().SaveFileNameForReadyFile(t.FileId, outFile.Name())
+	db.GetFilesManagerDb().SaveFileNameForReadyFile(t.SysInfo.FileId, outFile.Name())
 
 	db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
 
