@@ -20,7 +20,7 @@ func completeHandshake(conn net.Conn, infohash, peerID [20]byte) (*handshake.Han
 	req := handshake.New(infohash, peerID)
 	_, err := conn.Write(req.Serialize())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("request write error: %v", err)
 	}
 
 	res, err := handshake.Read(conn)
@@ -56,15 +56,15 @@ func recvBitfield(conn net.Conn) (bitfield.Bitfield, error) {
 // New connects with a peer, completes a handshake, and receives a handshake
 // returns an err if any of those fail.
 func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
-	conn, err := net.DialTimeout("tcp", peer.String(), 3*time.Second)
+	conn, err := net.DialTimeout("tcp", peer.String(), 10 * time.Second)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("dial error: %v; was connecting to %v", err, peer.String())
 	}
 
 	_, err = completeHandshake(conn, infoHash, peerID)
 	if err != nil {
 		conn.Close()
-		return nil, err
+		return nil, fmt.Errorf("handshale error: %v", err)
 	}
 
 	bf, err := recvBitfield(conn)

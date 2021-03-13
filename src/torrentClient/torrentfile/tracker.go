@@ -28,8 +28,8 @@ const (
 	announceAction = 1
 )
 
-func (t *TorrentFile) buildHttpTrackerURL(peerID [20]byte, port uint16) (string, error) {
-	base, err := url.Parse(t.Announce)
+func (t *TorrentFile) buildHttpTrackerURL(announce string, peerID [20]byte, port uint16) (string, error) {
+	base, err := url.Parse(announce)
 	if err != nil {
 		return "", fmt.Errorf("url parse error: %s; src: %s", err.Error(), t.Announce)
 	}
@@ -49,63 +49,86 @@ func (t *TorrentFile) buildHttpTrackerURL(peerID [20]byte, port uint16) (string,
 func (t *TorrentFile) buildUdpTrackerConnectReq() (request []byte, err error) {
 	t.Download.TransactionId = uint32(rand.Int31())
 
+	//logrus.Infof("Connecting with: [%v, %v, %v]", protocolId, connectAction, t.Download.TransactionId)
 	req := make([]byte, 16)
-	binary.BigEndian.PutUint64(req[:9], uint64(protocolId))
-	binary.BigEndian.PutUint32(req[8:13], uint32(connectAction))
+	binary.BigEndian.PutUint64(req[:8], uint64(protocolId))
+	binary.BigEndian.PutUint32(req[8:12], uint32(connectAction))
 	binary.BigEndian.PutUint32(req[12:], t.Download.TransactionId)
 
+	logrus.Infof("Ready msg: %v; %v, %v, %v, %v", req, string(req), fmt.Sprint(req[:8]), fmt.Sprint(req[8:12]), fmt.Sprint(req[12:]))
+	logrus.Infof("Str form: %v %v %v", fmt.Sprint(binary.BigEndian.Uint64(req[:8])), fmt.Sprint(binary.BigEndian.Uint32(req[8:12])), fmt.Sprint(binary.BigEndian.Uint32(req[12:])))
 	return req, nil
 }
 
 func (t *TorrentFile) buildUdpTrackerAnnounceReq(peerID [20]byte, port uint16) (request []byte, err error) {
 	t.Download.TransactionId = uint32(rand.Int31())
 
-	req := make([]byte, 16)
+	req := make([]byte, 98)
 
-	binary.BigEndian.PutUint64(req[:9], uint64(t.Download.ConnectionId))
-	binary.BigEndian.PutUint32(req[8:13], uint32(announceAction))
-	binary.BigEndian.PutUint32(req[12:17], t.Download.TransactionId)
-	copy(req[16:37], t.InfoHash[:])
-	copy(req[36:57], peerID[:])
-	binary.BigEndian.PutUint64(req[56:65], 0)
-	binary.BigEndian.PutUint64(req[64:73], uint64(t.Length))
-	binary.BigEndian.PutUint64(req[72:81], 0) // uploaded
-	binary.BigEndian.PutUint32(req[80:85], 0) // event
-	binary.BigEndian.PutUint32(req[84:89], 0) // ip addr
-	binary.BigEndian.PutUint32(req[88:93], 0) // key
-	binary.PutVarint(req[92:97], -1) // num want
-	binary.BigEndian.PutUint16(req[96:99], port)
+	binary.BigEndian.PutUint64(req[:8], uint64(t.Download.ConnectionId))
+	binary.BigEndian.PutUint32(req[8:12], uint32(announceAction))
+	binary.BigEndian.PutUint32(req[12:16], t.Download.TransactionId)
+	copy(req[16:36], t.InfoHash[:])
+	copy(req[36:56], peerID[:])
+	binary.BigEndian.PutUint64(req[56:64], 0)
+	binary.BigEndian.PutUint64(req[64:72], uint64(t.Length))
+	binary.BigEndian.PutUint64(req[72:80], 0) // uploaded
+	binary.BigEndian.PutUint32(req[80:84], 0) // event
+	binary.BigEndian.PutUint32(req[84:88], 0) // ip addr
+	binary.BigEndian.PutUint32(req[88:92], 0) // key
+	binary.PutVarint(req[92:96], -1) // num want
+	binary.BigEndian.PutUint16(req[96:98], port)
 
 	return req, nil
 }
 
 func (t *TorrentFile) requestPeers(peerID [20]byte, port uint16) ([]peers.Peer, error) {
-	trackerUrl, err := url.Parse(t.Announce)
+	if peerIds, err := t.CallFittingScheme(t.Announce, peerID, port); err == nil {
+		return peerIds, nil
+	} else {
+		logrus.Errorf("Error calling main announce: %v", err)
+	}
+
+	for _, announce := range t.AnnounceList {
+		if peerIds, err := t.CallFittingScheme(announce, peerID, port); err == nil {
+			return peerIds, nil
+		} else {
+			logrus.Errorf("Error calling announce list member: %v", err)
+		}
+	}
+
+	return nil, fmt.Errorf("failed to call any tracker")
+}
+
+func (t *TorrentFile) CallFittingScheme(announce string, peerID [20]byte, port uint16) ([]peers.Peer, error) {
+	trackerUrl, err := url.Parse(announce)
 	if err != nil {
 		logrus.Errorf("Error parse tracker url: %v", err)
 		return nil, err
 	}
 
 	if trackerUrl.Scheme == "http" {
-		return t.callHttpTracker(peerID, port)
+		return t.callHttpTracker(announce, peerID, port)
 	} else if trackerUrl.Scheme == "udp" {
-		return t.callUdpTracker(peerID, port)
+		return t.callUdpTracker(announce, peerID, port)
 	} else {
 		return nil, fmt.Errorf("unsupported url scheme: %v; url: %v", trackerUrl.Scheme, t.Announce)
 	}
 }
 
-func (t *TorrentFile) callUdpTracker(peerID [20]byte, port uint16) ([]peers.Peer, error) {
-	trackerUrl, err := url.Parse(t.Announce)
+func (t *TorrentFile) callUdpTracker(announce string, peerID [20]byte, port uint16) ([]peers.Peer, error) {
+	trackerUrl, err := url.Parse(announce)
 	if err != nil {
-		logrus.Errorf("Error parsing tracker url (%v): %v", t.Announce, err)
+		logrus.Errorf("Error parsing tracker url (%v): %v", announce, err)
 		return nil, err
 	}
 	t.Download.UdpManager, err = OpenUdpSocket(trackerUrl)
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() {
+		//logrus.Info("Writing exit msg")
 		t.Download.UdpManager.ExitChan <- 1
 	}()
 
@@ -113,11 +136,12 @@ func (t *TorrentFile) callUdpTracker(peerID [20]byte, port uint16) ([]peers.Peer
 		return nil, err
 	}
 
-	return t.makeAnnounceUdpReq(peerID, port)
+	parsedPeers, err := t.makeAnnounceUdpReq(peerID, port)
+	return parsedPeers, err
 }
 
-func (t *TorrentFile) callHttpTracker(peerID [20]byte, port uint16) ([]peers.Peer, error) {
-	urlStr, err := t.buildHttpTrackerURL(peerID, port)
+func (t *TorrentFile) callHttpTracker(announce string, peerID [20]byte, port uint16) ([]peers.Peer, error) {
+	urlStr, err := t.buildHttpTrackerURL(announce, peerID, port)
 	if err != nil {
 		return nil, err
 	}
@@ -147,24 +171,28 @@ func (t *TorrentFile) makeConnectUdpReq() error {
 		return err
 	}
 
+	logrus.Infof("Writing %v bytes as conn req", len(req))
 	t.Download.UdpManager.Send <- req
 
 	var body []byte
 
-	timer := time.NewTimer(time.Second * 10)
+	timer := time.NewTimer(time.Second * 3)
 	select {
 	case <- timer.C:
 		return fmt.Errorf("tracker call timed out")
 	case data := <- t.Download.UdpManager.Receive:
 		body = data
+		timer.Stop()
 	}
 
 	transId := binary.BigEndian.Uint32(body[4:9])
 	if transId != t.Download.TransactionId {
-		logrus.Errorf("Tracker resp trans id (%v) != saved trans id (%v)", transId, t.Download.TransactionId)
+		logrus.Errorf("Tracker resp trans_id (%v) != saved trans_id (%v)", transId, t.Download.TransactionId)
 		// выйти?
 	}
-	t.Download.ConnectionId = binary.BigEndian.Uint64(body[8:17])
+	t.Download.ConnectionId = binary.BigEndian.Uint64(body[8:])
+
+	logrus.Infof("Connect announce resp: conn_id=%v action=%v trans_id=%v", t.Download.ConnectionId, binary.BigEndian.Uint32(body[:4]), binary.BigEndian.Uint32(body[4:8]))
 	return nil
 }
 
@@ -174,6 +202,7 @@ func (t *TorrentFile) makeAnnounceUdpReq(peerID [20]byte, port uint16) ([]peers.
 		return nil, err
 	}
 
+	logrus.Infof("Writing %v bytes as conn announce", len(req))
 	t.Download.UdpManager.Send <- req
 	var body []byte
 
@@ -184,6 +213,7 @@ func (t *TorrentFile) makeAnnounceUdpReq(peerID [20]byte, port uint16) ([]peers.
 		return nil, fmt.Errorf("tracker call timed out")
 	case data := <- t.Download.UdpManager.Receive:
 		body = data
+		timer.Stop()
 	}
 
 	transId := binary.BigEndian.Uint32(body[4:9])

@@ -12,6 +12,10 @@ import (
 func StartHandlingSocket(conn *net.UDPConn, utils *UdpConnManager)  {
 	go func() {
 		for {
+			if !utils.IsValid {
+				return
+			}
+
 			buffer := make([]byte, 1024)
 			n, _, err := conn.ReadFromUDP(buffer)
 			if err != nil {
@@ -27,6 +31,9 @@ func StartHandlingSocket(conn *net.UDPConn, utils *UdpConnManager)  {
 	go func() {
 		for {
 			msg := <- utils.Send
+			if !utils.IsValid {
+				return
+			}
 			if n, err := conn.Write(msg); err != nil {
 				logrus.Errorf("Error write msg: %v", err)
 				return
@@ -50,7 +57,7 @@ func OpenUdpSocket(tUrl *url.URL) (*UdpConnManager, error) {
 		logrus.Errorf("Error dial addr %v : %v",  err, addr)
 		return nil, err
 	} else {
-		logrus.Infof("Connection with %v opened", *destinationAddress)
+		logrus.Infof("Connection with %v opened (%v)", *destinationAddress, tUrl.String())
 	}
 
 	exitChan := make(chan byte)
@@ -61,6 +68,7 @@ func OpenUdpSocket(tUrl *url.URL) (*UdpConnManager, error) {
 
 	go func() {
 		<- exitChan
+		logrus.Info("Exiting from udp socket.")
 		manager.IsValid = false
 		connection.Close()
 		close(receive)

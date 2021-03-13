@@ -30,7 +30,7 @@ func (t *torrentsManager) ReadTorrentFileFromFS(path string) (TorrentFile, error
 	return t.ParseReaderToTorrent(file)
 }
 
-func (t *torrentsManager) ReadTorrentFileFromHttpBody(body io.Reader) (TorrentFile, error) {
+func (t *torrentsManager) ReadTorrentFileFromBytes(body io.Reader) (TorrentFile, error) {
 	return t.ParseReaderToTorrent(body)
 }
 
@@ -74,25 +74,24 @@ func (t *TorrentFile) DownloadToFile() error {
 	}
 
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
-	logrus.Infof("Prepared table for parts,  starting download")
+	defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
+	logrus.Infof("Prepared table for parts, starting download")
 
 	err = torrent.Download()
 	if err != nil {
-		return fmt.Errorf("file download error: %e", err)
+		return fmt.Errorf("file download error: %v", err)
 	}
 
 	outFile, err := ioutil.TempFile(env.GetParser().GetFilesDir(), "loaded_*")
 	if err != nil {
 		return fmt.Errorf("create tempfile error: %e", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		outFile.Close()
+	}()
 
 	db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.SysInfo.FileId)
-
 	db.GetFilesManagerDb().SaveFileNameForReadyFile(t.SysInfo.FileId, outFile.Name())
-
-	db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
-
 	return nil
 }
 
@@ -133,6 +132,7 @@ func (bto *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 	}
 	t := TorrentFile{
 		Announce:    bto.Announce,
+		AnnounceList: UnfoldArray(bto.AnnounceList),
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,
 		PieceLength: bto.Info.PieceLength,
@@ -140,4 +140,14 @@ func (bto *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 		Name:        bto.Info.Name,
 	}
 	return t, nil
+}
+
+func UnfoldArray(src [][]string) []string {
+	res := make([]string, 0, len(src))
+
+	for _, item := range src {
+		res = append(res, item...)
+	}
+
+	return res
 }

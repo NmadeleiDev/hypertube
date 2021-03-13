@@ -44,7 +44,7 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			doChangeAnnounce = true
 		}
 
-		torrent, err := torrentfile.GetManager().ReadTorrentFileFromHttpBody(bytes.NewBuffer(torrentBytes))
+		torrent, err := torrentfile.GetManager().ReadTorrentFileFromBytes(bytes.NewBuffer(torrentBytes))
 		if err != nil {
 			logrus.Errorf("Error reading torrent file: %v", err)
 			SendFailResponseWithCode(w, fmt.Sprintf("Error reading body: %s; body: %s", err.Error(), string(torrentBytes)), http.StatusInternalServerError)
@@ -57,6 +57,8 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			logrus.Infof("Tracker url: %v", trackerUrl)
 			torrent.Announce = trackerUrl
 		}
+
+		logrus.Infof("Ready torrent: %v %v", torrent.Announce, torrent.AnnounceList)
 
 		go func() {
 			err = torrent.DownloadToFile()

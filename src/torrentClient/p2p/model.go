@@ -23,6 +23,15 @@ type Torrent struct {
 	FileId		string
 }
 
+func (t *Torrent) CountWorkingPeers() (res int) {
+	for _, peer := range t.Peers {
+		if !peer.IsDead {
+			res += 1
+		}
+	}
+	return res
+}
+
 type pieceWork struct {
 	index  int
 	hash   [20]byte

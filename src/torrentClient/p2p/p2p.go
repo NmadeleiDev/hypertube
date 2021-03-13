@@ -12,6 +12,8 @@ import (
 	"torrent_client/db"
 	"torrent_client/message"
 	"torrent_client/peers"
+
+	"github.com/sirupsen/logrus"
 )
 
 
@@ -95,14 +97,15 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 	return nil
 }
 
-func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork, results chan *pieceResult) {
+func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork, results chan *pieceResult, deadPeerChan chan <- *peers.Peer) {
 	c, err := client.New(peer, t.PeerID, t.InfoHash)
 	if err != nil {
-		log.Printf("Could not handshake with %s. Disconnecting\n", peer.IP)
+		logrus.Errorf("Could not handshake with %s. Err: %v", peer.String(), err)
+		deadPeerChan <- &peer
 		return
 	}
 	defer c.Conn.Close()
-	log.Printf("Completed handshake with %s\n", peer.IP)
+	logrus.Infof("Completed handshake with %s", peer.String())
 
 	c.SendUnchoke()
 	c.SendInterested()
@@ -116,14 +119,14 @@ func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork
 		// Download the piece
 		buf, err := attemptDownloadPiece(c, pw)
 		if err != nil {
-			log.Println("Exiting", err)
+			logrus.Errorf("exiting: %v", err)
 			workQueue <- pw // Put piece back on the queue
 			return
 		}
 
 		err = checkIntegrity(pw, buf)
 		if err != nil {
-			log.Printf("Piece #%d failed integrity check\n", pw.index)
+			logrus.Errorf("Piece #%d failed integrity check", pw.index)
 			workQueue <- pw // Put piece back on the queue
 			continue
 		}
@@ -149,7 +152,7 @@ func (t *Torrent) calculatePieceSize(index int) int {
 
 // Download downloads the torrent. This stores the entire file in memory.
 func (t *Torrent) Download() error {
-	log.Println("Starting download for", t.Name)
+	logrus.Infof("starting download %v parts from %v peers for %v", len(t.PieceHashes), len(t.Peers), t.Name)
 	// Init queues for workers to retrieve work and send results
 	workQueue := make(chan *pieceWork, len(t.PieceHashes))
 	results := make(chan *pieceResult)
@@ -158,16 +161,44 @@ func (t *Torrent) Download() error {
 		workQueue <- &pieceWork{index, hash, length}
 	}
 
+	deadPeersChan := make(chan *peers.Peer, 10)
+	alarmAllDead := make(chan byte)
+	go func() {
+		count := 0
+		for {
+			peer := <- deadPeersChan
+			count += 1
+			logrus.Warnf("Peer %v dead. Total dead = %v", peer.String(), count)
+
+			if count == len(t.Peers) {
+				alarmAllDead <- 1
+			}
+		}
+	}()
+
 	// Start workers
 	for _, peer := range t.Peers {
-		go t.startDownloadWorker(peer, workQueue, results)
+		go t.startDownloadWorker(peer, workQueue, results, deadPeersChan)
 	}
 
+	defer close(workQueue)
 	// Collect results into a buffer until full
 	//buf := make([]byte, t.Length)
 	donePieces := 0
 	for donePieces < len(t.PieceHashes) {
-		res := <-results
+		var res *pieceResult
+		select {
+			case data := <-results:
+				res = data
+			case <- alarmAllDead:
+				logrus.Infof("Failed to download file, as all peers are dead!")
+				return fmt.Errorf("failed to download file, as all peers are dead")
+		}
+		if res == nil {
+			logrus.Errorf("Piece result invalid: %v", res)
+			continue
+		}
+
 		begin, end := t.calculateBoundsForPiece(res.index)
 		//copy(buf[begin:end], res.buf)
 
@@ -181,11 +212,5 @@ func (t *Torrent) Download() error {
 		numWorkers := runtime.NumGoroutine() - 1 // subtract 1 for main thread
 		log.Printf("(%0.2f%%) Downloaded piece #%d from %d peers\n", percent, res.index, numWorkers)
 	}
-	close(workQueue)
-
 	return nil
-}
-
-func savePieceToFile()  {
-
 }

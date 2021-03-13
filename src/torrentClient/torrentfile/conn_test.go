@@ -15,6 +15,7 @@ func TestOpenUdpSocket(t *testing.T) {
 		t.Errorf("Error opening socket: %v", err)
 	}
 	testMsg := []byte("Hello motherfucker!")
+
 	defer func() {
 		t.Log("Exiting!")
 		conn.ExitChan <- 1
