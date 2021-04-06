@@ -26,7 +26,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 		filePath, err := db.GetLoadedFilesManager().GetFilePathById(fileId)
 		if err != nil {
 			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found: %s", fileId, err.Error()), http.StatusBadRequest)
-			// вызов torrent_client для загрузки, ожидание загрузки нужного куска
+			// вызов torrentClient для загрузки, ожидание загрузки нужного куска
 		} else {
 			filePart, totalLength, err := filesReader.GetManager().GetFileInRange(filePath, &fileRange)
 			if err != nil {

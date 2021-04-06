@@ -3,8 +3,8 @@ package db
 import (
 	"os"
 
-	"torrent_client/db/postgres"
-	"torrent_client/db/redis"
+	"torrentClient/db/postgres"
+	"torrentClient/db/redis"
 )
 
 type LoaderStateDbManager interface {

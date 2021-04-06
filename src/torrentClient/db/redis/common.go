@@ -3,7 +3,7 @@ package redis
 import (
 	"fmt"
 
-	"torrent_client/parser/env"
+	"torrentClient/parser/env"
 
 	"github.com/go-redis/redis"
 	"github.com/sirupsen/logrus"

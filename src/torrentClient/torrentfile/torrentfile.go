@@ -8,10 +8,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"encoding/hex"
 
-	"torrent_client/db"
-	"torrent_client/p2p"
-	"torrent_client/parser/env"
+	"torrentClient/db"
+	"torrentClient/p2p"
+	"torrentClient/parser/env"
 
 	"github.com/jackpal/bencode-go"
 	"github.com/sirupsen/logrus"
@@ -35,14 +36,38 @@ func (t *torrentsManager) ReadTorrentFileFromBytes(body io.Reader) (TorrentFile,
 }
 
 func (t *torrentsManager) ParseReaderToTorrent(body io.Reader) (TorrentFile, error) {
-	bto := bencodeTorrent{}
-	err := bencode.Unmarshal(body, &bto)
+	btoSingle := bencodeTorrentSingleFile{}
+	btoMultiFile := bencodeTorrentMultiFiles{}
+
+	readBody, err := io.ReadAll(body)
+	if err != nil {
+		logrus.Errorf("error readall body: %v", err)
+		return TorrentFile{}, err
+	}
+	err = bencode.Unmarshal(bytes.NewBuffer(readBody), &btoSingle)
 	if err != nil {
 		return TorrentFile{}, err
-	} else {
-		logrus.Infof("Parsed torrent!")
 	}
-	return bto.toTorrentFile()
+	err = bencode.Unmarshal(bytes.NewBuffer(readBody), &btoMultiFile)
+	if err != nil {
+		return TorrentFile{}, err
+	}
+	logrus.Infof("Parsed torrent!")
+
+	var result TorrentFile
+
+	if btoSingle.Info.Length == 0 {
+		result, err = btoMultiFile.toTorrentFile()
+	} else {
+		result, err = btoSingle.toTorrentFile()
+	}
+	if err != nil {
+		logrus.Errorf("Error creating torret from bto: %v", err)
+	}
+
+	logrus.Infof("Bto info: %v; %v; files = %v; pieces = (%v)", result.Name, result.Length, result.Files,
+		[]string{hex.EncodeToString(result.PieceHashes[0][:]), hex.EncodeToString(result.PieceHashes[1][:])} )
+	return result, nil
 }
 
 func GetManager() TorrentFilesManager {
@@ -56,15 +81,17 @@ func (t *TorrentFile) DownloadToFile() error {
 	if err != nil{
 		return fmt.Errorf("read rand error: %v", err)
 	}
+	t.Download.MyPeerId = peerID
+	t.Download.MyPeerPort = env.GetParser().GetTorrentPeerPort()
 
-	peers, err := t.requestPeers(peerID, Port)
+	peers, err := t.requestPeers()
 	if err != nil {
 		return fmt.Errorf("peers request error: %v", err)
 	}
 
 	torrent := p2p.Torrent{
 		Peers:       peers,
-		PeerID:      peerID,
+		PeerID:      t.Download.MyPeerId,
 		InfoHash:    t.InfoHash,
 		PieceHashes: t.PieceHashes,
 		PieceLength: t.PieceLength,
@@ -95,7 +122,7 @@ func (t *TorrentFile) DownloadToFile() error {
 	return nil
 }
 
-func (i *bencodeInfo) hash() ([20]byte, error) {
+func (i *bencodeInfoSingleFile) hash() ([20]byte, error) {
 	var buf bytes.Buffer
 	err := bencode.Marshal(&buf, *i)
 	if err != nil {
@@ -105,7 +132,17 @@ func (i *bencodeInfo) hash() ([20]byte, error) {
 	return h, nil
 }
 
-func (i *bencodeInfo) splitPieceHashes() ([][20]byte, error) {
+func (i *bencodeInfoMultiFiles) hash() ([20]byte, error) {
+	var buf bytes.Buffer
+	err := bencode.Marshal(&buf, *i)
+	if err != nil {
+		return [20]byte{}, err
+	}
+	h := sha1.Sum(buf.Bytes())
+	return h, nil
+}
+
+func (i *bencodeInfoSingleFile) splitPieceHashes() ([][20]byte, error) {
 	hashLen := 20 // Length of SHA-1 hash
 	buf := []byte(i.Pieces)
 	if len(buf)%hashLen != 0 {
@@ -121,7 +158,23 @@ func (i *bencodeInfo) splitPieceHashes() ([][20]byte, error) {
 	return hashes, nil
 }
 
-func (bto *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
+func (i *bencodeInfoMultiFiles) splitPieceHashes() ([][20]byte, error) {
+	hashLen := 20 // Length of SHA-1 hash
+	buf := []byte(i.Pieces)
+	if len(buf)%hashLen != 0 {
+		err := fmt.Errorf("Received malformed pieces of length %d", len(buf))
+		return nil, err
+	}
+	numHashes := len(buf) / hashLen
+	hashes := make([][20]byte, numHashes)
+
+	for i := 0; i < numHashes; i++ {
+		copy(hashes[i][:], buf[i*hashLen:(i+1)*hashLen])
+	}
+	return hashes, nil
+}
+
+func (bto *bencodeTorrentSingleFile) toTorrentFile() (TorrentFile, error) {
 	infoHash, err := bto.Info.hash()
 	if err != nil {
 		return TorrentFile{}, err
@@ -138,6 +191,30 @@ func (bto *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 		PieceLength: bto.Info.PieceLength,
 		Length:      bto.Info.Length,
 		Name:        bto.Info.Name,
+	}
+	return t, nil
+}
+
+func (bto *bencodeTorrentMultiFiles) toTorrentFile() (TorrentFile, error) {
+	infoHash, err := bto.Info.hash()
+	if err != nil {
+		return TorrentFile{}, err
+	}
+	pieceHashes, err := bto.Info.splitPieceHashes()
+	if err != nil {
+		return TorrentFile{}, err
+	}
+	t := TorrentFile{
+		Announce:     bto.Announce,
+		AnnounceList: UnfoldArray(bto.AnnounceList),
+		InfoHash:     infoHash,
+		PieceHashes:  pieceHashes,
+		PieceLength:  bto.Info.PieceLength,
+		Length:       0,
+		Files:        bto.Info.Files,
+		Name:         bto.Info.Name,
+		SysInfo:      SystemInfo{},
+		Download:     DownloadUtils{},
 	}
 	return t, nil
 }

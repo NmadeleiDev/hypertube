@@ -3,8 +3,8 @@ package client
 import (
 	"net"
 
-	"torrent_client/bitfield"
-	"torrent_client/peers"
+	"torrentClient/bitfield"
+	"torrentClient/peers"
 )
 
 type Client struct {

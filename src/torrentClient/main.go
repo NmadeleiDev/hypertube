@@ -1,9 +1,9 @@
 package main
 
 import (
-	"torrent_client/db"
-	"torrent_client/parser/env"
-	"torrent_client/server"
+	"torrentClient/db"
+	"torrentClient/parser/env"
+	"torrentClient/server"
 )
 
 func main() {

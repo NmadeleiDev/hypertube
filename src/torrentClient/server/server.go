@@ -3,8 +3,8 @@ package server
 import (
 	"net/http"
 
-	"torrent_client/parser/env"
-	"torrent_client/server/handlers"
+	"torrentClient/parser/env"
+	"torrentClient/server/handlers"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"

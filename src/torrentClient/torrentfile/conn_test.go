@@ -1,12 +1,19 @@
 package torrentfile
 
 import (
-	"bytes"
+	"encoding/json"
 	"net/url"
 	"testing"
 
+	"torrentClient/parser/env"
+
 	"github.com/sirupsen/logrus"
 )
+
+type testMsg struct {
+	PeerPort	uint16	`json:"peer_port"`
+	Data		string	`json:"data"`
+}
 
 func TestOpenUdpSocket(t *testing.T) {
 	tUrl, _ := url.Parse("udp://18.219.47.231:1194")
@@ -14,21 +21,19 @@ func TestOpenUdpSocket(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error opening socket: %v", err)
 	}
-	testMsg := []byte("Hello motherfucker!")
+	testMsg, _ := json.Marshal(testMsg{PeerPort: env.GetParser().GetTorrentPeerPort(), Data: "Hello!"})
 
 	defer func() {
 		t.Log("Exiting!")
 		conn.ExitChan <- 1
 	}()
 
-	resp := bytes.ReplaceAll(testMsg, []byte("fuck"), []byte("shit"))
-
 	conn.Send <- testMsg
 	res := <- conn.Receive
 
 	logrus.Infof("Got msg: %v", string(res))
 
-	if string(res) != string(resp) {
+	if string(res) != string("Hello!") {
 		t.Errorf("Got not echo msg: %v", string(res))
 	}
 }

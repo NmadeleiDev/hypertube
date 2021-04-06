@@ -3,7 +3,7 @@ package env
 import (
 	"sync"
 
-	"torrent_client/parser/env/impl"
+	"torrentClient/parser/env/impl"
 )
 
 var syncOnce sync.Once
@@ -15,6 +15,7 @@ type Parser interface {
 	IsDevMode() bool
 	GetFilesDir() string
 	GetPostgresDbDsn() string
+	GetTorrentPeerPort() uint16
 }
 
 func GetParser() Parser {

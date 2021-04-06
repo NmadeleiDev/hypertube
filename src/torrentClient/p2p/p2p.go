@@ -8,10 +8,10 @@ import (
 	"runtime"
 	"time"
 
-	"torrent_client/client"
-	"torrent_client/db"
-	"torrent_client/message"
-	"torrent_client/peers"
+	"torrentClient/client"
+	"torrentClient/db"
+	"torrentClient/message"
+	"torrentClient/peers"
 
 	"github.com/sirupsen/logrus"
 )
@@ -100,7 +100,7 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork, results chan *pieceResult, deadPeerChan chan <- *peers.Peer) {
 	c, err := client.New(peer, t.PeerID, t.InfoHash)
 	if err != nil {
-		logrus.Errorf("Could not handshake with %s. Err: %v", peer.String(), err)
+		logrus.Errorf("Could not handshake with %s. Err: %v, my peer id: %v", peer.String(), err, t.PeerID)
 		deadPeerChan <- &peer
 		return
 	}

@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"torrent_client/model"
+	"torrentClient/model"
 
 	"github.com/sirupsen/logrus"
 )

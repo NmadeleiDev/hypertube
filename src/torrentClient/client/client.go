@@ -6,10 +6,12 @@ import (
 	"net"
 	"time"
 
-	"torrent_client/bitfield"
-	"torrent_client/handshake"
-	"torrent_client/message"
-	"torrent_client/peers"
+	"torrentClient/bitfield"
+	"torrentClient/handshake"
+	"torrentClient/message"
+	"torrentClient/peers"
+
+	"github.com/sirupsen/logrus"
 )
 
 
@@ -59,6 +61,8 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	conn, err := net.DialTimeout("tcp", peer.String(), 10 * time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("dial error: %v; was connecting to %v", err, peer.String())
+	} else {
+		logrus.Infof("Connected to peer on %v", peer.String())
 	}
 
 	_, err = completeHandshake(conn, infoHash, peerID)

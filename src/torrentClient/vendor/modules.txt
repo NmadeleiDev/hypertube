@@ -1,13 +1,3 @@
-# github.com/anacrolix/missinggo v1.2.1
-github.com/anacrolix/missinggo
-github.com/anacrolix/missinggo/expect
-github.com/anacrolix/missinggo/slices
-# github.com/anacrolix/torrent v1.25.0
-## explicit
-github.com/anacrolix/torrent/bencode
-github.com/anacrolix/torrent/metainfo
-# github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8
-github.com/bradfitz/iter
 # github.com/go-redis/redis v6.15.9+incompatible
 ## explicit
 github.com/go-redis/redis
@@ -17,7 +7,7 @@ github.com/go-redis/redis/internal/hashtag
 github.com/go-redis/redis/internal/pool
 github.com/go-redis/redis/internal/proto
 github.com/go-redis/redis/internal/util
-# github.com/golang/protobuf v1.4.3
+# github.com/golang/protobuf v1.4.2
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
@@ -26,8 +16,6 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/gorilla/mux v1.8.0
 ## explicit
 github.com/gorilla/mux
-# github.com/huandu/xstrings v1.3.2
-github.com/huandu/xstrings
 # github.com/jackpal/bencode-go v1.0.0
 ## explicit
 github.com/jackpal/bencode-go
@@ -35,25 +23,18 @@ github.com/jackpal/bencode-go
 ## explicit
 github.com/jmoiron/sqlx
 github.com/jmoiron/sqlx/reflectx
-# github.com/lib/pq v1.9.0
+# github.com/lib/pq v1.10.0
 ## explicit
 github.com/lib/pq
 github.com/lib/pq/oid
 github.com/lib/pq/scram
-# github.com/onsi/ginkgo v1.14.2
-## explicit
-# github.com/onsi/gomega v1.10.4
-## explicit
-# github.com/sirupsen/logrus v1.7.0
+# github.com/sirupsen/logrus v1.8.1
 ## explicit
 github.com/sirupsen/logrus
-# github.com/veggiedefender/torrent-client v0.0.0-20200928123551-457c84954eab
-## explicit
 # github.com/webtor-io/magnet2torrent v0.0.0-20200920105221-c6515ec05480
 ## explicit
 github.com/webtor-io/magnet2torrent/magnet2torrent
-# golang.org/x/net v0.0.0-20210119194325-5f4716e94777
-## explicit
+# golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa
 golang.org/x/net/context
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
@@ -61,11 +42,11 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
-# golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
+# golang.org/x/sys v0.0.0-20200918174421-af09f7315aff
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.3.3
+# golang.org/x/text v0.3.0
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi

@@ -69,7 +69,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - ${TORRENT_CLIENT_API_PORT}:2222
-      - ${TORRENT_CLIENT_UDP_PORT}:${TORRENT_CLIENT_UDP_PORT}
+#      - ${TORRENT_CLIENT_UDP_PORT}:${TORRENT_CLIENT_UDP_PORT}
     volumes:
       - ${FILES_VOL_DIR}:${FILES_DIR}:rw
     environment:
@@ -86,6 +86,19 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
 
       FILES_DIR: ${FILES_DIR}
+      LOG_LEVEL: ${LOG_LEVEL}
+      TORRENT_PEER_PORT: ${TORRENT_PEER_PORT}
+    networks:
+      - docker_net
+    restart: always
+
+  peer:
+    build:
+      context: ./src/peerServer
+      dockerfile: Dockerfile
+    ports:
+      - ${TORRENT_PEER_PORT}:2222
+    environment:
       LOG_LEVEL: ${LOG_LEVEL}
     networks:
       - docker_net

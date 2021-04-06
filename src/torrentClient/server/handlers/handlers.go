@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"torrent_client/db"
-	"torrent_client/magnetToTorrent"
-	"torrent_client/torrentfile"
+	"torrentClient/db"
+	"torrentClient/magnetToTorrent"
+	"torrentClient/torrentfile"
 
 	"github.com/sirupsen/logrus"
 )
@@ -58,7 +58,7 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			torrent.Announce = trackerUrl
 		}
 
-		logrus.Infof("Ready torrent: %v %v", torrent.Announce, torrent.AnnounceList)
+		//logrus.Infof("Ready torrent info: %v %v", torrent.Announce, torrent.AnnounceList)
 
 		go func() {
 			err = torrent.DownloadToFile()
