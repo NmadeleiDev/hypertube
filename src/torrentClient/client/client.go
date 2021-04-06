@@ -23,14 +23,16 @@ func completeHandshake(conn net.Conn, infohash, peerID [20]byte) (*handshake.Han
 	_, err := conn.Write(req.Serialize())
 	if err != nil {
 		return nil, fmt.Errorf("request write error: %v", err)
+	} else {
+		logrus.Infof("Wrote handshake msg (%v bytes)", len(req.Serialize()))
 	}
 
 	res, err := handshake.Read(conn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read error: %v", err)
 	}
 	if !bytes.Equal(res.InfoHash[:], infohash[:]) {
-		return nil, fmt.Errorf("Expected infohash %x but got %x", res.InfoHash, infohash)
+		return nil, fmt.Errorf("expected infohash %x but got %x", res.InfoHash, infohash)
 	}
 	return res, nil
 }
@@ -68,7 +70,7 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	_, err = completeHandshake(conn, infoHash, peerID)
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("handshale error: %v", err)
+		return nil, fmt.Errorf("handshake error: %v", err)
 	}
 
 	bf, err := recvBitfield(conn)

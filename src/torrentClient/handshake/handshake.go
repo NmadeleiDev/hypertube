@@ -32,7 +32,7 @@ func Read(r io.Reader) (*Handshake, error) {
 	lengthBuf := make([]byte, 1)
 	_, err := io.ReadFull(r, lengthBuf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("io.ReadFull 1: %v", err)
 	}
 	pstrlen := int(lengthBuf[0])
 
@@ -44,7 +44,7 @@ func Read(r io.Reader) (*Handshake, error) {
 	handshakeBuf := make([]byte, 48+pstrlen)
 	_, err = io.ReadFull(r, handshakeBuf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("io.ReadFull 2: %v", err)
 	}
 
 	var infoHash, peerID [20]byte
