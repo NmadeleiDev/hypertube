@@ -104,6 +104,9 @@ func (c *Client) SendRequest(index, begin, length int) error {
 func (c *Client) SendInterested() error {
 	msg := message.Message{ID: message.MsgInterested}
 	_, err := c.Conn.Write(msg.Serialize())
+	if err != nil {
+		logrus.Errorf("Error sending interested msg: %v", err)
+	}
 	return err
 }
 
@@ -111,6 +114,9 @@ func (c *Client) SendInterested() error {
 func (c *Client) SendNotInterested() error {
 	msg := message.Message{ID: message.MsgNotInterested}
 	_, err := c.Conn.Write(msg.Serialize())
+	if err != nil {
+		logrus.Errorf("Error sending not interested msg: %v", err)
+	}
 	return err
 }
 
@@ -118,6 +124,9 @@ func (c *Client) SendNotInterested() error {
 func (c *Client) SendUnchoke() error {
 	msg := message.Message{ID: message.MsgUnchoke}
 	_, err := c.Conn.Write(msg.Serialize())
+	if err != nil {
+		logrus.Errorf("Error sending unchoke msg: %v", err)
+	}
 	return err
 }
 
@@ -125,5 +134,8 @@ func (c *Client) SendUnchoke() error {
 func (c *Client) SendHave(index int) error {
 	msg := message.FormatHave(index)
 	_, err := c.Conn.Write(msg.Serialize())
+	if err != nil {
+		logrus.Errorf("Error sending have msg: %v", err)
+	}
 	return err
 }
