@@ -51,12 +51,6 @@ func (state *pieceProgress) readMessage() error {
 
 func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 	logrus.Infof("Attempting to download piece (len=%v, idx=%v)", pw.length, pw.index)
-	
-//	{"level":"info","msg":"Completed handshake with 106.122.207.198:51413","time":"2021-04-06T21:07:11Z"}
-//	{"level":"info","msg":"Attempting to download piece (len=0, idx=0)","time":"2021-04-06T21:07:11Z"}
-//	{"level":"error","msg":"Piece #0 failed integrity check","time":"2021-04-06T21:07:11Z"}
-//	{"level":"info","msg":"Attempting to download piece (len=-8388608, idx=1)","time":"2021-04-06T21:07:11Z"}
-//panic: runtime error: makeslice: len out of range
 
 	if pw.length < 0 {
 		logrus.Errorf("Attempting to download incorrect pw: %v", *pw)
@@ -80,7 +74,7 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 			for state.backlog < MaxBacklog && state.requested < pw.length {
 				blockSize := MaxBlockSize
 				// Last block might be shorter than the typical block
-				if pw.length-state.requested < blockSize {
+				if pw.length - state.requested < blockSize {
 					blockSize = pw.length - state.requested
 				}
 
@@ -142,7 +136,7 @@ func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork
 
 		err = checkIntegrity(pw, buf)
 		if err != nil {
-			logrus.Errorf("Piece #%d failed integrity check", pw.index)
+			logrus.Errorf("Check err: %v", err)
 			workQueue <- pw // Put piece back on the queue
 			continue
 		}
@@ -168,7 +162,8 @@ func (t *Torrent) calculatePieceSize(index int) int {
 
 // Download downloads the torrent. This stores the entire file in memory.
 func (t *Torrent) Download() error {
-	logrus.Infof("starting download %v parts, p.length = %v from %v peers for %v", len(t.PieceHashes), t.PieceLength, len(t.Peers), t.Name)
+	logrus.Infof("starting download %v parts, file.len=%v, p.length=%v from %v peers for %v",
+		len(t.PieceHashes), t.Length, t.PieceLength, len(t.Peers), t.Name)
 	// Init queues for workers to retrieve work and send results
 	workQueue := make(chan *pieceWork, len(t.PieceHashes))
 	results := make(chan *pieceResult)

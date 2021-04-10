@@ -68,3 +68,11 @@ type bencodeTorrentMultiFiles struct {
 	Info         bencodeInfoMultiFiles `bencode:"info"`
 }
 
+func (bto *bencodeTorrentMultiFiles) SumFilesLength() int {
+	res := 0
+	for _, file := range bto.Info.Files {
+		res += file.Length
+	}
+	return res
+}
+

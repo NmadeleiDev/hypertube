@@ -65,8 +65,10 @@ func (t *torrentsManager) ParseReaderToTorrent(body io.Reader) (TorrentFile, err
 		logrus.Errorf("Error creating torret from bto: %v", err)
 	}
 
-	logrus.Infof("Bto info: %v; %v; files = %v; pieces = (%v)", result.Name, result.Length, result.Files,
-		[]string{hex.EncodeToString(result.PieceHashes[0][:]), hex.EncodeToString(result.PieceHashes[1][:])} )
+	logrus.Infof("Bto info: name='%v'; len=%v; files = %v; pieces = (%v)",
+		result.Name, result.Length, result.Files,
+		[]string{hex.EncodeToString(result.PieceHashes[0][:]),
+			hex.EncodeToString(result.PieceHashes[1][:])})
 	return result, nil
 }
 
@@ -210,7 +212,7 @@ func (bto *bencodeTorrentMultiFiles) toTorrentFile() (TorrentFile, error) {
 		InfoHash:     infoHash,
 		PieceHashes:  pieceHashes,
 		PieceLength:  bto.Info.PieceLength,
-		Length:       0,
+		Length:       bto.SumFilesLength(),
 		Files:        bto.Info.Files,
 		Name:         bto.Info.Name,
 		SysInfo:      SystemInfo{},

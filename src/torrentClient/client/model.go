@@ -18,5 +18,5 @@ type Client struct {
 }
 
 func (c *Client) GetClientInfo() string {
-	return fmt.Sprintf("Peer: %v\nChoked = %v\nBitfield: %v\n", c.peer.GetAddr(), c.Conn, c.Bitfield)
+	return fmt.Sprintf("Peer: %v\nChoked = %v\nBitfield: %v\n", c.peer.GetAddr(), c.Choked, c.Bitfield)
 }
