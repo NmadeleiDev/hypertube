@@ -27,7 +27,7 @@ const (
 	scrapeAction = 2
 )
 
-func (t *TorrentFile) requestPeers() ([]peers.Peer, error) {
+func (t *TorrentFile) RequestPeers() ([]peers.Peer, error) {
 	if peerIds, err := t.CallFittingScheme(t.Announce); err == nil {
 		return peerIds, nil
 	} else {
@@ -172,6 +172,7 @@ func (t *TorrentFile) makeAnnounceUdpReq() ([]peers.Peer, error) {
 	logrus.Infof("Interval = %v; leechers = %v; seeders = %v;", interval, leechers, seeders)
 	parsedPeers, err := peers.Unmarshal(body[20:])
 	logrus.Infof("Got peers: %v", parsedPeers)
+	t.Download.TrackerCallInterval = time.Duration(interval)
 	return parsedPeers, err
 }
 

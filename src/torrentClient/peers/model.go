@@ -7,3 +7,5 @@ type Peer struct {
 	Port uint16
 	IsDead bool
 }
+
+

@@ -10,7 +10,7 @@ import (
 	"torrentClient/client"
 	"torrentClient/db"
 	"torrentClient/message"
-	"torrentClient/peers"
+	"torrentClient/peersPool"
 
 	"github.com/sirupsen/logrus"
 )
@@ -71,7 +71,7 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 	for state.downloaded < pw.length {
 		// If unchoked, send requests until we have enough unfulfilled requests
 		if !state.client.Choked {
-			logrus.Infof("Starting downloading. State: idx=%v, downloaded=%v (%v%%)", state.index, state.downloaded, (state.downloaded * 100) / pw.length)
+			logrus.Infof("Downloading from %v. State: idx=%v, downloaded=%v (%v%%)", c.GetShortInfo(), state.index, state.downloaded, (state.downloaded * 100) / pw.length)
 			for state.backlog < MaxBacklog && state.requested < pw.length {
 				blockSize := MaxBlockSize
 				// Last block might be shorter than the typical block
@@ -105,21 +105,21 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 	return nil
 }
 
-func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork, results chan *pieceResult, deadPeerChan chan <- *peers.Peer) {
-	c, err := client.New(peer, t.PeerID, t.InfoHash)
-	if err != nil {
-		logrus.Errorf("Could not handshake with %s. Err: %v, my peer id: %v", peer.GetAddr(), err, t.PeerID)
-		deadPeerChan <- &peer
-		return
-	}
-	defer c.Conn.Close()
-	//logrus.Infof("Completed handshake with %s", peer.GetAddr())
-	//logrus.Infof("Completed handshake! Client info: %v", c.GetClientInfo())
-
-	c.SendUnchoke()
-	c.SendInterested()
-
-	logrus.Infof("Unchoke and interested sent: %v", c.GetClientInfo())
+func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *pieceWork, results chan *pieceResult) {
+	//c, err := client.New(peer, t.PeerID, t.InfoHash)
+	//if err != nil {
+	//	logrus.Errorf("Could not handshake with %s. Err: %v, my peer id: %v", peer.GetAddr(), err, t.PeerID)
+	//	deadPeerChan <- &peer
+	//	return
+	//}
+	//defer c.Conn.Close()
+	////logrus.Infof("Completed handshake with %s", peer.GetAddr())
+	////logrus.Infof("Completed handshake! Client info: %v", c.GetClientInfo())
+	//
+	//c.SendUnchoke()
+	//c.SendInterested()
+	//
+	//logrus.Infof("Unchoke and interested sent: %v", c.GetClientInfo())
 
 	for pw := range workQueue {
 		if !c.Bitfield.HasPiece(pw.index) {
@@ -147,7 +147,7 @@ func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork
 	}
 }
 
-func (t *Torrent) calculateBoundsForPiece(index int) (begin int, end int) {
+func (t *TorrentMeta) calculateBoundsForPiece(index int) (begin int, end int) {
 	begin = index * t.PieceLength
 	end = begin + t.PieceLength
 	if end > t.Length {
@@ -156,43 +156,51 @@ func (t *Torrent) calculateBoundsForPiece(index int) (begin int, end int) {
 	return begin, end
 }
 
-func (t *Torrent) calculatePieceSize(index int) int {
+func (t *TorrentMeta) calculatePieceSize(index int) int {
 	begin, end := t.calculateBoundsForPiece(index)
 	return end - begin
 }
 
+//[
+//	{18.219.47.231 6881 false}
+//	{88.161.9.10 6881 false}	to
+//	{117.120.10.87 26132 false}
+//	{222.214.196.53 15000 false}	to
+//	{154.21.23.134 16072 false}
+//	{117.181.199.235 56961 false}	to
+//{117.80.161.50 16881 false}		+u
+//	{114.253.97.248 51413 false}	to
+//	{110.184.240.204 22223 false}	to
+//{106.122.206.163 51413 false}	+u
+//]
+
+
 // Download downloads the torrent. This stores the entire file in memory.
-func (t *Torrent) Download() error {
-	logrus.Infof("starting download %v parts, file.len=%v, p.length=%v from %v peers for %v",
-		len(t.PieceHashes), t.Length, t.PieceLength, len(t.Peers), t.Name)
+func (t *TorrentMeta) Download(peersPool peersPool.PeersPool) error {
+	logrus.Infof("starting download %v parts, file.len=%v, p.length=%v for %v",
+		len(t.PieceHashes), t.Length, t.PieceLength, t.Name)
+
+	peersPool.StartRefreshing()
 	// Init queues for workers to retrieve work and send results
 	workQueue := make(chan *pieceWork, len(t.PieceHashes))
 	results := make(chan *pieceResult)
 	for index, hash := range t.PieceHashes {
 		length := t.calculatePieceSize(index)
-		logrus.Infof("Putting piece to queue: idx=%v, len=%v", index, length)
+		//logrus.Infof("Putting piece to queue: idx=%v, len=%v", index, length)
 		workQueue <- &pieceWork{index, hash, length}
 	}
 
-	deadPeersChan := make(chan *peers.Peer, 10)
-	alarmAllDead := make(chan byte)
+	// Start workers
 	go func() {
-		count := 0
 		for {
-			peer := <- deadPeersChan
-			count += 1
-			logrus.Warnf("Peer %v dead. Total dead = %v", peer.GetAddr(), count)
-
-			if count == len(t.Peers) {
-				alarmAllDead <- 1
-			}
+			activeClient := <- peersPool.NewPeersChan
+			logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
+			go t.startDownloadWorker(activeClient, workQueue, results)
 		}
 	}()
-
-	// Start workers
-	for _, peer := range t.Peers {
-		go t.startDownloadWorker(peer, workQueue, results, deadPeersChan)
-	}
+	//for _, peer := range t.Peers {
+	//	go t.startDownloadWorker(peer, workQueue, results)
+	//}
 
 	defer close(workQueue)
 	// Collect results into a buffer until full
@@ -200,13 +208,7 @@ func (t *Torrent) Download() error {
 	donePieces := 0
 	for donePieces < len(t.PieceHashes) {
 		var res *pieceResult
-		select {
-			case data := <-results:
-				res = data
-			case <- alarmAllDead:
-				logrus.Infof("Failed to download file, as all peers are dead!")
-				return fmt.Errorf("failed to download file, as all peers are dead")
-		}
+		res = <- results
 		if res == nil {
 			logrus.Errorf("Piece result invalid: %v", res)
 			continue

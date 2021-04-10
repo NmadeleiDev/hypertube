@@ -1,5 +1,6 @@
 package torrentfile
 
+import "time"
 
 // Port to listen on
 const Port uint16 = 6881
@@ -27,6 +28,7 @@ type DownloadUtils struct {
 	ConnectionId	uint64
 	MyPeerId		[20]byte
 	MyPeerPort		uint16
+	TrackerCallInterval		time.Duration
 	UdpManager	*UdpConnManager
 }
 

@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"encoding/hex"
 
 	"torrentClient/db"
 	"torrentClient/p2p"
 	"torrentClient/parser/env"
+	"torrentClient/peersPool"
 
 	"github.com/jackpal/bencode-go"
 	"github.com/sirupsen/logrus"
@@ -86,13 +87,16 @@ func (t *TorrentFile) DownloadToFile() error {
 	t.Download.MyPeerId = peerID
 	t.Download.MyPeerPort = env.GetParser().GetTorrentPeerPort()
 
-	peers, err := t.requestPeers()
-	if err != nil {
-		return fmt.Errorf("peers request error: %v", err)
-	}
+	peersPoolObj := peersPool.PeersPool{}
+	peersPoolObj.SetTorrent(t)
 
-	torrent := p2p.Torrent{
-		Peers:       peers,
+	//peers, err := t.RequestPeers()
+	//if err != nil {
+	//	return fmt.Errorf("peers request error: %v", err)
+	//}
+
+	torrent := p2p.TorrentMeta{
+		//Peers:       peers,
 		PeerID:      t.Download.MyPeerId,
 		InfoHash:    t.InfoHash,
 		PieceHashes: t.PieceHashes,
@@ -106,7 +110,7 @@ func (t *TorrentFile) DownloadToFile() error {
 	//defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
 	logrus.Infof("Prepared table for parts, starting download")
 
-	err = torrent.Download()
+	err = torrent.Download(peersPoolObj)
 	if err != nil {
 		return fmt.Errorf("file download error: %v", err)
 	}
