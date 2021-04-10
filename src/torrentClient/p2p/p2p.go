@@ -10,7 +10,6 @@ import (
 	"torrentClient/client"
 	"torrentClient/db"
 	"torrentClient/message"
-	"torrentClient/peersPool"
 
 	"github.com/sirupsen/logrus"
 )
@@ -176,11 +175,10 @@ func (t *TorrentMeta) calculatePieceSize(index int) int {
 
 
 // Download downloads the torrent. This stores the entire file in memory.
-func (t *TorrentMeta) Download(peersPool peersPool.PeersPool) error {
+func (t *TorrentMeta) Download() error {
 	logrus.Infof("starting download %v parts, file.len=%v, p.length=%v for %v",
 		len(t.PieceHashes), t.Length, t.PieceLength, t.Name)
 
-	peersPool.StartRefreshing()
 	// Init queues for workers to retrieve work and send results
 	workQueue := make(chan *pieceWork, len(t.PieceHashes))
 	results := make(chan *pieceResult)
@@ -193,7 +191,7 @@ func (t *TorrentMeta) Download(peersPool peersPool.PeersPool) error {
 	// Start workers
 	go func() {
 		for {
-			activeClient := <- peersPool.NewPeersChan
+			activeClient := <- t.ActiveClientsChan
 			logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
 			go t.startDownloadWorker(activeClient, workQueue, results)
 		}

@@ -1,4 +1,4 @@
-package peersPool
+package torrentfile
 
 import (
 	"time"
@@ -10,7 +10,7 @@ import (
 )
 
 func (p *PeersPool) StartRefreshing()  {
-	p.NewPeersChan = make(chan *client.Client, 10)
+	p.ActiveClientsChan = make(chan *client.Client, 10)
 
 	sentPeersMap := make(map[string]bool, 50)
 
@@ -31,7 +31,7 @@ func (p *PeersPool) StartRefreshing()  {
 			activeClient := p.InitPeer(&peer)
 			if activeClient != nil {
 				sentPeersMap[peer.GetAddr()] = true
-				p.NewPeersChan <- activeClient
+				p.ActiveClientsChan <- activeClient
 			} else {
 				peer.IsDead = true
 			}

@@ -1,6 +1,11 @@
 package torrentfile
 
-import "time"
+import (
+	"time"
+
+	"torrentClient/client"
+	"torrentClient/peers"
+)
 
 // Port to listen on
 const Port uint16 = 6881
@@ -76,5 +81,16 @@ func (bto *bencodeTorrentMultiFiles) SumFilesLength() int {
 		res += file.Length
 	}
 	return res
+}
+
+type PeersPool struct {
+	Peers             []*peers.Peer
+	ActiveClientsChan chan *client.Client
+
+	torrent *TorrentFile
+}
+
+func (p *PeersPool) SetTorrent(src *TorrentFile) {
+	p.torrent = src
 }
 

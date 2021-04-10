@@ -13,7 +13,6 @@ import (
 	"torrentClient/db"
 	"torrentClient/p2p"
 	"torrentClient/parser/env"
-	"torrentClient/peersPool"
 
 	"github.com/jackpal/bencode-go"
 	"github.com/sirupsen/logrus"
@@ -87,8 +86,9 @@ func (t *TorrentFile) DownloadToFile() error {
 	t.Download.MyPeerId = peerID
 	t.Download.MyPeerPort = env.GetParser().GetTorrentPeerPort()
 
-	peersPoolObj := peersPool.PeersPool{}
+	peersPoolObj := PeersPool{}
 	peersPoolObj.SetTorrent(t)
+	peersPoolObj.StartRefreshing()
 
 	//peers, err := t.RequestPeers()
 	//if err != nil {
@@ -97,6 +97,7 @@ func (t *TorrentFile) DownloadToFile() error {
 
 	torrent := p2p.TorrentMeta{
 		//Peers:       peers,
+		ActiveClientsChan: peersPoolObj.ActiveClientsChan,
 		PeerID:      t.Download.MyPeerId,
 		InfoHash:    t.InfoHash,
 		PieceHashes: t.PieceHashes,
@@ -110,7 +111,7 @@ func (t *TorrentFile) DownloadToFile() error {
 	//defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
 	logrus.Infof("Prepared table for parts, starting download")
 
-	err = torrent.Download(peersPoolObj)
+	err = torrent.Download()
 	if err != nil {
 		return fmt.Errorf("file download error: %v", err)
 	}
