@@ -87,8 +87,9 @@ func (t *TorrentFile) DownloadToFile() error {
 	t.Download.MyPeerPort = env.GetParser().GetTorrentPeerPort()
 
 	peersPoolObj := PeersPool{}
+	peersPoolObj.InitPool()
 	peersPoolObj.SetTorrent(t)
-	peersPoolObj.StartRefreshing()
+	go peersPoolObj.StartRefreshing()
 
 	//peers, err := t.RequestPeers()
 	//if err != nil {

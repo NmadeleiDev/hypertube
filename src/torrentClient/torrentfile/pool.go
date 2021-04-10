@@ -10,7 +10,10 @@ import (
 )
 
 func (p *PeersPool) StartRefreshing()  {
-	p.ActiveClientsChan = make(chan *client.Client, 10)
+	if p.ActiveClientsChan == nil {
+		logrus.Errorf("Pool not initialized!")
+		return
+	}
 
 	sentPeersMap := make(map[string]bool, 50)
 
@@ -32,6 +35,7 @@ func (p *PeersPool) StartRefreshing()  {
 			if activeClient != nil {
 				sentPeersMap[peer.GetAddr()] = true
 				p.ActiveClientsChan <- activeClient
+				logrus.Infof("Wrote peer %v to active clients chan", activeClient.GetShortInfo())
 			} else {
 				peer.IsDead = true
 			}
@@ -73,4 +77,8 @@ func (p *PeersPool) InitPeer(peer *peers.Peer) *client.Client {
 
 	logrus.Infof("Completed handshake with %s", peer.GetAddr())
 	return c
+}
+
+func (p *PeersPool) InitPool() {
+	p.ActiveClientsChan = make(chan *client.Client, 10)
 }
