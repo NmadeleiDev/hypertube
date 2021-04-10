@@ -29,8 +29,8 @@ func (state *pieceProgress) readMessage() error {
 
 	switch msg.ID {
 	case message.MsgUnchoke:
-		logrus.Infof("Got UNCHOKE from %v", state.client.GetShortInfo())
 		state.client.Choked = false
+		logrus.Infof("Got UNCHOKE from %v", state.client.GetShortInfo())
 	case message.MsgChoke:
 		state.client.Choked = true
 	case message.MsgHave:
@@ -71,10 +71,8 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 
 	for state.downloaded < pw.length {
 		// If unchoked, send requests until we have enough unfulfilled requests
-		c.Mu.Lock()
-		isChoked := c.Choked
-		c.Mu.Unlock()
-		if !isChoked {
+		if !state.client.Choked {
+			logrus.Infof("Starting downloading. State: idx=%v, downloaded=%v", state.index, state.downloaded)
 			for state.backlog < MaxBacklog && state.requested < pw.length {
 				blockSize := MaxBlockSize
 				// Last block might be shorter than the typical block
