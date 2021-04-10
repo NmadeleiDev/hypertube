@@ -103,7 +103,7 @@ func (t *TorrentFile) DownloadToFile() error {
 	}
 
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
-	defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
+	//defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
 	logrus.Infof("Prepared table for parts, starting download")
 
 	err = torrent.Download()

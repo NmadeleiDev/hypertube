@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"runtime"
-	"time"
 
 	"torrentClient/client"
 	"torrentClient/db"
@@ -66,13 +65,13 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 
 	// Setting a deadline helps get unresponsive peers unstuck.
 	// 30 seconds is more than enough time to download a 262 KB piece
-	c.Conn.SetDeadline(time.Now().Add(300 * time.Second))
-	defer c.Conn.SetDeadline(time.Time{}) // Disable the deadline
+	//c.Conn.SetDeadline(time.Now().Add(300 * time.Second))
+	//defer c.Conn.SetDeadline(time.Time{}) // Disable the deadline
 
 	for state.downloaded < pw.length {
 		// If unchoked, send requests until we have enough unfulfilled requests
 		if !state.client.Choked {
-			logrus.Infof("Starting downloading. State: idx=%v, downloaded=%v", state.index, state.downloaded)
+			logrus.Infof("Starting downloading. State: idx=%v, downloaded=%v (%v%%)", state.index, state.downloaded, (state.downloaded * 100) / pw.length)
 			for state.backlog < MaxBacklog && state.requested < pw.length {
 				blockSize := MaxBlockSize
 				// Last block might be shorter than the typical block
