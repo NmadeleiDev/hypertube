@@ -46,11 +46,11 @@ func recvBitfield(conn net.Conn) (bitfield.Bitfield, error) {
 		return nil, err
 	}
 	if msg == nil {
-		err := fmt.Errorf("Expected bitfield but got %s", msg)
+		err := fmt.Errorf("expected bitfield but got %s", msg)
 		return nil, err
 	}
 	if msg.ID != message.MsgBitfield {
-		err := fmt.Errorf("Expected bitfield but got ID %d", msg.ID)
+		err := fmt.Errorf("expected bitfield but got ID %d", msg.ID)
 		return nil, err
 	}
 
@@ -60,11 +60,11 @@ func recvBitfield(conn net.Conn) (bitfield.Bitfield, error) {
 // New connects with a peer, completes a handshake, and receives a handshake
 // returns an err if any of those fail.
 func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
-	conn, err := net.DialTimeout("tcp", peer.String(), 10 * time.Second)
+	conn, err := net.DialTimeout("tcp", peer.GetAddr(), 10 * time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("dial error: %v; was connecting to %v", err, peer.String())
+		return nil, fmt.Errorf("dial error: %v; was connecting to %v", err, peer.GetAddr())
 	} else {
-		logrus.Infof("Connected to peer on %v", peer.String())
+		logrus.Infof("Connected to peer on %v", peer.GetAddr())
 	}
 
 	_, err = completeHandshake(conn, infoHash, peerID)

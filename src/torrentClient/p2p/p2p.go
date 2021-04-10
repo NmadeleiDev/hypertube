@@ -51,6 +51,18 @@ func (state *pieceProgress) readMessage() error {
 
 func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 	logrus.Infof("Attempting to download piece (len=%v, idx=%v)", pw.length, pw.index)
+	
+//	{"level":"info","msg":"Completed handshake with 106.122.207.198:51413","time":"2021-04-06T21:07:11Z"}
+//	{"level":"info","msg":"Attempting to download piece (len=0, idx=0)","time":"2021-04-06T21:07:11Z"}
+//	{"level":"error","msg":"Piece #0 failed integrity check","time":"2021-04-06T21:07:11Z"}
+//	{"level":"info","msg":"Attempting to download piece (len=-8388608, idx=1)","time":"2021-04-06T21:07:11Z"}
+//panic: runtime error: makeslice: len out of range
+
+	if pw.length < 0 {
+		logrus.Errorf("Attempting to download incorrect pw: %v", *pw)
+		return nil, fmt.Errorf("incorrect pw")
+	}
+
 	state := pieceProgress{
 		index:  pw.index,
 		client: c,
@@ -101,15 +113,18 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork, results chan *pieceResult, deadPeerChan chan <- *peers.Peer) {
 	c, err := client.New(peer, t.PeerID, t.InfoHash)
 	if err != nil {
-		logrus.Errorf("Could not handshake with %s. Err: %v, my peer id: %v", peer.String(), err, t.PeerID)
+		logrus.Errorf("Could not handshake with %s. Err: %v, my peer id: %v", peer.GetAddr(), err, t.PeerID)
 		deadPeerChan <- &peer
 		return
 	}
 	defer c.Conn.Close()
-	logrus.Infof("Completed handshake with %s", peer.String())
+	//logrus.Infof("Completed handshake with %s", peer.GetAddr())
+	logrus.Infof("Completed handshake! Client info: %v", c.GetClientInfo())
 
 	c.SendUnchoke()
 	c.SendInterested()
+
+	logrus.Infof("Unchoke and interested sent: %v", c.GetClientInfo())
 
 	for pw := range workQueue {
 		if !c.Bitfield.HasPiece(pw.index) {
@@ -153,12 +168,13 @@ func (t *Torrent) calculatePieceSize(index int) int {
 
 // Download downloads the torrent. This stores the entire file in memory.
 func (t *Torrent) Download() error {
-	logrus.Infof("starting download %v parts from %v peers for %v", len(t.PieceHashes), len(t.Peers), t.Name)
+	logrus.Infof("starting download %v parts, p.length = %v from %v peers for %v", len(t.PieceHashes), t.PieceLength, len(t.Peers), t.Name)
 	// Init queues for workers to retrieve work and send results
 	workQueue := make(chan *pieceWork, len(t.PieceHashes))
 	results := make(chan *pieceResult)
 	for index, hash := range t.PieceHashes {
 		length := t.calculatePieceSize(index)
+		logrus.Infof("Putting piece to queue: idx=%v, len=%v", index, length)
 		workQueue <- &pieceWork{index, hash, length}
 	}
 
@@ -169,7 +185,7 @@ func (t *Torrent) Download() error {
 		for {
 			peer := <- deadPeersChan
 			count += 1
-			logrus.Warnf("Peer %v dead. Total dead = %v", peer.String(), count)
+			logrus.Warnf("Peer %v dead. Total dead = %v", peer.GetAddr(), count)
 
 			if count == len(t.Peers) {
 				alarmAllDead <- 1

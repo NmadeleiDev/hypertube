@@ -24,6 +24,10 @@ func Unmarshal(peersBin []byte) ([]Peer, error) {
 	return peers, nil
 }
 
-func (p Peer) String() string {
+func (p Peer) GetAddr() string {
 	return net.JoinHostPort(p.IP.String(), strconv.Itoa(int(p.Port)))
 }
+
+//func (p Peer) GetPeerInfo() string {
+//	return
+//}
