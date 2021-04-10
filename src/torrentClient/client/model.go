@@ -3,12 +3,14 @@ package client
 import (
 	"fmt"
 	"net"
+	"sync"
 
 	"torrentClient/bitfield"
 	"torrentClient/peers"
 )
 
 type Client struct {
+	Mu sync.Mutex
 	Conn     net.Conn
 	Choked   bool
 	Bitfield bitfield.Bitfield
@@ -19,4 +21,8 @@ type Client struct {
 
 func (c *Client) GetClientInfo() string {
 	return fmt.Sprintf("Peer: %v\nChoked = %v\nBitfield: %v\n", c.peer.GetAddr(), c.Choked, c.Bitfield)
+}
+
+func (c *Client) GetShortInfo() string {
+	return fmt.Sprintf("Peer addr: %v, is choked = %v", c.peer.GetAddr(), c.Choked)
 }

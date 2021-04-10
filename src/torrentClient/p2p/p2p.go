@@ -29,6 +29,7 @@ func (state *pieceProgress) readMessage() error {
 
 	switch msg.ID {
 	case message.MsgUnchoke:
+		logrus.Infof("Got UNCHOKE from %v", state.client.GetShortInfo())
 		state.client.Choked = false
 	case message.MsgChoke:
 		state.client.Choked = true
@@ -70,7 +71,10 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 
 	for state.downloaded < pw.length {
 		// If unchoked, send requests until we have enough unfulfilled requests
-		if !state.client.Choked {
+		c.Mu.Lock()
+		isChoked := c.Choked
+		c.Mu.Unlock()
+		if !isChoked {
 			for state.backlog < MaxBacklog && state.requested < pw.length {
 				blockSize := MaxBlockSize
 				// Last block might be shorter than the typical block
@@ -113,7 +117,7 @@ func (t *Torrent) startDownloadWorker(peer peers.Peer, workQueue chan *pieceWork
 	}
 	defer c.Conn.Close()
 	//logrus.Infof("Completed handshake with %s", peer.GetAddr())
-	logrus.Infof("Completed handshake! Client info: %v", c.GetClientInfo())
+	//logrus.Infof("Completed handshake! Client info: %v", c.GetClientInfo())
 
 	c.SendUnchoke()
 	c.SendInterested()
