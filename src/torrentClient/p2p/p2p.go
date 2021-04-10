@@ -111,7 +111,7 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 	//	deadPeerChan <- &peer
 	//	return
 	//}
-	//defer c.Conn.Close()
+	defer c.Conn.Close()
 	////logrus.Infof("Completed handshake with %s", peer.GetAddr())
 	////logrus.Infof("Completed handshake! Client info: %v", c.GetClientInfo())
 	//

@@ -69,7 +69,7 @@ func (p *PeersPool) InitPeer(peer *peers.Peer) *client.Client {
 		logrus.Errorf("Could not handshake with %s. Err: %v, my peer id: %v", peer.GetAddr(), err, p.torrent.Download.MyPeerId)
 		return nil
 	}
-	defer c.Conn.Close()
+	//defer c.Conn.Close()
 	//logrus.Infof("Completed handshake! Client info: %v", c.GetClientInfo())
 
 	c.SendUnchoke()
