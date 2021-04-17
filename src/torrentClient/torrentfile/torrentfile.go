@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	rand2 "math/rand"
 	"os"
+	"strings"
 
 	"torrentClient/db"
 	"torrentClient/p2p"
@@ -125,9 +127,53 @@ func (t *TorrentFile) DownloadToFile() error {
 		outFile.Close()
 	}()
 
-	db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.SysInfo.FileId)
+	//db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.SysInfo.FileId)
+	t.SaveLoadedPiecesToFS()
 	db.GetFilesManagerDb().SaveFileNameForReadyFile(t.SysInfo.FileId, outFile.Name())
 	return nil
+}
+
+func (t *TorrentFile) SaveLoadedPiecesToFS() []struct{
+	File string
+	Success bool
+	Error error
+} {
+	start := 0
+
+	logs := make([]struct{
+		File string
+		Success bool
+		Error error
+	}, len(t.Files))
+
+	for i, file := range t.Files {
+		fileName := "loaded_" + fmt.Sprint(rand2.Int())
+		pathLen := len(file.Path)
+		if pathLen > 0 {
+			fileName = file.Path[pathLen - 1]
+		}
+
+		logs[i].File = strings.Join(file.Path, "/")
+		logs[i].Success = true
+
+		outFile, err := ioutil.TempFile(env.GetParser().GetFilesDir(), "*__" + fileName)
+		if err != nil {
+			logrus.Errorf("create tempfile error: %e", err)
+			logs[i].Success = false
+			logs[i].Error = err
+		}
+
+		err = db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.SysInfo.FileId, start, file.Length)
+		if err != nil {
+			logs[i].Error = err
+			logs[i].Success = false
+		}
+
+		outFile.Close()
+		start += file.Length
+	}
+
+	return logs
 }
 
 func (i *bencodeInfoSingleFile) hash() ([20]byte, error) {

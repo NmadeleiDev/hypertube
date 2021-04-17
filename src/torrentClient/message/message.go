@@ -101,7 +101,7 @@ func Read(r io.Reader) (*Message, error) {
 	}
 
 	if m.ID != MsgPiece {
-		logrus.Infof("Parsed message from peer. Msg ID = %v; Payload: %v", m.ID, m.Payload)
+		logrus.Debugf("Parsed message from peer. Msg ID = %v; Payload: %v", m.ID, m.Payload)
 	}
 	return &m, nil
 }

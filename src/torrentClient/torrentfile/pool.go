@@ -15,32 +15,54 @@ func (p *PeersPool) StartRefreshing()  {
 		return
 	}
 
+	announceList := make([]string, len(p.torrent.AnnounceList) + 1)
+	announceList[0] = p.torrent.Announce
+	copy(announceList[1:], p.torrent.AnnounceList)
+
 	sentPeersMap := make(map[string]bool, 50)
 
-	timer := time.NewTimer(time.Second)
-	for {
-		<- timer.C
-		rawPeers, err := p.torrent.RequestPeers()
-		if err != nil {
-			logrus.Errorf("Error requesting peers: %v", err)
-			return
+	for _, announce := range announceList {
+		//trackerAddr := announce
+		tracker := Tracker{
+			Announce: announce,
+			TransactionId: 0,
+			ConnectionId: 0,
+			MyPeerId: p.torrent.Download.MyPeerId,
+			MyPeerPort: p.torrent.Download.MyPeerPort,
+			TrackerCallInterval: 0,
+			UdpManager: nil,
+			InfoHash: p.torrent.InfoHash,
+			PieceHashes: p.torrent.PieceHashes,
+			PieceLength: p.torrent.PieceLength,
+			Length: p.torrent.Length,
 		}
+		go func() {
+			timer := time.NewTimer(time.Second)
+			for {
+				<- timer.C
+				rawPeers, err := tracker.CallFittingScheme()
+				if err != nil {
+					logrus.Errorf("Error requesting peers: %v", err)
+					return
+				}
 
-		for _, peer := range rawPeers {
-			if isSet, exists := sentPeersMap[peer.GetAddr()]; exists && isSet {
-				continue
-			}
+				for _, peer := range rawPeers {
+					if isSet, exists := sentPeersMap[peer.GetAddr()]; exists && isSet {
+						continue
+					}
 
-			activeClient := p.InitPeer(&peer)
-			if activeClient != nil {
-				sentPeersMap[peer.GetAddr()] = true
-				p.ActiveClientsChan <- activeClient
-				logrus.Infof("Wrote peer %v to active clients chan", activeClient.GetShortInfo())
-			} else {
-				peer.IsDead = true
+					activeClient := p.InitPeer(&peer)
+					if activeClient != nil {
+						sentPeersMap[peer.GetAddr()] = true
+						p.ActiveClientsChan <- activeClient
+						logrus.Infof("Wrote peer %v to active clients chan", activeClient.GetShortInfo())
+					} else {
+						peer.IsDead = true
+					}
+				}
+				timer.Reset(time.Second * tracker.TrackerCallInterval)
 			}
-		}
-		timer.Reset(time.Second * p.torrent.Download.TrackerCallInterval)
+		}()
 	}
 }
 
@@ -66,7 +88,7 @@ func (p *PeersPool) StartRetyingPeerConn(returnPeer chan <- *client.Client) {
 func (p *PeersPool) InitPeer(peer *peers.Peer) *client.Client {
 	c, err := client.New(*peer, p.torrent.Download.MyPeerId, p.torrent.InfoHash)
 	if err != nil {
-		logrus.Errorf("Could not handshake with %s. Err: %v, my peer id: %v", peer.GetAddr(), err, p.torrent.Download.MyPeerId)
+		logrus.Errorf("Could not handshake with %s. Err: %v", peer.GetAddr(), err)
 		return nil
 	}
 	//defer c.Conn.Close()

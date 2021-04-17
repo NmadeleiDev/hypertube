@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"torrentClient/client"
-	"torrentClient/peers"
 )
 
 // MaxBlockSize is the largest number of bytes a request can ask for
@@ -14,7 +13,6 @@ const MaxBacklog = 5
 // TorrentMeta holds data required to download a torrent from a list of peers
 type TorrentMeta struct {
 	ActiveClientsChan	<- chan *client.Client
-	Peers       []peers.Peer
 	PeerID      [20]byte
 	InfoHash    [20]byte
 	PieceHashes [][20]byte
@@ -22,15 +20,6 @@ type TorrentMeta struct {
 	Length      int
 	Name        string
 	FileId		string
-}
-
-func (t *TorrentMeta) CountWorkingPeers() (res int) {
-	for _, peer := range t.Peers {
-		if !peer.IsDead {
-			res += 1
-		}
-	}
-	return res
 }
 
 type pieceWork struct {

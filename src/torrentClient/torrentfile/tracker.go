@@ -27,53 +27,73 @@ const (
 	scrapeAction = 2
 )
 
-func (t *TorrentFile) RequestPeers() ([]peers.Peer, error) {
-	if peerIds, err := t.CallFittingScheme(t.Announce); err == nil {
-		return peerIds, nil
-	} else {
-		logrus.Errorf("Error calling main announce: %v", err)
-	}
+type Tracker struct {
+	Announce		string
+	TransactionId	uint32
+	ConnectionId	uint64
+	MyPeerId		[20]byte
+	MyPeerPort		uint16
+	TrackerCallInterval		time.Duration
+	UdpManager	*UdpConnManager
 
-	for _, announce := range t.AnnounceList {
-		if peerIds, err := t.CallFittingScheme(announce); err == nil {
-			return peerIds, nil
-		} else {
-			logrus.Errorf("Error calling announce list member: %v", err)
-		}
-	}
-
-	return nil, fmt.Errorf("failed to call any tracker")
+	InfoHash    [20]byte
+	PieceHashes [][20]byte
+	PieceLength int
+	Length      int
 }
 
-func (t *TorrentFile) CallFittingScheme(announce string) ([]peers.Peer, error) {
-	trackerUrl, err := url.Parse(announce)
+//func (t *TorrentFile) RequestPeers() ([]peers.Peer, error) {
+//	allPeers := make([]peers.Peer, 0, 50)
+//	if peerIds, err := t.CallFittingScheme(t.Announce); err == nil {
+//		allPeers = append(allPeers, peerIds...)
+//	} else {
+//		logrus.Errorf("Error calling main announce: %v", err)
+//	}
+//
+//	for _, announce := range t.AnnounceList {
+//		if peerIds, err := t.CallFittingScheme(announce); err == nil {
+//			allPeers = append(allPeers, peerIds...)
+//		} else {
+//			logrus.Errorf("Error calling announce list member: %v", err)
+//		}
+//	}
+//	if len(allPeers) > 0 {
+//		return allPeers, nil
+//	} else {
+//		return nil, fmt.Errorf("failed to call any tracker")
+//	}
+//}
+
+// TODO переписать под многопоточность: не использовать глобальную структуру (готово)
+func (t *Tracker) CallFittingScheme() ([]peers.Peer, error) {
+	trackerUrl, err := url.Parse(t.Announce)
 	if err != nil {
 		logrus.Errorf("Error parse tracker url: %v", err)
 		return nil, err
 	}
 
 	if trackerUrl.Scheme == "http" {
-		return t.callHttpTracker(announce)
+		return t.callHttpTracker()
 	} else if trackerUrl.Scheme == "udp" {
-		return t.callUdpTracker(announce)
+		return t.callUdpTracker()
 	} else {
 		return nil, fmt.Errorf("unsupported url scheme: %v; url: %v", trackerUrl.Scheme, t.Announce)
 	}
 }
 
-func (t *TorrentFile) callUdpTracker(announce string) ([]peers.Peer, error) {
-	trackerUrl, err := url.Parse(announce)
+func (t *Tracker) callUdpTracker() ([]peers.Peer, error) {
+	trackerUrl, err := url.Parse(t.Announce)
 	if err != nil {
-		logrus.Errorf("Error parsing tracker url (%v): %v", announce, err)
+		logrus.Errorf("Error parsing tracker url (%v): %v", t.Announce, err)
 		return nil, err
 	}
-	t.Download.UdpManager, err = OpenUdpSocket(trackerUrl)
+	t.UdpManager, err = OpenUdpSocket(trackerUrl)
 	if err != nil {
 		return nil, err
 	}
 
 	defer func() {
-		t.Download.UdpManager.ExitChan <- 1
+		t.UdpManager.ExitChan <- 1
 	}()
 
 	if err := t.makeConnectUdpReq(); err != nil {
@@ -86,8 +106,8 @@ func (t *TorrentFile) callUdpTracker(announce string) ([]peers.Peer, error) {
 	return parsedPeers, err
 }
 
-func (t *TorrentFile) callHttpTracker(announce string) ([]peers.Peer, error) {
-	urlStr, err := t.buildHttpTrackerURL(announce)
+func (t *Tracker) callHttpTracker() ([]peers.Peer, error) {
+	urlStr, err := t.buildHttpTrackerURL(t.Announce)
 	if err != nil {
 		return nil, err
 	}
@@ -111,13 +131,13 @@ func (t *TorrentFile) callHttpTracker(announce string) ([]peers.Peer, error) {
 	return peers.Unmarshal([]byte(trackerResp.Peers))
 }
 
-func (t *TorrentFile) makeConnectUdpReq() error {
+func (t *Tracker) makeConnectUdpReq() error {
 	req, err := t.buildUdpTrackerConnectReq()
 	if err != nil {
 		return err
 	}
 
-	t.Download.UdpManager.Send <- req
+	t.UdpManager.Send <- req
 
 	var body []byte
 
@@ -125,29 +145,29 @@ func (t *TorrentFile) makeConnectUdpReq() error {
 	select {
 	case <- timer.C:
 		return fmt.Errorf("tracker call timed out")
-	case data := <- t.Download.UdpManager.Receive:
+	case data := <- t.UdpManager.Receive:
 		body = data
 		timer.Stop()
 	}
 
 	transId := binary.BigEndian.Uint32(body[4:9])
-	if transId != t.Download.TransactionId {
-		logrus.Errorf("Tracker resp trans_id (%v) != saved trans_id (%v)", transId, t.Download.TransactionId)
+	if transId != t.TransactionId {
+		logrus.Errorf("Tracker resp trans_id (%v) != saved trans_id (%v)", transId, t.TransactionId)
 		// выйти?
 	}
-	t.Download.ConnectionId = binary.BigEndian.Uint64(body[8:])
+	t.ConnectionId = binary.BigEndian.Uint64(body[8:])
 
-	logrus.Infof("Connect announce resp: conn_id=%v action=%v trans_id=%v", t.Download.ConnectionId, binary.BigEndian.Uint32(body[:4]), binary.BigEndian.Uint32(body[4:8]))
+	logrus.Infof("Connect announce resp: conn_id=%v action=%v trans_id=%v", t.ConnectionId, binary.BigEndian.Uint32(body[:4]), binary.BigEndian.Uint32(body[4:8]))
 	return nil
 }
 
-func (t *TorrentFile) makeAnnounceUdpReq() ([]peers.Peer, error) {
+func (t *Tracker) makeAnnounceUdpReq() ([]peers.Peer, error) {
 	req, err := t.buildUdpTrackerAnnounceReq()
 	if err != nil {
 		return nil, err
 	}
 
-	t.Download.UdpManager.Send <- req
+	t.UdpManager.Send <- req
 	var body []byte
 
 	timer := time.NewTimer(time.Second * 10)
@@ -155,14 +175,14 @@ func (t *TorrentFile) makeAnnounceUdpReq() ([]peers.Peer, error) {
 	select {
 	case <- timer.C:
 		return nil, fmt.Errorf("tracker call timed out")
-	case data := <- t.Download.UdpManager.Receive:
+	case data := <- t.UdpManager.Receive:
 		body = data
 		timer.Stop()
 	}
 
 	transId := binary.BigEndian.Uint32(body[4:8])
-	if transId != t.Download.TransactionId {
-		logrus.Errorf("Tracker resp trans id (%v) != saved trans id (%v)", transId, t.Download.TransactionId)
+	if transId != t.TransactionId {
+		logrus.Errorf("Tracker resp trans id (%v) != saved trans id (%v)", transId, t.TransactionId)
 		// выйти?
 	}
 	interval := binary.BigEndian.Uint32(body[8:12])
@@ -172,18 +192,18 @@ func (t *TorrentFile) makeAnnounceUdpReq() ([]peers.Peer, error) {
 	logrus.Infof("Interval = %v; leechers = %v; seeders = %v;", interval, leechers, seeders)
 	parsedPeers, err := peers.Unmarshal(body[20:])
 	logrus.Infof("Got peers: %v", parsedPeers)
-	t.Download.TrackerCallInterval = time.Duration(interval)
+	t.TrackerCallInterval = time.Duration(interval)
 	return parsedPeers, err
 }
 
-func (t *TorrentFile) makeScrapeUdpReq() {
+func (t *Tracker) makeScrapeUdpReq() {
 	req, err := t.buildScrapeUdpReq()
 	if err != nil {
 		logrus.Errorf("Error building scrape req: %v", err)
 		return
 	}
 
-	t.Download.UdpManager.Send <- req
+	t.UdpManager.Send <- req
 	var body []byte
 
 	timer := time.NewTimer(time.Second * 10)
@@ -192,14 +212,14 @@ func (t *TorrentFile) makeScrapeUdpReq() {
 	case <- timer.C:
 		logrus.Errorf("tracker call timed out")
 		return
-	case data := <- t.Download.UdpManager.Receive:
+	case data := <- t.UdpManager.Receive:
 		body = data
 		timer.Stop()
 	}
 
 	transId := binary.BigEndian.Uint32(body[4:8])
-	if transId != t.Download.TransactionId {
-		logrus.Errorf("Tracker resp trans id (%v) != saved trans id (%v)", transId, t.Download.TransactionId)
+	if transId != t.TransactionId {
+		logrus.Errorf("Tracker resp trans id (%v) != saved trans id (%v)", transId, t.TransactionId)
 		// выйти?
 	}
 	seeders := binary.BigEndian.Uint32(body[8:12])

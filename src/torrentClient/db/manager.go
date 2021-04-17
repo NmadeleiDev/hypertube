@@ -31,7 +31,8 @@ type FilesDbManager interface {
 	CloseConnection()
 
 	SaveFileNameForReadyFile(fileId, name string)
-	SaveFilePartsToFile(dest *os.File, fileId string)
+	GetLoadedIndexesForFile(fileId string) []int
+	SaveFilePartsToFile(dest *os.File, fileId string, start int, length int) error
 	GetTorrentOrMagnetForByFileId(fileId string) ([]byte, string, bool)
 
 	PreparePlaceForFile(fileId string)

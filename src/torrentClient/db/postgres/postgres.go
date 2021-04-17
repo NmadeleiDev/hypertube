@@ -80,6 +80,31 @@ INSERT INTO %s (id, start, size, data) VALUES ($1, $2, $3, $4)
 	}
 }
 
+func (d *manager) GetLoadedIndexesForFile(fileId string) []int {
+	tableName := filePartsTablePrefix + fileId
+
+	result := make([]int, 0, 400)
+
+	query := fmt.Sprintf(`
+SELECT id FROM %s`, d.PartsTablePathForFile(tableName))
+
+	rows, err := d.conn.Query(query)
+	if err != nil {
+		logrus.Errorf("Error gettign loaded indexes from db: %v", err)
+		return nil
+	}
+
+	for rows.Next() {
+		var idx int
+		if err := rows.Scan(&idx); err != nil {
+			logrus.Errorf("Error scan idx: %v", err)
+		}
+		result = append(result, idx)
+	}
+
+	return result
+}
+
 func (d *manager) RemoveFilePartsPlace(fileId string) {
 	query := `
 DROP TABLE %s`

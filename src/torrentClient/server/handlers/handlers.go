@@ -70,3 +70,31 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		SendDataResponse(w, response)
 	}
 }
+
+func WriteLoadedPartsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		fileId := r.URL.Query().Get("file_id")
+
+		torrentBytes, magnetLink, ok := db.GetFilesManagerDb().GetTorrentOrMagnetForByFileId(fileId)
+		if !ok {
+			SendFailResponseWithCode(w, "File not found or not downloadable", http.StatusNotFound)
+			return
+		}
+
+		if (torrentBytes == nil || len(torrentBytes) == 0) && len(magnetLink) > 0 {
+			torrentBytes = magnetToTorrent.ConvertMagnetToTorrent(magnetLink)
+			logrus.Info("Converted! ", len(torrentBytes))
+		}
+
+		torrent, err := torrentfile.GetManager().ReadTorrentFileFromBytes(bytes.NewBuffer(torrentBytes))
+		if err != nil {
+			logrus.Errorf("Error reading torrent file: %v", err)
+			SendFailResponseWithCode(w, fmt.Sprintf("Error reading body: %s; body: %s", err.Error(), string(torrentBytes)), http.StatusInternalServerError)
+			return
+		}
+		torrent.SysInfo.FileId = fileId
+
+		logs := torrent.SaveLoadedPiecesToFS()
+		SendDataResponse(w, logs)
+	}
+}
