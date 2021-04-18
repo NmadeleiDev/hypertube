@@ -90,7 +90,7 @@ SELECT id FROM %s`, d.PartsTablePathForFile(tableName))
 
 	rows, err := d.conn.Query(query)
 	if err != nil {
-		logrus.Errorf("Error gettign loaded indexes from db: %v", err)
+		logrus.Errorf("Error getting loaded indexes from db: %v", err)
 		return nil
 	}
 
@@ -103,6 +103,29 @@ SELECT id FROM %s`, d.PartsTablePathForFile(tableName))
 	}
 
 	return result
+}
+
+func (d *manager) LoadPartsForFile(fileId string, writeChan chan []byte) {
+	tableName := filePartsTablePrefix + fileId
+
+	query := fmt.Sprintf(`
+SELECT data FROM %s ORDER BY start`, d.PartsTablePathForFile(tableName))
+
+	rows, err := d.conn.Query(query)
+	if err != nil {
+		logrus.Errorf("Error getting loaded indexes from db: %v", err)
+		return
+	}
+
+	for rows.Next() {
+		var data []byte
+		if err := rows.Scan(&data); err != nil {
+			logrus.Errorf("Error scan idx: %v", err)
+		}
+		writeChan <- data
+	}
+
+	return
 }
 
 func (d *manager) RemoveFilePartsPlace(fileId string) {

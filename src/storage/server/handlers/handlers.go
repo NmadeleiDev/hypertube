@@ -23,12 +23,12 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		filePath, err := db.GetLoadedFilesManager().GetFilePathById(fileId)
+		fileName, err := db.GetLoadedFilesManager().GetFilePathById(fileId)
 		if err != nil {
 			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found: %s", fileId, err.Error()), http.StatusBadRequest)
 			// вызов torrentClient для загрузки, ожидание загрузки нужного куска
 		} else {
-			filePart, totalLength, err := filesReader.GetManager().GetFileInRange(filePath, &fileRange)
+			filePart, totalLength, err := filesReader.GetManager().GetFileInRange(fileName, &fileRange)
 			if err != nil {
 				SendFailResponseWithCode(w, err.Error(), http.StatusInternalServerError)
 			} else {

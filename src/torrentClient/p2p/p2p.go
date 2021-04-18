@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"runtime"
@@ -70,7 +71,7 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 		c.Conn.SetDeadline(time.Now().Add(30 * time.Second))
 		// If unchoked, send requests until we have enough unfulfilled requests
 		if !state.client.Choked {
-			logrus.Debugf("Downloading from %v. State: idx=%v, downloaded=%v (%v%%)", c.GetShortInfo(), state.index, state.downloaded, (state.downloaded * 100) / pw.length)
+			//logrus.Debugf("Downloading from %v. State: idx=%v, downloaded=%v (%v%%)", c.GetShortInfo(), state.index, state.downloaded, (state.downloaded * 100) / pw.length)
 			for state.backlog < MaxBacklog && state.requested < pw.length {
 				blockSize := MaxBlockSize
 				// Last block might be shorter than the typical block
@@ -89,7 +90,7 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 
 		err := state.readMessage()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("read msg err: %v", err)
 		}
 	}
 
@@ -116,7 +117,7 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 		// Download the piece
 		buf, err := attemptDownloadPiece(c, pw)
 		if err != nil {
-			logrus.Errorf("exiting: %v", err)
+			logrus.Errorf("exiting piece download attempt: %v", err)
 			workQueue <- pw // Put piece back on the queue
 			return
 		}
@@ -148,7 +149,7 @@ func (t *TorrentMeta) calculatePieceSize(index int) int {
 }
 
 // Download downloads the torrent. This stores the entire file in memory.
-func (t *TorrentMeta) Download() error {
+func (t *TorrentMeta) Download(ctx context.Context) error {
 	logrus.Infof("starting download %v parts, file.len=%v, p.length=%v for %v",
 		len(t.PieceHashes), t.Length, t.PieceLength, t.Name)
 
@@ -165,25 +166,24 @@ func (t *TorrentMeta) Download() error {
 		}
 		length := t.calculatePieceSize(index)
 
-		logrus.Debugf("Prepared piece idx=%v, len=%v", index, length)
+		//logrus.Debugf("Prepared piece idx=%v, len=%v", index, length)
 		workQueue <- &pieceWork{index, hash, length}
 	}
 
 	// Start workers
 	go func() {
 		for {
-			activeClient := <- t.ActiveClientsChan
-			logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
-			go t.startDownloadWorker(activeClient, workQueue, results)
+			select {
+			case <- ctx.Done():
+				return
+			case activeClient := <- t.ActiveClientsChan:
+				logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
+				go t.startDownloadWorker(activeClient, workQueue, results)
+			}
 		}
 	}()
-	//for _, peer := range t.Peers {
-	//	go t.startDownloadWorker(peer, workQueue, results)
-	//}
 
 	defer close(workQueue)
-	// Collect results into a buffer until full
-	//buf := make([]byte, t.Length)
 	donePieces := 0
 	for donePieces < len(t.PieceHashes) {
 		var res *pieceResult
@@ -195,6 +195,7 @@ func (t *TorrentMeta) Download() error {
 
 		begin, end := t.calculateBoundsForPiece(res.index)
 		//copy(buf[begin:end], res.buf)
+		t.ResultsChan <- LoadedPiece{Data: res.buf, Len: int64(end-begin), StartByte: int64(begin)}
 
 		db.GetFilesManagerDb().SaveFilePart(t.FileId, res.buf, int64(begin), int64(end-begin), int64(res.index))
 		db.GetLoadedStateDb().AnnounceLoadedPart(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))

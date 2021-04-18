@@ -64,7 +64,6 @@ type Tracker struct {
 //	}
 //}
 
-// TODO переписать под многопоточность: не использовать глобальную структуру (готово)
 func (t *Tracker) CallFittingScheme() ([]peers.Peer, error) {
 	trackerUrl, err := url.Parse(t.Announce)
 	if err != nil {

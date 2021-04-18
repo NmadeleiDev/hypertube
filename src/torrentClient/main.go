@@ -2,6 +2,7 @@ package main
 
 import (
 	"torrentClient/db"
+	"torrentClient/fsWriter"
 	"torrentClient/parser/env"
 	"torrentClient/server"
 )
@@ -19,5 +20,6 @@ func main() {
 		db.GetLoadedStateDb().CloseConnection()
 	}()
 
+	go fsWriter.GetWriter().StartWaitingForData()
 	server.Start()
 }

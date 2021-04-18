@@ -33,6 +33,7 @@ type FilesDbManager interface {
 	SaveFileNameForReadyFile(fileId, name string)
 	GetLoadedIndexesForFile(fileId string) []int
 	SaveFilePartsToFile(dest *os.File, fileId string, start int, length int) error
+	LoadPartsForFile(fileId string, writeChan chan []byte)
 	GetTorrentOrMagnetForByFileId(fileId string) ([]byte, string, bool)
 
 	PreparePlaceForFile(fileId string)

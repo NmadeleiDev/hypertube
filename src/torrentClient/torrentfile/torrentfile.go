@@ -2,17 +2,18 @@ package torrentfile
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
-	rand2 "math/rand"
 	"os"
 	"strings"
 
 	"torrentClient/db"
+	"torrentClient/fsWriter"
 	"torrentClient/p2p"
 	"torrentClient/parser/env"
 
@@ -81,6 +82,8 @@ func GetManager() TorrentFilesManager {
 // DownloadToFile downloads a torrent and writes it to a file
 func (t *TorrentFile) DownloadToFile() error {
 	var peerID [20]byte
+
+	downloadCtx := context.Background()
 	_, err := rand.Read(peerID[:])
 	if err != nil{
 		return fmt.Errorf("read rand error: %v", err)
@@ -90,16 +93,12 @@ func (t *TorrentFile) DownloadToFile() error {
 
 	peersPoolObj := PeersPool{}
 	peersPoolObj.InitPool()
+	defer peersPoolObj.DestroyPool()
 	peersPoolObj.SetTorrent(t)
-	go peersPoolObj.StartRefreshing()
-
-	//peers, err := t.RequestPeers()
-	//if err != nil {
-	//	return fmt.Errorf("peers request error: %v", err)
-	//}
+	poolCtx, poolCancel := context.WithCancel(downloadCtx)
+	go peersPoolObj.StartRefreshing(poolCtx)
 
 	torrent := p2p.TorrentMeta{
-		//Peers:       peers,
 		ActiveClientsChan: peersPoolObj.ActiveClientsChan,
 		PeerID:      t.Download.MyPeerId,
 		InfoHash:    t.InfoHash,
@@ -108,16 +107,25 @@ func (t *TorrentFile) DownloadToFile() error {
 		Length:      t.Length,
 		Name:        t.Name,
 		FileId: 	 t.SysInfo.FileId,
+		ResultsChan: make(chan p2p.LoadedPiece, 100),
 	}
 
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
 	//defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
 	logrus.Infof("Prepared table for parts, starting download")
 
-	err = torrent.Download()
+	go t.WaitForDataAndWriteToDisk(downloadCtx, torrent.ResultsChan)
+
+	err = torrent.Download(downloadCtx)
 	if err != nil {
+		poolCancel()
+		downloadCtx.Done()
 		return fmt.Errorf("file download error: %v", err)
 	}
+
+	// закрываем бекграунды с загрузкой
+	poolCancel()
+	downloadCtx.Done()
 
 	outFile, err := ioutil.TempFile(env.GetParser().GetFilesDir(), "loaded_*")
 	if err != nil {
@@ -130,50 +138,61 @@ func (t *TorrentFile) DownloadToFile() error {
 	//db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.SysInfo.FileId)
 	t.SaveLoadedPiecesToFS()
 	db.GetFilesManagerDb().SaveFileNameForReadyFile(t.SysInfo.FileId, outFile.Name())
+	logrus.Infof("All done!!!")
 	return nil
 }
 
-func (t *TorrentFile) SaveLoadedPiecesToFS() []struct{
-	File string
-	Success bool
-	Error error
-} {
-	start := 0
-
-	logs := make([]struct{
-		File string
-		Success bool
-		Error error
-	}, len(t.Files))
-
-	for i, file := range t.Files {
-		fileName := "loaded_" + fmt.Sprint(rand2.Int())
-		pathLen := len(file.Path)
-		if pathLen > 0 {
-			fileName = file.Path[pathLen - 1]
-		}
-
-		logs[i].File = strings.Join(file.Path, "/")
-		logs[i].Success = true
-
-		outFile, err := ioutil.TempFile(env.GetParser().GetFilesDir(), "*__" + fileName)
-		if err != nil {
-			logrus.Errorf("create tempfile error: %e", err)
-			logs[i].Success = false
-			logs[i].Error = err
-		}
-
-		err = db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.SysInfo.FileId, start, file.Length)
-		if err != nil {
-			logs[i].Error = err
-			logs[i].Success = false
-		}
-
-		outFile.Close()
-		start += file.Length
+func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts chan p2p.LoadedPiece) {
+	type fileBoundaries struct {
+		FileName string
+		Index	int
+		Start	int64
+		End		int64
 	}
+	files := make([]fileBoundaries, len(t.Files))
+	fileStart := 0
+	for i, file := range t.Files {
+		files[i].FileName = strings.Join(file.Path, "_")
+		files[i].Index = i
+		files[i].Start = int64(fileStart)
+		files[i].End = int64(fileStart + file.Length)
+		fileStart += file.Length
+	}
+	logrus.Infof("Calculated files borders: %v", files)
 
-	return logs
+	for {
+		select {
+		case <- ctx.Done():
+			close(dataParts)
+			return
+		case loaded := <- dataParts:
+			for _, file := range files {
+				logrus.Debugf("Got loaded part: start=%v, len=%v", loaded.StartByte, loaded.Len)
+				sliceStart := file.Start - loaded.StartByte
+				sliceEnd := loaded.StartByte + loaded.Len - file.End
+
+				if loaded.StartByte > file.Start || loaded.StartByte + loaded.Len < file.End {
+					logrus.Debugf("Skipping write due to (%v, %v)", loaded.StartByte > file.Start, loaded.StartByte + loaded.Len < file.End)
+					continue
+				}
+				if sliceStart < 0 {
+					sliceStart = 0
+				}
+				if sliceEnd < 0 {
+					sliceEnd = loaded.Len
+				}
+
+				offset := loaded.StartByte - file.Start
+				if offset <= 0 {
+					offset = 0
+				}
+
+				writeTask := fsWriter.WriteTask{Data: loaded.Data[sliceStart:sliceEnd], Offset: offset, FileName: file.FileName}
+				logrus.Debugf("Write task: name=%v, offset=%v, slice=(%v:%v)", writeTask.FileName, writeTask.Offset, sliceStart, sliceEnd)
+				fsWriter.GetWriter().DataChan <- writeTask
+			}
+		}
+	}
 }
 
 func (i *bencodeInfoSingleFile) hash() ([20]byte, error) {
@@ -184,6 +203,33 @@ func (i *bencodeInfoSingleFile) hash() ([20]byte, error) {
 	}
 	h := sha1.Sum(buf.Bytes())
 	return h, nil
+}
+
+func (t *TorrentFile) SaveLoadedPiecesToFS() error {
+	start := 0
+
+	loadChan := make(chan []byte, 100)
+	writePartsChan := make(chan p2p.LoadedPiece, 100)
+
+	go db.GetFilesManagerDb().LoadPartsForFile(t.SysInfo.FileId, loadChan)
+
+	loadCtx := context.Background()
+
+	go t.WaitForDataAndWriteToDisk(loadCtx, writePartsChan)
+
+	for {
+		loadedData := <- loadChan
+		if loadedData == nil {
+			logrus.Infof("Loaded nil, exiting")
+			break
+		}
+
+		writePartsChan <- p2p.LoadedPiece{StartByte: int64(start), Len: int64(len(loadedData)), Data: loadedData}
+		start += len(loadedData)
+	}
+
+	loadCtx.Done()
+	return nil
 }
 
 func (i *bencodeInfoMultiFiles) hash() ([20]byte, error) {

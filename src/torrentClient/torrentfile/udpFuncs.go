@@ -18,7 +18,7 @@ func StartHandlingSocket(conn *net.UDPConn, utils *UdpConnManager)  {
 			buffer := make([]byte, 1024)
 			n, _, err := conn.ReadFromUDP(buffer)
 			if err != nil {
-				logrus.Errorf("Error reading from conn: %v\n", err)
+				logrus.Errorf("Error reading from conn: %v", err)
 				return
 			} else {
 				logrus.Infof("Read %v bytes", n)

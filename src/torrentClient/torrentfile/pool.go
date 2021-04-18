@@ -1,6 +1,7 @@
 package torrentfile
 
 import (
+	"context"
 	"time"
 
 	"torrentClient/client"
@@ -9,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (p *PeersPool) StartRefreshing()  {
+func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 	if p.ActiveClientsChan == nil {
 		logrus.Errorf("Pool not initialized!")
 		return
@@ -22,7 +23,6 @@ func (p *PeersPool) StartRefreshing()  {
 	sentPeersMap := make(map[string]bool, 50)
 
 	for _, announce := range announceList {
-		//trackerAddr := announce
 		tracker := Tracker{
 			Announce: announce,
 			TransactionId: 0,
@@ -36,33 +36,39 @@ func (p *PeersPool) StartRefreshing()  {
 			PieceLength: p.torrent.PieceLength,
 			Length: p.torrent.Length,
 		}
-		go func() {
+		go func(ctx context.Context) {
 			timer := time.NewTimer(time.Second)
 			for {
-				<- timer.C
-				rawPeers, err := tracker.CallFittingScheme()
-				if err != nil {
-					logrus.Errorf("Error requesting peers: %v", err)
+				select {
+				case <- ctx.Done():
 					return
-				}
-
-				for _, peer := range rawPeers {
-					if isSet, exists := sentPeersMap[peer.GetAddr()]; exists && isSet {
-						continue
+				case <- timer.C:
+					rawPeers, err := tracker.CallFittingScheme()
+					if err != nil {
+						logrus.Errorf("Error requesting peers: %v", err)
+						return
 					}
 
-					activeClient := p.InitPeer(&peer)
-					if activeClient != nil {
-						sentPeersMap[peer.GetAddr()] = true
-						p.ActiveClientsChan <- activeClient
-						logrus.Infof("Wrote peer %v to active clients chan", activeClient.GetShortInfo())
-					} else {
-						peer.IsDead = true
+					for _, peer := range rawPeers {
+						if isSet, exists := sentPeersMap[peer.GetAddr()]; exists && isSet {
+							continue
+						}
+
+						go func(peerToInit peers.Peer) {
+							activeClient := p.InitPeer(&peerToInit)
+							if activeClient != nil {
+								sentPeersMap[peerToInit.GetAddr()] = true
+								p.ActiveClientsChan <- activeClient
+								logrus.Infof("Wrote peer %v to active clients chan", activeClient.GetShortInfo())
+							} else {
+								peerToInit.IsDead = true
+							}
+						}(peer)
 					}
+					timer.Reset(time.Second * tracker.TrackerCallInterval)
 				}
-				timer.Reset(time.Second * tracker.TrackerCallInterval)
 			}
-		}()
+		}(ctx)
 	}
 }
 
@@ -103,4 +109,8 @@ func (p *PeersPool) InitPeer(peer *peers.Peer) *client.Client {
 
 func (p *PeersPool) InitPool() {
 	p.ActiveClientsChan = make(chan *client.Client, 10)
+}
+
+func (p *PeersPool) DestroyPool()  {
+	close(p.ActiveClientsChan)
 }

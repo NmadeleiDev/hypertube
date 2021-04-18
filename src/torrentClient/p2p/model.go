@@ -20,6 +20,13 @@ type TorrentMeta struct {
 	Length      int
 	Name        string
 	FileId		string
+	ResultsChan chan LoadedPiece
+}
+
+type LoadedPiece struct {
+	StartByte	int64
+	Len		int64
+	Data	[]byte
 }
 
 type pieceWork struct {

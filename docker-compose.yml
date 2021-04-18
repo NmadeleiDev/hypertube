@@ -63,7 +63,7 @@ services:
       - docker_net
     restart: always
 
-  loader:
+  torrent-client:
     build:
       context: ./src/torrentClient
       dockerfile: Dockerfile
@@ -92,7 +92,7 @@ services:
       - docker_net
     restart: always
 
-  peer:
+  torrent-peer:
     build:
       context: ./src/peerServer
       dockerfile: Dockerfile
@@ -104,7 +104,7 @@ services:
       - docker_net
     restart: always
 
-  nginx_server:
+  nginx-server:
     build:
       context: ./src/nginx
       dockerfile: Dockerfile

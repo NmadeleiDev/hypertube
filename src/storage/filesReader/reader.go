@@ -20,15 +20,15 @@ type fileReader struct {
 
 }
 
-// в данный момент учитывает только начала range, возвращает всегда
-func (f *fileReader) GetFileInRange(filePath string, description *model.FileRangeDescription) (result io.Reader, totalLength int64, err error) {
-	file, err := os.Open(path.Join(filesDir, filePath))
+// в данный момент учитывает только начало range, возвращает всегда
+func (f *fileReader) GetFileInRange(fileName string, description *model.FileRangeDescription) (result io.Reader, totalLength int64, err error) {
+	file, err := os.Open(path.Join(filesDir, fileName))
 	if err != nil {
 		logrus.Errorf("Error open file: %v", err)
 		return nil, 0, err
 	}
 
-	defer file.Close()
+	//defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
@@ -54,7 +54,7 @@ func (f *fileReader) GetFileInRange(filePath string, description *model.FileRang
 	}
 
 	totalLength = description.End - start
-	return io.NewSectionReader(file, start, description.End - start), totalLength, err
+	return io.NewSectionReader(file, start, description.End - start), info.Size(), err
 }
 
 func GetManager() dao.FileReader {
