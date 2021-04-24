@@ -26,13 +26,18 @@ func (d *manager) InitTables() {
 
 	query = `create table if not exists %s
 (
-	id serial
-		constraint %s_pk
-			primary key,
-	file_id varchar(64) not null,
-	torrent_file bytea default NULL,
-	magnet_link varchar(2048) default NULL,
-	file_name varchar(256) default NULL
+    id           serial                                      not null
+        constraint %s_pk
+            primary key,
+    file_id      varchar(64)                                 not null,
+    torrent_file bytea,
+    magnet_link  varchar(2048) default NULL::character varying,
+    file_name    varchar(256)  default NULL::character varying,
+	file_length  bigint			not null default 0,
+    comment      varchar(256)  default ''::character varying not null,
+    error        varchar(1024) default ''::character varying not null,
+    in_progress  boolean       default false                 not null,
+    is_loaded    boolean       default false                 not null
 )`
 
 	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath(), d.loadedFilesTable)); err != nil {

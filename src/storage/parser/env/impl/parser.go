@@ -19,6 +19,11 @@ func (p *Parser) GetRedisDbAddr() string {
 		os.Getenv("REDIS_PORT"))
 }
 
+func (p *Parser) GetRedisDbPasswd() string {
+	return os.Getenv("REDIS_PASSWORD")
+}
+
+
 func (p *Parser) GetPostgresDbDsn() string {
 	return fmt.Sprintf(
 		"host=%v port=%v user=%v password=%v dbname=%v sslmode=disable",
@@ -29,6 +34,9 @@ func (p *Parser) GetPostgresDbDsn() string {
 		os.Getenv("POSTGRES_DB"))
 }
 
+func (p *Parser) GetLoaderServiceHost() string {
+	return os.Getenv("LOADER_SERVICE_ADDR")
+}
 
 func (p *Parser) IsDevMode() bool {
 	return os.Getenv("DEV_MODE") == "on"

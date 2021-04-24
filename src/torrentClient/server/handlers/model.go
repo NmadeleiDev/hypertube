@@ -1,4 +1,4 @@
-package model
+package handlers
 
 type DataResponse struct {
 	Status bool        `json:"status"`

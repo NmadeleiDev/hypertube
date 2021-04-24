@@ -11,9 +11,11 @@ var parser Parser
 
 type Parser interface {
 	GetRedisDbAddr() string
+	GetRedisDbPasswd() string
 	GetPostgresDbDsn() string
 	IsDevMode() bool
 	GetFilesDir() string
+	GetLoaderServiceHost() string
 }
 
 func GetParser() Parser {

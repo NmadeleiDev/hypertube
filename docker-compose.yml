@@ -30,6 +30,7 @@ services:
     build:
       context: ./src/storage
       dockerfile: Dockerfile
+    hostname: storage
     ports:
       - ${STORAGE_API_PORT}:2222
     volumes:
@@ -46,6 +47,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+
+      LOADER_SERVICE_ADDR: ${LOADER_SERVICE_ADDR}:2222
 
       FILES_DIR: ${FILES_DIR}
       LOG_LEVEL: ${LOG_LEVEL}
@@ -67,9 +70,9 @@ services:
     build:
       context: ./src/torrentClient
       dockerfile: Dockerfile
+    hostname: torrent-client
     ports:
       - ${TORRENT_CLIENT_API_PORT}:2222
-#      - ${TORRENT_CLIENT_UDP_PORT}:${TORRENT_CLIENT_UDP_PORT}
     volumes:
       - ${FILES_VOL_DIR}:${FILES_DIR}:rw
     environment:

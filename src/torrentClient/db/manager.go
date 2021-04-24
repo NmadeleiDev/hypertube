@@ -11,14 +11,8 @@ type LoaderStateDbManager interface {
 	InitConnection()
 	CloseConnection()
 
-	GetActiveDownloads() []string
-	CheckIfFileIsActiveLoading(file string) bool
-	AddFileIdToActiveDownloads(id string)
-	AnnounceLoadedPart(fileId, partId string, start, size int64)
-	SaveLoadedPartInfo(fileId, partId string, start, size int64)
-
-	CleanLoadingLogsForFile(file string)
-	DeleteFileFromActiveDownloads(file string)
+	AddSliceIndexForFile(fileName string, sliceByteIdx ...int64)
+	DeleteSliceIndexesSet(fileName string)
 }
 
 func GetLoadedStateDb() LoaderStateDbManager  {
@@ -30,7 +24,11 @@ type FilesDbManager interface {
 	InitConnection(connStr string)
 	CloseConnection()
 
-	SaveFileNameForReadyFile(fileId, name string)
+	SetFileNameForRecord(fileId, name string)
+	SetFileLengthForRecord(fileId string, length int64)
+	SetInProgressStatusForRecord(fileId string, status bool)
+	SetLoadedStatusForRecord(fileId string, status bool)
+
 	GetLoadedIndexesForFile(fileId string) []int
 	SaveFilePartsToFile(dest *os.File, fileId string, start int, length int) error
 	LoadPartsForFile(fileId string, writeChan chan []byte)
@@ -39,6 +37,8 @@ type FilesDbManager interface {
 	PreparePlaceForFile(fileId string)
 	SaveFilePart(fileId string, part []byte, start, size, index int64)
 	RemoveFilePartsPlace(fileId string)
+
+	PartsTableNameForFile(fileId string) string
 }
 
 func GetFilesManagerDb() FilesDbManager {

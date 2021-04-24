@@ -1,9 +1,7 @@
 package dao
 
 import (
-	"io"
-
-	"hypertube_storage/model"
+	"context"
 )
 
 type LoadedFilesDbManager interface {
@@ -11,9 +9,20 @@ type LoadedFilesDbManager interface {
 	InitTables()
 	CloseConnection()
 
-	GetFilePathById(id string) (path string, err error)
+	GetFileInfoById(id string) (path string, inProgress, isLoaded bool, fLen int64, err error)
 }
 
 type FileReader interface {
-	GetFileInRange(path string, description *model.FileRangeDescription) (reader io.Reader, totalLength int64, err error)
+	WaitForFilePart(ctx context.Context, fileName string, start int64) ([]byte, int64, error)
+	GetFileInRange(fileName string, start int64) (result []byte, totalLength int64, err error)
+	HasNullBytes(src []byte) bool
+	HasNotNullBytes(src []byte) bool
+	IsPartWritten(fileName string, part []byte, start int64) bool
+}
+
+type LoaderStateDbManager interface {
+	InitConnection()
+	CloseConnection()
+
+	GetSliceIndexesForFile(fileName string) []int64
 }

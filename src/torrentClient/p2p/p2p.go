@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"runtime"
 	"time"
 
 	"torrentClient/client"
@@ -71,7 +70,7 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 		c.Conn.SetDeadline(time.Now().Add(30 * time.Second))
 		// If unchoked, send requests until we have enough unfulfilled requests
 		if !state.client.Choked {
-			//logrus.Debugf("Downloading from %v. State: idx=%v, downloaded=%v (%v%%)", c.GetShortInfo(), state.index, state.downloaded, (state.downloaded * 100) / pw.length)
+			logrus.Debugf("Downloading from %v. State: idx=%v, downloaded=%v (%v%%)", c.GetShortInfo(), state.index, state.downloaded, (state.downloaded * 100) / pw.length)
 			for state.backlog < MaxBacklog && state.requested < pw.length {
 				blockSize := MaxBlockSize
 				// Last block might be shorter than the typical block
@@ -86,6 +85,8 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 				state.backlog++
 				state.requested += blockSize
 			}
+		} else {
+			logrus.Warnf("CHOKED by %v for idx=%v, waiting for unchoke", state.client.GetShortInfo(), pw.index)
 		}
 
 		err := state.readMessage()
@@ -117,7 +118,7 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 		// Download the piece
 		buf, err := attemptDownloadPiece(c, pw)
 		if err != nil {
-			logrus.Errorf("exiting piece download attempt: %v", err)
+			logrus.Errorf("Exiting piece download worker due to error: %v", err)
 			workQueue <- pw // Put piece back on the queue
 			return
 		}
@@ -157,55 +158,63 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 	workQueue := make(chan *pieceWork, len(t.PieceHashes))
 	results := make(chan *pieceResult)
 
+	defer close(workQueue)
+	defer close(results)
+
 	loadedIdxs := db.GetFilesManagerDb().GetLoadedIndexesForFile(t.FileId)
 	logrus.Debugf("Got loaded idxs: %v", loadedIdxs)
 
-	for index, hash := range t.PieceHashes {
-		if IntArrayContain(loadedIdxs, index) {
-			continue
+	go func() {
+		for index, hash := range t.PieceHashes {
+			if IntArrayContain(loadedIdxs, index) {
+				continue
+			}
+			length := t.calculatePieceSize(index)
+
+			//logrus.Debugf("Prepared piece idx=%v, len=%v", index, length)
+			workQueue <- &pieceWork{index, hash, length}
 		}
-		length := t.calculatePieceSize(index)
+	}()
 
-		//logrus.Debugf("Prepared piece idx=%v, len=%v", index, length)
-		workQueue <- &pieceWork{index, hash, length}
-	}
-
-	// Start workers
+	// Start workers as they arrive from Pool
 	go func() {
 		for {
 			select {
 			case <- ctx.Done():
 				return
 			case activeClient := <- t.ActiveClientsChan:
+				if activeClient == nil {
+					logrus.Errorf("Got nil active client...")
+					continue
+				}
 				logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
 				go t.startDownloadWorker(activeClient, workQueue, results)
 			}
 		}
 	}()
 
-	defer close(workQueue)
 	donePieces := 0
 	for donePieces < len(t.PieceHashes) {
-		var res *pieceResult
-		res = <- results
-		if res == nil {
-			logrus.Errorf("Piece result invalid: %v", res)
-			continue
+		select {
+		case <- ctx.Done():
+			logrus.Debugf("Got DONE in Download, exiting")
+			return nil
+		case res := <- results:
+			if res == nil {
+				logrus.Errorf("Piece result invalid: %v", res)
+				continue
+			}
+
+			begin, end := t.calculateBoundsForPiece(res.index)
+			t.ResultsChan <- LoadedPiece{Data: res.buf, Len: int64(end-begin), StartByte: int64(begin)}
+			db.GetFilesManagerDb().SaveFilePart(t.FileId, res.buf, int64(begin), int64(end-begin), int64(res.index))
+			//db.GetLoadedStateDb().AnnounceLoadedPart(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
+			//db.GetLoadedStateDb().SaveLoadedPartInfo(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
+			donePieces++
+
+			percent := float64(donePieces) / float64(len(t.PieceHashes)) * 100
+			logrus.Infof("(%0.2f%%) Downloaded piece idx=%d from %v peers\n", percent, res.index, "n=unknown")
 		}
-
-		begin, end := t.calculateBoundsForPiece(res.index)
-		//copy(buf[begin:end], res.buf)
-		t.ResultsChan <- LoadedPiece{Data: res.buf, Len: int64(end-begin), StartByte: int64(begin)}
-
-		db.GetFilesManagerDb().SaveFilePart(t.FileId, res.buf, int64(begin), int64(end-begin), int64(res.index))
-		db.GetLoadedStateDb().AnnounceLoadedPart(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
-		db.GetLoadedStateDb().SaveLoadedPartInfo(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
-
-		donePieces++
-
-		percent := float64(donePieces) / float64(len(t.PieceHashes)) * 100
-		numWorkers := runtime.NumGoroutine() - 1 // subtract 1 for main thread
-		logrus.Infof("(%0.2f%%) Downloaded piece idx=%d from %d peers\n", percent, res.index, numWorkers)
 	}
 	return nil
 }

@@ -1,6 +1,9 @@
 package torrentfile
 
 import (
+	"crypto/md5"
+	"fmt"
+	"strings"
 	"time"
 
 	"torrentClient/client"
@@ -63,6 +66,11 @@ type bencodeTorrentFile struct {
 	Path   []string `bencode:"path"`
 }
 
+func (b *bencodeTorrentFile) EncodeFileName() string {
+	hash := md5.Sum([]byte(strings.Join(b.Path, "")))
+	return fmt.Sprintf("%x", hash[:])
+}
+
 type bencodeTorrentSingleFile struct {
 	Announce     string                `bencode:"announce"`
 	AnnounceList [][]string            `bencode:"announce-list"`
@@ -82,6 +90,7 @@ func (bto *bencodeTorrentMultiFiles) SumFilesLength() int {
 	}
 	return res
 }
+
 
 type PeersPool struct {
 	Peers             []*peers.Peer

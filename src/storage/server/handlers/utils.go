@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"time"
 
 	"hypertube_storage/model"
+	"hypertube_storage/parser/env"
 
 	"github.com/sirupsen/logrus"
 )
@@ -67,4 +70,33 @@ func SetCookieForHour(w http.ResponseWriter, cookieName, value string) {
 		MaxAge:   int(time.Hour.Seconds())}
 	http.SetCookie(w, &c)
 }
+
+func SendTaskToTorrentClient(fileId string) (string, bool) {
+	req, err := http.Get(fmt.Sprintf("http://%s/download?file_id=%s", env.GetParser().GetLoaderServiceHost(), fileId))
+	if err != nil {
+		logrus.Errorf("Error calling loader service: %v", err)
+		return "", false
+	}
+
+	if req.StatusCode != http.StatusOK {
+		logrus.Errorf("Not ok status from torrent client: %v %v", req.StatusCode, req.Status)
+		return "", false
+	}
+
+	info := model.LoaderTaskResponse{}
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		logrus.Errorf("Error reading body: %v", err)
+		return "", false
+	}
+
+	if err := json.Unmarshal(body, &info); err != nil {
+		logrus.Errorf("Error unmarshal body from loader: %v", err)
+		return "", false
+	}
+
+	return info.Data.FileName, true
+}
+
 

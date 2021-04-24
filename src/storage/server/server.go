@@ -18,6 +18,7 @@ func Start() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/load/{file_id}", handlers.UploadFilePartHandler)
+	router.PathPrefix("/").HandlerFunc(handlers.CatchAllHandler)
 
 	logrus.Info("Listening localhost:2222")
 	if err := http.ListenAndServe(":2222", router); err != nil {

@@ -10,9 +10,7 @@ import (
 )
 
 const (
-	activeDownloadsKey       = "downloads"
-	loadedPartsChannelPrefix = "loaded"
-	loadedPartRecordPrefix	= "complete"
+	fileSliceIndexes       = "slices"
 )
 
 type manager struct {
@@ -21,65 +19,24 @@ type manager struct {
 
 var Manager manager
 
-func (m *manager) GetActiveDownloads() []string {
-	res, err := m.conn.SMembers(activeDownloadsKey).Result()
-	if err != nil {
-		logrus.Errorf("Error getting active downloads: %v", err)
-	}
-	return res
+func (m *manager) GetSliceIndexesKey(fileName string) string {
+	return fmt.Sprintf("%s:%s", fileSliceIndexes, fileName)
 }
 
-func (m *manager) CheckIfFileIsActiveLoading(file string) bool {
-	res, err := m.conn.SIsMember(activeDownloadsKey, file).Result()
-	if err != nil {
-		logrus.Errorf("Error checking active downloads: %v", err)
-	}
-	return res
-}
-
-func (m *manager) AddFileIdToActiveDownloads(id string) {
-	_, err := m.conn.SAdd(activeDownloadsKey, id).Result()
-	if err != nil {
-		logrus.Errorf("Error checking active downloads: %v", err)
-	}
-}
-
-func (m *manager) AnnounceLoadedPart(fileId, partId string, start, size int64) {
-	if _, err := m.conn.Publish(fmt.Sprintf("%s:%s", loadedPartsChannelPrefix, fileId), fmt.Sprintf("id=%s&start=%d&size=%d", partId, start, size)).Result(); err != nil {
-		logrus.Errorf("Error publish message: %v", err )
-	}
-}
-
-func (m *manager) SaveLoadedPartInfo(fileId, partId string, start, size int64) {
-	data := map[string]interface{}{
-		"start": start,
-		"size": size,
-	}
-	if _, err := m.conn.HMSet(fmt.Sprintf("%s:%s:%s", loadedPartRecordPrefix, fileId, partId), data).Result(); err != nil {
-		logrus.Errorf("Error saving loaded part record: %v", err)
-	}
-}
-
-func (m *manager) CleanLoadingLogsForFile(file string) {
-	cur := uint64(0)
-	//keys := make([]string, 0, 100)
-
-	for {
-		var res []string
-		var err error
-
-		res, cur, err = m.conn.Scan(cur, fmt.Sprintf("%s:%s:*", loadedPartRecordPrefix, file), 10).Result()
+func (m *manager) AddSliceIndexForFile(fileName string, sliceByteIdx ...int64) {
+	for _, idx := range sliceByteIdx {
+		_, err := m.conn.SAdd(m.GetSliceIndexesKey(fileName), idx).Result()
 		if err != nil {
-			logrus.Errorf("Error saving loaded part record: %v", err)
+			logrus.Errorf("Error AddSliceIndexForFile: %v", err)
+		} else {
+			logrus.Debugf("Added slices for file %v: %v", fileName, sliceByteIdx)
 		}
-
-		m.conn.Del(res...)
 	}
 }
 
-func (m *manager) DeleteFileFromActiveDownloads(file string) {
-	if _, err := m.conn.SRem(activeDownloadsKey, file).Result(); err != nil {
-		logrus.Errorf("Error removing id from active downloads: %v", err)
+func (m *manager) DeleteSliceIndexesSet(fileName string) {
+	if _, err := m.conn.Del(m.GetSliceIndexesKey(fileName)).Result(); err != nil {
+		logrus.Errorf("Error deleting key: %v", err)
 	}
 }
 

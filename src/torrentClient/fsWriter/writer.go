@@ -2,15 +2,17 @@ package fsWriter
 
 import (
 	"os"
-
-	"torrentClient/parser/env"
 	"path"
+
+	"torrentClient/db"
+	"torrentClient/parser/env"
 
 	"github.com/sirupsen/logrus"
 )
 
 type FsWriter struct {
 	DataChan	chan WriteTask
+	//Announcer	WrittenDataAnnouncer
 }
 
 type WriteTask struct {
@@ -35,6 +37,21 @@ func (w *FsWriter) StartWaitingForData() {
 	}
 }
 
+
+func (w *FsWriter) CreateEmptyFile(fileName string) bool {
+	if fileExists(fileName) {
+		return true
+	}
+
+	if  f, err := os.Create(path.Join(env.GetParser().GetFilesDir(), fileName)); err != nil {
+		logrus.Errorf("Error creating file %v: %v", fileName, err)
+		return false
+	} else {
+		f.Close()
+		return true
+	}
+}
+
 func (w *FsWriter) WriteDataToFile(fileName string, data []byte, offset int64) error {
 	file, err := os.OpenFile(path.Join(env.GetParser().GetFilesDir(), fileName), os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -43,11 +60,13 @@ func (w *FsWriter) WriteDataToFile(fileName string, data []byte, offset int64) e
 	}
 
 	defer file.Close()
+	dataLen := len(data)
 
 	if _, err := file.WriteAt(data, offset); err != nil {
 		logrus.Error("Error writing to file: %v", err)
 	}
-	logrus.Debugf("Wrote %v bytes to file %v starting from %v", len(data), fileName, offset)
 
+	db.GetLoadedStateDb().AddSliceIndexForFile(fileName, offset, offset + int64(len(data)))
+	logrus.Debugf("Wrote %v bytes to file %v starting from %v", dataLen, fileName, offset)
 	return nil
 }

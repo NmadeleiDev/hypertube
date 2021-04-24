@@ -8,9 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"strings"
 
 	"torrentClient/db"
 	"torrentClient/fsWriter"
@@ -79,23 +77,18 @@ func GetManager() TorrentFilesManager {
 	return &torrentsManager{}
 }
 
-// DownloadToFile downloads a torrent and writes it to a file
 func (t *TorrentFile) DownloadToFile() error {
-	var peerID [20]byte
+	downloadCtx, downloadCancel := context.WithCancel(context.Background())
+	defer downloadCancel()
 
-	downloadCtx := context.Background()
-	_, err := rand.Read(peerID[:])
-	if err != nil{
-		return fmt.Errorf("read rand error: %v", err)
-	}
-	t.Download.MyPeerId = peerID
-	t.Download.MyPeerPort = env.GetParser().GetTorrentPeerPort()
+	t.InitMyPeerIDAndPort()
 
 	peersPoolObj := PeersPool{}
 	peersPoolObj.InitPool()
 	defer peersPoolObj.DestroyPool()
 	peersPoolObj.SetTorrent(t)
 	poolCtx, poolCancel := context.WithCancel(downloadCtx)
+	defer poolCancel()
 	go peersPoolObj.StartRefreshing(poolCtx)
 
 	torrent := p2p.TorrentMeta{
@@ -112,34 +105,53 @@ func (t *TorrentFile) DownloadToFile() error {
 
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
 	//defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
-	logrus.Infof("Prepared table for parts, starting download")
+	//logrus.Infof("Prepared table for parts, starting download")
+	videoFile := t.getHeaviestFile()
+	db.GetFilesManagerDb().SetFileNameForRecord(t.SysInfo.FileId, videoFile.EncodeFileName())
 
 	go t.WaitForDataAndWriteToDisk(downloadCtx, torrent.ResultsChan)
 
-	err = torrent.Download(downloadCtx)
-	if err != nil {
-		poolCancel()
-		downloadCtx.Done()
+	if err := torrent.Download(downloadCtx); err != nil {
 		return fmt.Errorf("file download error: %v", err)
 	}
 
-	// закрываем бекграунды с загрузкой
-	poolCancel()
-	downloadCtx.Done()
-
-	outFile, err := ioutil.TempFile(env.GetParser().GetFilesDir(), "loaded_*")
-	if err != nil {
-		return fmt.Errorf("create tempfile error: %e", err)
-	}
-	defer func() {
-		outFile.Close()
-	}()
-
-	//db.GetFilesManagerDb().SaveFilePartsToFile(outFile, t.SysInfo.FileId)
-	t.SaveLoadedPiecesToFS()
-	db.GetFilesManagerDb().SaveFileNameForReadyFile(t.SysInfo.FileId, outFile.Name())
-	logrus.Infof("All done!!!")
+	logrus.Infof("Download for %v completed!", t.SysInfo.FileId)
 	return nil
+}
+
+func (t *TorrentFile) PrepareFile() (string, int64) {
+	videoFile := t.getHeaviestFile()
+	fsWriter.GetWriter().CreateEmptyFile(videoFile.EncodeFileName())
+	db.GetFilesManagerDb().SetFileNameForRecord(t.SysInfo.FileId, videoFile.EncodeFileName())
+	return videoFile.EncodeFileName(), int64(videoFile.Length)
+}
+
+func (t *TorrentFile) InitMyPeerIDAndPort() {
+	var peerID [20]byte
+
+	_, err := rand.Read(peerID[:])
+	if err != nil{
+		logrus.Errorf("read rand error: %v", err)
+		copy(peerID[:], []byte("you suck")[:20])
+	}
+	t.Download.MyPeerId = peerID
+	t.Download.MyPeerPort = env.GetParser().GetTorrentPeerPort()
+}
+
+func (t *TorrentFile) getHeaviestFile() bencodeTorrentFile {
+	if len(t.Files) == 1 {
+		return t.Files[0]
+	}
+
+	longest := t.Files[0]
+
+	for _, file := range t.Files {
+		if file.Length > longest.Length {
+			longest = file
+		}
+	}
+
+	return longest
 }
 
 func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts chan p2p.LoadedPiece) {
@@ -152,7 +164,7 @@ func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts c
 	files := make([]fileBoundaries, len(t.Files))
 	fileStart := 0
 	for i, file := range t.Files {
-		files[i].FileName = strings.Join(file.Path, "_")
+		files[i].FileName = file.EncodeFileName()
 		files[i].Index = i
 		files[i].Start = int64(fileStart)
 		files[i].End = int64(fileStart + file.Length)
@@ -163,23 +175,32 @@ func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts c
 	for {
 		select {
 		case <- ctx.Done():
+			logrus.Debugf("Got DONE in ctx in WaitForDataAndWriteToDisk, exiting!")
 			close(dataParts)
 			return
 		case loaded := <- dataParts:
+			logrus.Debugf("Got loaded part: start=%v, len=%v", loaded.StartByte, loaded.Len)
 			for _, file := range files {
-				logrus.Debugf("Got loaded part: start=%v, len=%v", loaded.StartByte, loaded.Len)
-				sliceStart := file.Start - loaded.StartByte
-				sliceEnd := loaded.StartByte + loaded.Len - file.End
-
-				if loaded.StartByte > file.Start || loaded.StartByte + loaded.Len < file.End {
-					logrus.Debugf("Skipping write due to (%v, %v)", loaded.StartByte > file.Start, loaded.StartByte + loaded.Len < file.End)
+				if loaded.StartByte > file.End || loaded.StartByte + loaded.Len < file.Start {
+					//logrus.Debugf("Skipping '%v' write due to (%v, %v); (%v, %v)", file.FileName, loaded.StartByte > file.End, loaded.StartByte + loaded.Len < file.Start, file.Start, file.End)
 					continue
 				}
+
+				sliceStart := file.Start - loaded.StartByte
+				sliceEnd := loaded.Len
+				fileEndBias := loaded.StartByte + loaded.Len - file.End
+				if fileEndBias > 0 {
+					sliceEnd -= fileEndBias
+				}
+
+
 				if sliceStart < 0 {
 					sliceStart = 0
 				}
 				if sliceEnd < 0 {
 					sliceEnd = loaded.Len
+				} else if sliceEnd < sliceStart {
+					logrus.Warnf("sliceEnd < sliceStart! %v %v; start=%v, len=%v; file: %v", sliceEnd, sliceStart, loaded.StartByte, loaded.Len, file)
 				}
 
 				offset := loaded.StartByte - file.Start
@@ -213,7 +234,7 @@ func (t *TorrentFile) SaveLoadedPiecesToFS() error {
 
 	go db.GetFilesManagerDb().LoadPartsForFile(t.SysInfo.FileId, loadChan)
 
-	loadCtx := context.Background()
+	loadCtx := context.TODO()
 
 	go t.WaitForDataAndWriteToDisk(loadCtx, writePartsChan)
 
@@ -223,6 +244,7 @@ func (t *TorrentFile) SaveLoadedPiecesToFS() error {
 			logrus.Infof("Loaded nil, exiting")
 			break
 		}
+		logrus.Debugf("Got %v bytes to save. Start=%v", len(loadedData), start)
 
 		writePartsChan <- p2p.LoadedPiece{StartByte: int64(start), Len: int64(len(loadedData)), Data: loadedData}
 		start += len(loadedData)
@@ -317,14 +339,4 @@ func (bto *bencodeTorrentMultiFiles) toTorrentFile() (TorrentFile, error) {
 		Download:     DownloadUtils{},
 	}
 	return t, nil
-}
-
-func UnfoldArray(src [][]string) []string {
-	res := make([]string, 0, len(src))
-
-	for _, item := range src {
-		res = append(res, item...)
-	}
-
-	return res
 }

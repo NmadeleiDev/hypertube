@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"time"
 
-	"torrentClient/model"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,7 +15,7 @@ func SendFailResponseWithCode(w http.ResponseWriter, text string, code int) {
 	var packet []byte
 	var err error
 
-	response := &model.DataResponse{Status: false, Data: text}
+	response := &DataResponse{Status: false, Data: text}
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(code)
 
@@ -33,7 +31,7 @@ func SendSuccessResponse(w http.ResponseWriter) {
 	var packet []byte
 	var err error
 
-	response := &model.DataResponse{Status: true, Data: nil}
+	response := &DataResponse{Status: true, Data: nil}
 	w.Header().Set("content-type", "application/json")
 
 	if packet, err = json.Marshal(response); err != nil {
@@ -48,7 +46,7 @@ func SendDataResponse(w http.ResponseWriter, data interface{}) {
 	var packet []byte
 	var err error
 
-	response := &model.DataResponse{Status: true, Data: data}
+	response := &DataResponse{Status: true, Data: data}
 	w.Header().Set("content-type", "application/json")
 
 	if packet, err = json.Marshal(response); err != nil {

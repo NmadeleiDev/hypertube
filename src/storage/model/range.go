@@ -21,7 +21,7 @@ func (f *FileRangeDescription) ParseHeader(header string) error {
 	limits := strings.Split(parts[1], "-")
 	if len(limits) != 2 {
 		logrus.Errorf("Error parsing range header! Len != 2: %v", header)
-		return fmt.Errorf("Len after split != 2")
+		return fmt.Errorf("len after split != 2")
 	}
 
 

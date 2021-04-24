@@ -19,16 +19,13 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		response := struct {
 			IsLoaded	bool	`json:"isLoaded"`
 			Key			string	`json:"key"`
+			LoadedPiecesTable string	`json:"loadedPiecesTable"`
+			FileName	string		`json:"fileName"`
 		}{}
 
-		response.IsLoaded = true
+		response.IsLoaded = false
 		response.Key = fileId
-
-		if db.GetLoadedStateDb().CheckIfFileIsActiveLoading(fileId) {
-			response.IsLoaded = true
-		} else {
-			response.IsLoaded = false
-		}
+		response.LoadedPiecesTable = db.GetFilesManagerDb().PartsTableNameForFile(fileId)
 
 		torrentBytes, magnetLink, ok := db.GetFilesManagerDb().GetTorrentOrMagnetForByFileId(fileId)
 		if !ok {
@@ -58,15 +55,29 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			torrent.Announce = trackerUrl
 		}
 
+		if torrent.Announce == "" || len(torrent.AnnounceList) == 0 {
+			SendFailResponseWithCode(w, "Announce is empty", http.StatusBadRequest)
+			return
+		}
+
 		//logrus.Infof("Ready torrent info: %v %v", torrent.Announce, torrent.AnnounceList)
+		var fLen int64
+
+		response.FileName, fLen = torrent.PrepareFile()
+		db.GetFilesManagerDb().SetFileLengthForRecord(torrent.SysInfo.FileId, fLen)
+		go torrent.SaveLoadedPiecesToFS()
 
 		go func() {
+			db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, true)
+			defer db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
+
 			err = torrent.DownloadToFile()
 			if err != nil {
 				logrus.Errorf("Error downloading to file: %v", err)
+			} else {
+				db.GetFilesManagerDb().SetLoadedStatusForRecord(torrent.SysInfo.FileId, true)
 			}
 		}()
-
 		SendDataResponse(w, response)
 	}
 }

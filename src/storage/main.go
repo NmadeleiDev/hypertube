@@ -11,8 +11,11 @@ func main() {
 	db.GetLoadedFilesManager().InitConnection(env.GetParser().GetPostgresDbDsn())
 	db.GetLoadedFilesManager().InitTables()
 
+	db.GetLoadedStateDb().InitConnection()
+
 	defer func() {
 		db.GetLoadedFilesManager().CloseConnection()
+		db.GetLoadedStateDb().CloseConnection()
 	}()
 
 	server.Start()
