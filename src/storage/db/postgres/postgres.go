@@ -53,10 +53,10 @@ func (d *manager) InitConnection(connStr string) {
 	}
 	conn, err := sqlx.Open("postgres", connStr)
 	if err != nil {
-		logrus.Fatalf("Error connecting to database: ", err)
+		logrus.Fatalf("Error connecting to database: %v", err)
 	}
 	if err := conn.Ping(); err != nil {
-		logrus.Fatalf("Error pinging db: %v", err)
+		logrus.Fatalf("Error pinging db: %v; dsn: %v", err, connStr)
 	}
 	logrus.Debugf("Connected to %v; db conf: %v", connStr, db)
 	db.conn = conn

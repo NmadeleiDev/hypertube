@@ -145,6 +145,7 @@ services:
 
   postgres-db:
     image: postgres:9.6.17
+    hostname: postgres-db
     volumes:
       - ./data/pgsql:/var/lib/postgresql/data
     ports:
