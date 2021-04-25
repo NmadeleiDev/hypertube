@@ -26,6 +26,7 @@ type FilesDbManager interface {
 
 	SetFileNameForRecord(fileId, name string)
 	SetFileLengthForRecord(fileId string, length int64)
+	SetFileNameAndLengthForRecord(fileId, fileName string, length int64)
 	SetInProgressStatusForRecord(fileId string, status bool)
 	SetLoadedStatusForRecord(fileId string, status bool)
 

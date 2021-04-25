@@ -74,6 +74,15 @@ UPDATE %s SET file_length=$1 WHERE file_id=$2`
 	}
 }
 
+func (d *manager) SetFileNameAndLengthForRecord(fileId, fileName string, length int64) {
+	query := `
+UPDATE %s SET file_name=$1, file_length=$2 WHERE file_id=$3`
+
+	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath()), fileName, length, fileId); err != nil {
+		logrus.Errorf("Error saving file len: %v", err)
+	}
+}
+
 func (d *manager) SetInProgressStatusForRecord(fileId string, status bool) {
 	query := `
 UPDATE %s SET in_progress=$1 WHERE file_id=$2`

@@ -122,7 +122,7 @@ func (t *TorrentFile) DownloadToFile() error {
 func (t *TorrentFile) PrepareFile() (string, int64) {
 	videoFile := t.getHeaviestFile()
 	fsWriter.GetWriter().CreateEmptyFile(videoFile.EncodeFileName())
-	db.GetFilesManagerDb().SetFileNameForRecord(t.SysInfo.FileId, videoFile.EncodeFileName())
+	db.GetFilesManagerDb().SetFileNameAndLengthForRecord(t.SysInfo.FileId, videoFile.EncodeFileName(), int64(videoFile.Length))
 	return videoFile.EncodeFileName(), int64(videoFile.Length)
 }
 

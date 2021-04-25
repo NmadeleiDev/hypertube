@@ -33,7 +33,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if fileRange.Start >= fileLength {
+		if fileRange.Start >= fileLength && isLoaded {
 			SendFailResponseWithCode(w,
 				fmt.Sprintf("Start byte (%v) in Content-Range exceeds file length (%v)",
 					fileRange.Start, fileLength), http.StatusBadRequest)

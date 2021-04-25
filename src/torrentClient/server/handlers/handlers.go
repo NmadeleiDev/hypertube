@@ -64,7 +64,6 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		var fLen int64
 
 		response.FileName, fLen = torrent.PrepareFile()
-		db.GetFilesManagerDb().SetFileLengthForRecord(torrent.SysInfo.FileId, fLen)
 		go torrent.SaveLoadedPiecesToFS()
 
 		go func() {
