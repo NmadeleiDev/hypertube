@@ -4,6 +4,8 @@
 data
 files
 tests
+node_modules/
+dist/
+.DS_Store
 
-src/search/node_modules
 src/magnetCoverter

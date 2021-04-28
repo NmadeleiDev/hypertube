@@ -48,6 +48,7 @@ export type CountriesKeys = keyof ICountries;
 
 export interface IDBMovie {
   id: string;
+  imdbid: string;
   title: string;
   image: string;
   year: string;
@@ -66,7 +67,22 @@ export interface IDBMovie {
   keywordlist: string;
   images: string;
   imdbrating: string;
-  avalibility: string;
+  maxcomments: string;
+}
+
+export interface IDBTorrent {
+  movieid: string;
+  torrentname: string;
+  torrent: Blob;
+  magnet: string;
+  seeds: number;
+  peers: number;
+  size: number;
+}
+
+export interface ITranslatedMovie {
+  en: IMovie;
+  ru: IMovie;
 }
 
 export interface IKinopoiskMovie {
@@ -88,7 +104,7 @@ export interface IMovie {
 }
 
 export interface IMovieInfo {
-  avalibility?: number;
+  avalibility: number;
   year: number;
   genres: GenresKeys[];
   rating: number;
@@ -98,6 +114,7 @@ export interface IMovieInfo {
   pgRating: string;
   countries?: string[];
   comments?: IFrontComment[];
+  maxComments?: number;
   description?: string;
   photos?: string[];
   videos?: string[];
@@ -118,9 +135,10 @@ export interface IComment {
   time?: number;
 }
 export interface IFrontComment {
-  id: string;
+  commentid: string;
   username: string;
   avatar?: string;
+  movieid: string;
   text: string;
   time: number;
 }
@@ -151,4 +169,51 @@ export interface IFilmography {
   id?: string;
   job: string; //'actor', 'director'...
   movies: IMovie[];
+}
+
+interface IMDBPerson {
+  id: string;
+  name: string;
+  image?: string;
+  asCharacter?: string;
+}
+
+interface nameToImdbSearch {
+  match: 'imdbFind';
+  meta: {
+    id: string;
+    name: string;
+    year: number;
+    type: 'feature';
+    yearRange: string | number | undefined;
+    image: {
+      src: string;
+      width: number;
+      height: number;
+    };
+    starring: string;
+    similarity: number;
+  };
+}
+
+export interface IMDBMovie {
+  id: string;
+  title: string;
+  type?: string;
+  year: string;
+  image: string;
+  runtimeMins?: string;
+  plot: string;
+  genres: string;
+  countries?: string;
+  contentRating?: string;
+  imDbRating: string;
+  directors: string;
+  directorList?: IMDBPerson[];
+  stars: string;
+  actorList?: IMDBPerson[];
+  keywordList?: string[];
+  images?: string[];
+  similars?: IMDBMovie[];
+  errorMessage?: string;
 }
