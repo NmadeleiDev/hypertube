@@ -22,9 +22,11 @@ build: ## build all containers (docker compose)
 
 up: ## build & start the project (docker-compose)
 	docker-compose up --build -d
+	cd src/frontend && npm start
 
-up-i: ## build & start the project (docker-compose)
+init-up: ## build & start the project (docker-compose)
 	docker-compose up --build
+	cd src/frontend && npm i && npm start
 
 down: ## stop the project (docker-compose)
 	docker-compose down

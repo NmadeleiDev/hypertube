@@ -1,0 +1,49 @@
+/* @font-face {
+  font-family: 'Quicksand';
+  font-style: normal;
+  font-weight: 200;
+  src: url('./fonts/Quicksand-Light.ttf');
+  src: local('Quicksand'), local('Quicksand'),
+    url('./fonts/Quicksand-Light.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Quicksand';
+  font-style: normal;
+  font-weight: 500;
+  src: url('./fonts/Quicksand-Regular.ttf');
+  src: local('Quicksand'), local('Quicksand'),
+    url('./fonts/Quicksand-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Quicksand';
+  font-style: bold;
+  font-weight: 700;
+  src: url('./fonts/Quicksand-Bold.ttf');
+  src: local('Quicksand'), local('Quicksand'),
+    url('./fonts/Quicksand-Bold.ttf') format('truetype');
+} */
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  transition: 0.3s;
+  font-family: 'Roboto', 'Quicksand', sans-serif;
+  font-weight: 100;
+}
+
+body {
+  margin: 0;
+  /* font-family: 'Quicksand', 'Roboto', 'Helvetica Neue', 'Oxygen', 'Ubuntu',
+    'Cantarell', 'Fira Sans', 'Droid Sans', sans-serif; */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: '0.3s';
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}

@@ -61,9 +61,9 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//logrus.Infof("Ready torrent info: %v %v", torrent.Announce, torrent.AnnounceList)
-		var fLen int64
+		//var fLen int64
 
-		response.FileName, fLen = torrent.PrepareFile()
+		response.FileName, _ = torrent.PrepareFile()
 		go torrent.SaveLoadedPiecesToFS()
 
 		go func() {
