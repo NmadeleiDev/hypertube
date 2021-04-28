@@ -1,11 +1,61 @@
 version: '3'
 
 services:
+  search:
+    build:
+      context: ./src/search
+      dockerfile: Dockerfile
+    ports:
+      - ${SEARCH_API_PORT}:2222
+    links:
+      - postgres-db
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      SEARCH_API_PORT: ${SEARCH_API_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      IMDB_API_KEY: ${IMDB_API_KEY}
+    networks:
+      - docker_net
+    depends_on:
+      - postgres-db
+
+  movies:
+    build:
+      context: ./src/movies
+      dockerfile: Dockerfile
+    ports:
+      - ${MOVIES_API_PORT}:2223
+    links:
+      - postgres-db
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      MOVIES_API_PORT: ${MOVIES_API_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      IMDB_API_KEY: ${IMDB_API_KEY}
+    networks:
+      - docker_net
+    depends_on:
+      - postgres-db
+
   storage:
     build:
       context: ./src/storage
       dockerfile: Dockerfile
     hostname: storage
+    links:
+      - postgres-db
+      - redis-db
+      - torrent-client
     ports:
       - ${STORAGE_API_PORT}:2222
     volumes:
@@ -35,6 +85,8 @@ services:
     build:
       context: ./src/magnetCoverter
       dockerfile: Dockerfile
+    links:
+      - postgres-db
     ports:
       - ${MAGNET_CONVERTER_PORT}:50051
     networks:
@@ -46,6 +98,9 @@ services:
       context: ./src/torrentClient
       dockerfile: Dockerfile
     hostname: torrent-client
+    links:
+      - postgres-db
+      - redis-db
     ports:
       - ${TORRENT_CLIENT_API_PORT}:2222
     volumes:
@@ -74,6 +129,8 @@ services:
     build:
       context: ./src/peerServer
       dockerfile: Dockerfile
+    links:
+      - postgres-db
     ports:
       - ${TORRENT_PEER_PORT}:2222
     environment:
@@ -88,11 +145,22 @@ services:
       dockerfile: Dockerfile
     ports:
       - ${FRONT_PORT}:80
+    links:
+      - search
+      - movies
+      - storage
+      - torrent-client
+      - magnet-converter
     networks:
       - docker_net
     restart: always
     depends_on:
       - storage
+      - search
+      - movies
+    environment:
+      MOVIES_API_PORT: ${MOVIES_API_PORT}
+      SEARCH_API_PORT: ${SEARCH_API_PORT}
 
   redis-db:
     image: redis:${REDIS_VERSION}
@@ -106,22 +174,22 @@ services:
     volumes:
       - ./data/redis:/data
 
-#  redis-commander:
-#    container_name: redis-commander
-#    hostname: redis-commander
-#    image: rediscommander/redis-commander:latest
-#    restart: always
-#    environment:
-#      - REDIS_HOSTS=local:redis-db:6379:0:${REDIS_PASSWORD}
-#    ports:
-#      - ${REDIS_UI_PORT}:8081
-
+  #  redis-commander:
+  #    container_name: redis-commander
+  #    hostname: redis-commander
+  #    image: rediscommander/redis-commander:latest
+  #    restart: always
+  #    environment:
+  #      - REDIS_HOSTS=local:redis-db:6379:0:${REDIS_PASSWORD}
+  #    ports:
+  #      - ${REDIS_UI_PORT}:8081
 
   postgres-db:
     image: postgres:9.6.17
     hostname: postgres-db
     volumes:
-      - ./data/pgsql:/var/lib/postgresql/data
+      #      - ./data/pgsql:/var/lib/postgresql/data:Z
+      - ./data/pgsql:/home/${POSTGRES_USER}/data:Z
     ports:
       - ${POSTGRES_PORT}:${POSTGRES_PORT}
     environment:
@@ -133,7 +201,6 @@ services:
     networks:
       - docker_net
     restart: on-failure
-
 
 networks:
   docker_net:
