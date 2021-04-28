@@ -1,31 +1,6 @@
 version: '3'
 
 services:
-  search:
-    build:
-      context: ./src/search
-      dockerfile: Dockerfile
-    ports:
-      - ${SEARCH_API_PORT}:2222
-    environment:
-#      MONGO_USER: ${MONGO_USER}
-#      MONGO_PASSWORD: ${MONGO_PASSWORD}
-#      MONGO_ADDRESS: ${MONGO_ADDRESS}
-
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_USER: ${REDIS_USER}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
-      REDIS_DB: ${REDIS_DB}
-
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    networks:
-      - docker_net
-
   storage:
     build:
       context: ./src/storage
@@ -118,7 +93,6 @@ services:
     restart: always
     depends_on:
       - storage
-      - search
 
   redis-db:
     image: redis:${REDIS_VERSION}
