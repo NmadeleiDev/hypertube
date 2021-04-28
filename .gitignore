@@ -5,5 +5,4 @@ data
 files
 tests
 
-src/search/node_modules
 src/magnetCoverter
