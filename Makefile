@@ -20,7 +20,8 @@ git-push: ## full git push
 build: ## build all containers (docker compose)
 	docker-compose build
 
-up: up-back up-front
+#up: build-front up-back
+up: up-back
 
 up-back:
 	docker-compose up --build -d
@@ -30,6 +31,9 @@ up-front: ## build & start the project (docker-compose)
 
 init-front:
 	cd src/frontend && npm i
+
+build-front: init-front
+	cd src/frontend && npm run build && cp -R build/* ../nginx/static/
 
 init-up: up-back init-front up-front
 

@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "start": "tsc && node dist/index.js",
+    "build": "tsc",
+    "start": "npm run build && node dist/index.js",
     "dev": "source .env; nodemon",
     "test": "test"
   },

@@ -6,6 +6,8 @@ files
 tests
 node_modules/
 dist/
+build/
+static/
 .DS_Store
 
 src/magnetCoverter
