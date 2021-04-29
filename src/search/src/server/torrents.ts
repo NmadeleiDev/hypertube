@@ -1,13 +1,13 @@
-import axios from 'axios';
-import { writeFileSync } from 'fs';
-import parse from 'node-html-parser';
-import TorrentSearchApi, { Torrent } from 'torrent-search-api';
-import log from '../logger/logger';
-import { loadMoviesInfo } from './imdb';
-import { ITranslatedMovie } from './kinopoisk';
-import { download } from './utils';
-const Magnet2torrent = require('magnet2torrent-js');
-const TorrentIndexer = require('torrent-indexer');
+import axios from "axios";
+import { writeFileSync } from "fs";
+import parse from "node-html-parser";
+import TorrentSearchApi, { Torrent } from "torrent-search-api";
+import log from "../logger/logger";
+import { loadMoviesInfo } from "./imdb";
+import { ITranslatedMovie } from "./kinopoisk";
+import { download } from "./utils";
+const Magnet2torrent = require("magnet2torrent-js");
+const TorrentIndexer = require("torrent-indexer");
 const torrentIndexer = new TorrentIndexer();
 
 export interface ITorrent {
@@ -37,7 +37,7 @@ const parseDottedFormat = (torrent: Torrent): ITorrent => {
   return {
     torrentTitle: torrent.title,
     croppedTorrentTitle: title,
-    movieTitle: formatTitle(title.replace(/\./g, ' ')),
+    movieTitle: formatTitle(title.replace(/\./g, " ")),
     year: match ? +match[2] : 0,
     torrent,
   };
@@ -46,7 +46,7 @@ const parseDottedFormat = (torrent: Torrent): ITorrent => {
 const parseSpacedFormat = (torrent: Torrent): ITorrent => {
   const titleRE = /^([.\w '’:-]+?)\.? \(?(\d{4})\)?|(\d{3,4}p)/;
   const match = torrent.title.match(titleRE);
-  log.debug('[parseSpacedFormat]', match);
+  log.debug("[parseSpacedFormat]", match);
   const name = match ? match[1] : torrent.title;
   const seriesName = name.match(/^([\w\s:'’-]+?) \(?(s\d{1,2})\)?/i);
   const title = seriesName ? seriesName[1] : name;
@@ -60,22 +60,22 @@ const parseSpacedFormat = (torrent: Torrent): ITorrent => {
 };
 
 export const parseSize = (size: string) => {
-  return size.search('GB') !== -1
+  return size.search("GB") !== -1
     ? Number.parseFloat(size)
     : Number.parseFloat(size) / 1000;
 };
 
 export const enableTorrentSearch = () => {
-  TorrentSearchApi.enableProvider('Rarbg');
-  TorrentSearchApi.enableProvider('ThePirateBay');
+  TorrentSearchApi.enableProvider("Rarbg");
+  TorrentSearchApi.enableProvider("ThePirateBay");
   // TorrentSearchApi.enablePublicProviders();
   const activeProviders = TorrentSearchApi.getActiveProviders();
-  log.debug('activeProviders', activeProviders);
+  log.debug("activeProviders", activeProviders);
 };
 
 export const getMovieInfo = (torrent: Torrent): ITorrent => {
   // log.debug('[getMovieInfo]', torrent);
-  if (torrent.title.search(' ') !== -1) return parseSpacedFormat(torrent);
+  if (torrent.title.search(" ") !== -1) return parseSpacedFormat(torrent);
   else return parseDottedFormat(torrent);
 };
 
@@ -104,25 +104,25 @@ export const groupTorrentsByTitle = (
     sizeStep: 1,
   }
 ): ITorrent[] => {
-  log.debug('[groupTorrentsByTitle] start');
+  log.debug("[groupTorrentsByTitle] start");
   const sortedTorrents = torrents.sort(
     (a, b) => parseSize(a.size) - parseSize(b.size)
   );
 
-  log.debug('[groupTorrentsByTitle] sortedTorrents', sortedTorrents);
+  log.debug("[groupTorrentsByTitle] sortedTorrents", sortedTorrents);
 
   const grouppedTorrents = torrents.reduce(
     (acc: ITorrent[], cur: FullTorrent) => {
-      log.debug('acc:', acc, '\ncur:', cur);
+      log.debug("acc:", acc, "\ncur:", cur);
       try {
         const currentMovie = getMovieInfo(cur);
-        log.info('[groupTorrentsByTitle] got parsed ITorrent', currentMovie);
+        log.info("[groupTorrentsByTitle] got parsed ITorrent", currentMovie);
         const isAdded = acc.find(
           (item: ITorrent) =>
             item.croppedTorrentTitle === currentMovie.croppedTorrentTitle
         );
         if (!isAdded) {
-          log.trace('adding: ', currentMovie);
+          log.trace("adding: ", currentMovie);
           return [...acc, currentMovie];
         }
         return acc;
@@ -134,7 +134,7 @@ export const groupTorrentsByTitle = (
     []
   );
 
-  log.debug('[groupTorrentsByTitle] grouppedTorrents', grouppedTorrents);
+  log.debug("[groupTorrentsByTitle] grouppedTorrents", grouppedTorrents);
 
   // try to find lightest torrents first
   // if failed - increase limit by 1 GB and try again
@@ -143,7 +143,7 @@ export const groupTorrentsByTitle = (
       maxSize: options.maxSize + options.sizeStep,
       sizeStep: options.sizeStep,
     });
-  log.debug('[groupTorrentsByTitle] end');
+  log.debug("[groupTorrentsByTitle] end");
   return grouppedTorrents;
 };
 
@@ -157,7 +157,7 @@ export const groupTorrentsByTitle = (
 
 const searchFn = async (
   search: string,
-  category: string = 'Movie',
+  category: string = "Movie",
   options = { limit: 20, retries: 3 }
 ) => {
   const { limit, retries } = options;
@@ -175,7 +175,7 @@ const searchFn = async (
     .filter((torrent) => torrent.title.match(/(720p)|(1080p)|(dvdrip)/gi));
 
   while (!filteredTorrents.length) {
-    log.warn('No HD movies found');
+    log.warn("No HD movies found");
     log.warn(`retires left: ${retries - 1}`);
     filteredTorrents = await searchFn(search, category, {
       limit: limit + 10,
@@ -189,10 +189,10 @@ const searchFn = async (
 
 export const searchTorrents = async function (
   search: string,
-  category: string = 'All',
+  category: string = "All",
   options = { limit: 20, retries: 3 }
 ) {
-  log.debug('[Torrents] searchTorrents start', options);
+  log.debug("[Torrents] searchTorrents start", options);
   try {
     const torrents = await searchFn(search, category, options);
     const resolvedTorrents = await Promise.all(
@@ -206,11 +206,11 @@ export const searchTorrents = async function (
             magnet = await TorrentSearchApi.getMagnet(torrent);
           }
 
-          log.debug('Downloaded torrent and magnet', file, magnet);
+          log.debug("Downloaded torrent and magnet", file, magnet);
           const newTorrent = { ...torrent };
           if (file) newTorrent.torrent = file;
           if (magnet) newTorrent.magnet = magnet;
-          log.info('Updated torrent:', newTorrent);
+          log.info("Updated torrent:", newTorrent);
           return newTorrent;
         } catch (e) {
           log.error(e);
@@ -218,8 +218,8 @@ export const searchTorrents = async function (
         }
       })
     );
-    log.debug('[Torrents] searchTorrents end');
-    log.debug('Filtered torrents', resolvedTorrents);
+    log.debug("[Torrents] searchTorrents end");
+    log.debug("Filtered torrents", resolvedTorrents);
     return resolvedTorrents;
   } catch (e) {
     log.error(e);
@@ -250,7 +250,7 @@ interface IIndexerTorrent {
 const formatTitle = (title: string) => {
   if (!title) return null;
   const trimmed = title.trim().replace(/`|’/g, "'");
-  if (trimmed.endsWith('.') && !trimmed.endsWith('...'))
+  if (trimmed.endsWith(".") && !trimmed.endsWith("..."))
     return trimmed.slice(0, -1);
   return trimmed;
 };
@@ -259,16 +259,16 @@ export const torrentIndexerSearch = async (search: string) => {
   try {
     const torrents = (await torrentIndexer.search(
       search,
-      'movie'
+      "movie"
     )) as IIndexerTorrent[];
 
-    log.debug('fetched torretns', torrents);
+    log.debug("fetched torretns", torrents);
     if (torrents.length) {
       const filteredTorrents = torrents.filter(
         (torrent) =>
           !torrent.fileName.match(/xxx/gi) && parseSize(torrent.size) > 0.5
       );
-      log.debug('filteredTorrents', filteredTorrents);
+      log.debug("filteredTorrents", filteredTorrents);
 
       const formattedTorrents = filteredTorrents.map<ITorrent>((torrent) => {
         const parcedTorrent = parseSpacedFormat({
@@ -276,7 +276,7 @@ export const torrentIndexerSearch = async (search: string) => {
           time: new Date().toISOString(),
           size: torrent.size,
           magnet: torrent.link || torrent.site,
-          desc: '',
+          desc: "",
           provider: torrent.sourceName,
           seeds: torrent.seeders,
           peers: torrent.leechers,
@@ -284,7 +284,7 @@ export const torrentIndexerSearch = async (search: string) => {
         return parcedTorrent;
       });
 
-      log.debug('formattedTorrents', formattedTorrents);
+      log.debug("formattedTorrents", formattedTorrents);
 
       const unduplicated = [];
       formattedTorrents
@@ -308,7 +308,7 @@ export const torrentIndexerSearch = async (search: string) => {
       unduplicated.forEach(async (el) => {
         try {
           el.torrent.torrent = await torrentIndexer.torrent(el.torrent.magnet);
-          log.debug('unduplicated el', el);
+          log.debug("unduplicated el", el);
         } catch (e) {
           log.error(e);
         }
@@ -337,55 +337,55 @@ const getTorrentsFromPage = async (page?: IPage): Promise<ITorrent | null> => {
   const title = page.title;
 
   const html = await axios(page.url);
-  if (!html.data) throw new Error('Cannot fetch page ' + page.url);
+  if (!html.data) throw new Error("Cannot fetch page " + page.url);
   const root = parse(html.data);
 
-  const movieInfo = root.querySelector('#movie-info');
+  const movieInfo = root.querySelector("#movie-info");
   log.trace(movieInfo.toString());
-  const hiddenSM = movieInfo.querySelector('.hidden-sm');
+  const hiddenSM = movieInfo.querySelector(".hidden-sm");
   const hd = hiddenSM
-    .querySelectorAll('a')
+    .querySelectorAll("a")
     .find((el) => el.rawAttributes.title.search(/(720)|(1080)p/) !== -1);
   // nothing's found
   if (!hd) return null;
 
   // getMovieInfo
-  const techQuality = root.querySelectorAll('.tech-quality');
+  const techQuality = root.querySelectorAll(".tech-quality");
   const resolution =
-    hd.rawAttributes.title.search(/720p/) >= 0 ? '720p' : '1080p';
+    hd.rawAttributes.title.search(/720p/) >= 0 ? "720p" : "1080p";
 
-  log.trace('[getTorrentsFromPage] Found resolution', resolution);
+  log.trace("[getTorrentsFromPage] Found resolution", resolution);
   const infoIndex = techQuality.findIndex((el) => el.innerText.match(/720p/));
-  log.trace('[getTorrentsFromPage] index', infoIndex);
+  log.trace("[getTorrentsFromPage] index", infoIndex);
   const specs = root
-    .querySelectorAll('.tech-spec-info')
-    [infoIndex].querySelectorAll('.tech-spec-element');
+    .querySelectorAll(".tech-spec-info")
+    [infoIndex].querySelectorAll(".tech-spec-element");
   const peersMatch = specs
     .find((el) => el.innerHTML.match(/Peers and Seeds/))
     .innerText.trim()
     .match(/(\d+ \/ \d+)/);
-  const peersAndSeeds = peersMatch ? peersMatch[1].split('/') : [0, 0];
-  log.info('[getTorrentsFromPage] peersAndSeeds', peersAndSeeds);
+  const peersAndSeeds = peersMatch ? peersMatch[1].split("/") : [0, 0];
+  log.info("[getTorrentsFromPage] peersAndSeeds", peersAndSeeds);
 
   // download torrent
-  log.info('[getTorrentsFromPage] downloading torrent', hd.rawAttributes.href);
+  log.info("[getTorrentsFromPage] downloading torrent", hd.rawAttributes.href);
   let res;
   try {
     res = await download(hd.rawAttributes.href);
   } catch (e) {
-    log.error('[getTorrentsFromPage] error', e, res);
+    log.error("[getTorrentsFromPage] error", e, res);
     res = null;
   }
-  log.info('[getTorrentsFromPage] got torrent', res);
+  log.info("[getTorrentsFromPage] got torrent", res);
   if (!res) {
-    console.log('Could not download torrent');
+    console.log("Could not download torrent");
     return null;
   }
   // === write file to filesystem (not actually needed) ===
   // writeFileSync(title + '.torrent', res.data);
   const torrent = {
     torrentTitle: `${title} (${page.year})`,
-    croppedTorrentTitle: '',
+    croppedTorrentTitle: "",
     movieTitle: title,
     year: +page.year || 0,
     torrent: {
@@ -393,22 +393,22 @@ const getTorrentsFromPage = async (page?: IPage): Promise<ITorrent | null> => {
       size: specs
         .find((el) => el.innerHTML.match(/File Size/))
         .innerText.trim(),
-      time: '',
-      magnet: '',
+      time: "",
+      magnet: "",
       desc: root
-        .querySelector('#movie-sub-info')
-        .querySelector('.hidden-xs')
+        .querySelector("#movie-sub-info")
+        .querySelector(".hidden-xs")
         .innerText.trim(),
-      provider: 'YTS',
+      provider: "YTS",
       seeds: +peersAndSeeds[1],
       peers: +peersAndSeeds[0],
-      torrent: res || '',
+      torrent: res || "",
     },
   } as ITorrent;
   // const mov = imdbToIMovie(await getIMDBInfo(torrent), torrent);
   // torrent.torrent.imdb = mov.id;
 
-  log.info('[getTorrentsFromPage]found torrent', torrent);
+  log.info("[getTorrentsFromPage]found torrent", torrent);
 
   // saveTorrentInDB(torrent, mov);
   // insertTorrentIntoLoadedFiles(torrent);
@@ -426,24 +426,24 @@ export const YTSsearch = async (
       },
     });
     log.debug(res.data);
-    if (res.data.status === 'ok') {
+    if (res.data.status === "ok") {
       const pages = res.data.data as IPage[];
-      log.debug('[YTSsearch] pages', pages);
+      log.debug("[YTSsearch] pages", pages);
       if (!pages) return;
       const torrentsPromises = pages.map((page) => getTorrentsFromPage(page));
-      log.debug('[YTSsearch] torrentsPromises', torrentsPromises);
+      log.debug("[YTSsearch] torrentsPromises", torrentsPromises);
       const torrents = await Promise.all(torrentsPromises);
-      log.debug('[YTSsearch] found torrents', torrents);
+      log.debug("[YTSsearch] found torrents", torrents);
       const reduced = torrents.reduce((acc: ITorrent[], torrent) => {
-        log.debug('[YTSsearch] acc, torrent', acc, torrent);
+        log.debug("[YTSsearch] acc, torrent", acc, torrent);
         if (!torrent) return acc;
         return !acc.find((movie) => movie.movieTitle === torrent.movieTitle)
           ? [...acc, torrent]
           : acc;
       }, []);
-      log.debug('[YTSsearch] reduced torrents', reduced);
+      log.debug("[YTSsearch] reduced torrents", reduced);
       const movies = await loadMoviesInfo(reduced);
-      log.info('[YTSsearch] found movies', movies);
+      log.info("[YTSsearch] found movies", movies);
       return movies;
     }
     return null;

@@ -1,7 +1,7 @@
-const dayjs = require('dayjs');
-import { blue, cyan, magenta, red, yellow } from './colors';
+const dayjs = require("dayjs");
+import { blue, cyan, magenta, red, yellow } from "./colors";
 
-const MODULE = 'movies';
+const MODULE = "movies";
 enum LEVEL {
   TRACE = 0,
   DEBUG,
@@ -10,17 +10,17 @@ enum LEVEL {
   ERROR,
 }
 
-const time = () => dayjs().format('YYYY-MM-DDTHH:mm:ss.SSS');
-const level = process.env.LOG_LEVEL || 'DEBUG';
+const time = () => dayjs().format("YYYY-MM-DDTHH:mm:ss.SSS");
+const level = process.env.LOG_LEVEL.toLocaleUpperCase() || "DEBUG";
 const getFileAndLineNumber = () => {
-  let initiator = 'unknown place';
+  let initiator = "unknown place";
   try {
     throw new Error();
   } catch (e) {
-    if (typeof e.stack === 'string') {
-      const lines = e.stack.split('\n');
+    if (typeof e.stack === "string") {
+      const lines = e.stack.split("\n");
       const path =
-        process.env.NODE_ENV === 'production' ? '/dist/' : `/src/${MODULE}/`;
+        process.env.NODE_ENV === "production" ? "/dist/" : `/src/${MODULE}/`;
       const regex = new RegExp(`^\\s*at\\s+.*(${path}.+)\/([\\w:.]+)`);
       const matches = lines[3].match(regex);
       if (matches) {
@@ -31,7 +31,7 @@ const getFileAndLineNumber = () => {
   return initiator;
 };
 const getFullStackTrace = () => {
-  let initiator = 'unknown place';
+  let initiator = "unknown place";
   try {
     throw new Error();
   } catch (e) {
