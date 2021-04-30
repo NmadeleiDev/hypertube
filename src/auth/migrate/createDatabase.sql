@@ -1,0 +1,4 @@
+DROP DATABASE IF EXISTS hypertube_db;
+DROP USER IF EXISTS bsabre;
+CREATE USER bsabre PASSWORD '23';
+CREATE DATABASE hypertube_db OWNER bsabre;

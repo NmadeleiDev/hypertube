@@ -71,16 +71,13 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			logrus.Debugf("Got file name from client: %v, waiting for data", fileName)
 			filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start)
 		}
-
-		fileRange.End = fileRange.Start + int64(len(filePart))
-
-		contentLen := fileRange.End - fileRange.Start
-
 		logrus.Debugf("Writing response: %v", len(filePart))
 
 		if err != nil {
 			SendFailResponseWithCode(w, err.Error(), http.StatusInternalServerError)
 		} else {
+			fileRange.End = fileRange.Start + int64(len(filePart))
+			contentLen := fileRange.End - fileRange.Start
 			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", fileRange.Start, fileRange.End, fileLength))
 			w.Header().Set("Content-Length", fmt.Sprint(contentLen))
 			w.Header().Set("Accept-Ranges", "bytes")

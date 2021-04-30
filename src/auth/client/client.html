@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Client to test</title>
+	<link rel="stylesheet" href="client.css">
+	<script src="client.js"></script>
+</head>
+<body>
+	<div id="errorField">error Field</div>
+	<div id="responseField">response will be here</div>
+
+	<div class="grid_2_places">
+		<div>
+			<form name="authBasic">
+				<input type="text" class="input_text" name="email" placeholder="email">
+				<input type="password" class="input_text" name="passwd" placeholder="password">
+			</form>
+			<input type="submit" class="input_submit" value="Авторизация" onclick="AuthBasic()">
+			<form method="get" action="https://api.intra.42.fr/oauth/authorize">
+				<input type="hidden" name="client_id" value="96975efecfd0e5efee67c9ac4cc350ac9372ae559b2fb8a08feba6841a33fb53">
+				<input type="hidden" name="redirect_uri" value="http://localhost:4000/api/auth/oauth42">
+				<input type="hidden" name="scope" value="public">
+				<input type="hidden" name="state" value="bdcbe28874ab05962b50430b1466a8ebcbda45ba8c3c1beee600699478ad2a4d">
+				<input type="hidden" name="response_type" value="code">
+				<input type="submit" class="input_submit" value="школа 21">
+			</form>
+			<form method="get" action="https://oauth.vk.com/authorize">
+				<input type="hidden" name="client_id" value="7781054">
+				<input type="hidden" name="redirect_uri" value="http://localhost:4000/api/auth/oauthVk">
+				<input type="hidden" name="scope" value="offline+photos">
+				<input type="hidden" name="state" value="bdcbe28874ab05962b50430b1466a8ebcbda45ba8c3c1beee600699478ad2a4d">
+				<input type="hidden" name="response_type" value="code">
+				<input type="submit" class="input_submit" value="Вконтакте">
+			</form>
+			<form method="get" action="https://www.facebook.com/v10.0/dialog/oauth">
+				<input type="hidden" name="client_id" value="737140593612593">
+				<input type="hidden" name="redirect_uri" value="http://localhost:4000/api/auth/oauthFb">
+				<input type="hidden" name="response_type" value="code">
+				<input type="hidden" name="scope" value="email+public_profile">
+				<input type="submit" class="input_submit" value="Facebook">
+			</form>
+		</div>
+		<div>
+			<form name="profileCreate">
+				<input type="text" class="input_text" name="email" placeholder="email">
+				<input type="text" class="input_text" name="username" placeholder="username">
+				<input type="password" class="input_text" name="passwd" placeholder="password">
+			</form>
+			<input type="submit" class="input_submit" value="Регистрация" onclick="ProfileCreate()">
+		</div>
+	</div>
+
+	<div class="grid_2_places">
+		<div>
+			<form name="profilePatch">
+				<input type="text" class="input_text" name="firstName" placeholder="first name">
+				<input type="text" class="input_text" name="lastName" placeholder="last name">
+				<input type="text" class="input_text" name="username" placeholder="username">
+			</form>
+			<form title="выбрать фото">
+				<input type="file" class="input_submit" accept="image/*" onchange="readURL(this);">
+			</form>
+			<input type="submit" class="input_submit" value="Обновить" onclick="ProfilePatch()">
+		</div>
+		<div>
+			<form name="emailPatch">
+				<input type="text" class="input_text" name="email" placeholder="new email">
+			</form>
+			<input type="submit" class="input_submit" value="Обновить" onclick="EmailPatch()">
+			<input type="submit" class="input_submit" value="Отправить повторно" onclick="EmailResend()">
+			<input type="submit" class="input_submit" value="Восстановить пароль" onclick="PasswdRepair()">
+			<form name="passwd">
+				<input type="text" class="input_text" name="oldPasswd" placeholder="old password">
+				<input type="text" class="input_text" name="newPasswd" placeholder="old password">
+			</form>
+			<input type="submit" class="input_submit" value="Удалить пользователя" onclick="ProfileDelete()">
+		</div>
+	</div>
+
+	<img src="" id="avatar">
+
+	
+	
+</body>
+</html>

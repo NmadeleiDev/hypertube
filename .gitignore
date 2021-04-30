@@ -10,4 +10,6 @@ build/
 static/
 .DS_Store
 
+conf.json
+
 src/magnetCoverter
