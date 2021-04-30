@@ -1,5 +1,7 @@
 import { makeStyles } from '@material-ui/core';
 import React, { useRef } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/rootReducer';
 
 interface IdProps {
   id: string;
@@ -23,22 +25,18 @@ type Props = IdProps | SrcProps;
 const NativePlayer = ({ src, id }: Props) => {
   const styles = useSyles();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const movie = useSelector((state: RootState) =>
+    state.movies.movies.find((movie) => movie.en.id === id)
+  );
+  const poster = movie?.en.img;
 
-  const url = id ? `/api/loader/${id}` : src;
+  const url = id ? `/api/storage/load/${id}` : src;
 
   return (
     <div>
-      <video
-        // poster="poster.png"
-        controls
-        ref={videoRef}
-        className={styles.root}
-      >
+      <video poster={poster} controls ref={videoRef} className={styles.root}>
         <source src={url}></source>
-        {/* <source src="video.mp4"></source>
-        <source src="video.webm"></source>
-        <source src="video.ogv"></source> */}
-        <p>This is fallback content</p>
+        <p>Cannot play video</p>
       </video>
     </div>
   );
