@@ -5,8 +5,6 @@ services:
     build:
       context: ./src/search
       dockerfile: Dockerfile
-    ports:
-      - ${SEARCH_API_PORT}:2222
     links:
       - postgres-db
     environment:
@@ -16,7 +14,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
 
-      SEARCH_API_PORT: ${SEARCH_API_PORT}
       KINOPOISK_API_KEY: ${KINOPOISK_API_KEY}
       LOG_LEVEL: ${LOG_LEVEL}
       IMDB_API_KEY: ${IMDB_API_KEY}
@@ -29,8 +26,6 @@ services:
     build:
       context: ./src/movies
       dockerfile: Dockerfile
-    ports:
-      - ${MOVIES_API_PORT}:2223
     links:
       - postgres-db
     environment:
@@ -40,7 +35,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
 
-      MOVIES_API_PORT: ${MOVIES_API_PORT}
       LOG_LEVEL: ${LOG_LEVEL}
       IMDB_API_KEY: ${IMDB_API_KEY}
     networks:

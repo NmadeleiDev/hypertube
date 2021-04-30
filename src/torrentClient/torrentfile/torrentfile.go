@@ -22,6 +22,8 @@ import (
 type torrentsManager struct {
 }
 
+var activeDownloads = make(map[string]bool, 100)
+
 func (t *torrentsManager) ReadTorrentFileFromFS(path string) (TorrentFile, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -78,6 +80,12 @@ func GetManager() TorrentFilesManager {
 }
 
 func (t *TorrentFile) DownloadToFile() error {
+	if active, exists := activeDownloads[t.SysInfo.FileId]; active && exists {
+		return fmt.Errorf("file %v is already loading", t.SysInfo.FileId)
+	} else {
+		activeDownloads[t.SysInfo.FileId] = true
+		defer delete(activeDownloads, t.SysInfo.FileId)
+	}
 	downloadCtx, downloadCancel := context.WithCancel(context.Background())
 	defer downloadCancel()
 
@@ -91,8 +99,11 @@ func (t *TorrentFile) DownloadToFile() error {
 	defer poolCancel()
 	go peersPoolObj.StartRefreshing(poolCtx)
 
+	priorityManager := LoadPriority{torrentFile: t}
+
 	torrent := p2p.TorrentMeta{
 		ActiveClientsChan: peersPoolObj.ActiveClientsChan,
+		PieceLoadPriorityUpdates: priorityManager.StartPriorityUpdating(downloadCtx),
 		PeerID:      t.Download.MyPeerId,
 		InfoHash:    t.InfoHash,
 		PieceHashes: t.PieceHashes,
@@ -102,6 +113,8 @@ func (t *TorrentFile) DownloadToFile() error {
 		FileId: 	 t.SysInfo.FileId,
 		ResultsChan: make(chan p2p.LoadedPiece, 100),
 	}
+
+	t.CreateFileBoundariesMapping()
 
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
 	//defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
@@ -155,23 +168,6 @@ func (t *TorrentFile) getHeaviestFile() bencodeTorrentFile {
 }
 
 func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts chan p2p.LoadedPiece) {
-	type fileBoundaries struct {
-		FileName string
-		Index	int
-		Start	int64
-		End		int64
-	}
-	files := make([]fileBoundaries, len(t.Files))
-	fileStart := 0
-	for i, file := range t.Files {
-		files[i].FileName = file.EncodeFileName()
-		files[i].Index = i
-		files[i].Start = int64(fileStart)
-		files[i].End = int64(fileStart + file.Length)
-		fileStart += file.Length
-	}
-	logrus.Infof("Calculated files borders: %v", files)
-
 	for {
 		select {
 		case <- ctx.Done():
@@ -180,7 +176,7 @@ func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts c
 			return
 		case loaded := <- dataParts:
 			logrus.Debugf("Got loaded part: start=%v, len=%v", loaded.StartByte, loaded.Len)
-			for _, file := range files {
+			for _, file := range t.FileBoundariesMapping {
 				if loaded.StartByte > file.End || loaded.StartByte + loaded.Len < file.Start {
 					//logrus.Debugf("Skipping '%v' write due to (%v, %v); (%v, %v)", file.FileName, loaded.StartByte > file.End, loaded.StartByte + loaded.Len < file.Start, file.Start, file.End)
 					continue
@@ -192,7 +188,6 @@ func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts c
 				if fileEndBias > 0 {
 					sliceEnd -= fileEndBias
 				}
-
 
 				if sliceStart < 0 {
 					sliceStart = 0
@@ -294,6 +289,19 @@ func (i *bencodeInfoMultiFiles) splitPieceHashes() ([][20]byte, error) {
 		copy(hashes[i][:], buf[i*hashLen:(i+1)*hashLen])
 	}
 	return hashes, nil
+}
+
+func (t *TorrentFile) CreateFileBoundariesMapping() {
+	t.FileBoundariesMapping = make([]FileBoundaries, len(t.Files))
+	fileStart := 0
+	for i, file := range t.Files {
+		t.FileBoundariesMapping[i].FileName = file.EncodeFileName()
+		t.FileBoundariesMapping[i].Index = i
+		t.FileBoundariesMapping[i].Start = int64(fileStart)
+		t.FileBoundariesMapping[i].End = int64(fileStart + file.Length)
+		fileStart += file.Length
+	}
+	logrus.Infof("Calculated files borders: %v", t.FileBoundariesMapping)
 }
 
 func (bto *bencodeTorrentSingleFile) toTorrentFile() (TorrentFile, error) {

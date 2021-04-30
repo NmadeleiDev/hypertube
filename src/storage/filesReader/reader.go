@@ -115,7 +115,7 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 					logrus.Debugf("Sending res with len = %v", totalLen)
 					resultsChan <- resultStruct{Data: buf, TotalLen: totalLen, Err: nil}
 				} else {
-					logrus.Debugf("Read buf not written or nil (%v %v)", buf == nil, f.HasNotNullBytes(buf))
+					logrus.Debugf("Read buf not written or nil (%v %v)", f.IsPartWritten(fileName, buf, start), buf == nil)
 					if buf != nil {
 						logrus.Debugf("Buf: {%v; %v}", buf[:100], buf[len(buf) - 100:])
 					}

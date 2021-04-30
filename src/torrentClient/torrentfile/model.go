@@ -22,9 +22,17 @@ type TorrentFile struct {
 	PieceLength int
 	Length      int
 	Files		[]bencodeTorrentFile
+	FileBoundariesMapping	 []FileBoundaries
 	Name        string
 	SysInfo     SystemInfo
 	Download    DownloadUtils
+}
+
+type FileBoundaries struct {
+	FileName string
+	Index	int
+	Start	int64
+	End		int64
 }
 
 type SystemInfo struct {

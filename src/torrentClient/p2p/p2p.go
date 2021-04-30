@@ -149,32 +149,46 @@ func (t *TorrentMeta) calculatePieceSize(index int) int {
 	return end - begin
 }
 
-// Download downloads the torrent. This stores the entire file in memory.
 func (t *TorrentMeta) Download(ctx context.Context) error {
 	logrus.Infof("starting download %v parts, file.len=%v, p.length=%v for %v",
 		len(t.PieceHashes), t.Length, t.PieceLength, t.Name)
 
-	// Init queues for workers to retrieve work and send results
-	workQueue := make(chan *pieceWork, len(t.PieceHashes))
-	results := make(chan *pieceResult)
-
-	defer close(workQueue)
-	defer close(results)
-
+	donePieces := 0
 	loadedIdxs := db.GetFilesManagerDb().GetLoadedIndexesForFile(t.FileId)
 	logrus.Debugf("Got loaded idxs: %v", loadedIdxs)
 
-	go func() {
-		for index, hash := range t.PieceHashes {
-			if IntArrayContain(loadedIdxs, index) {
-				continue
-			}
-			length := t.calculatePieceSize(index)
+	priorityManager := prioritySorter{
+		Pieces: make([]*pieceWork, 0, len(t.PieceHashes)),
+		PriorityUpdates: t.PieceLoadPriorityUpdates,
+	}
 
-			//logrus.Debugf("Prepared piece idx=%v, len=%v", index, length)
-			workQueue <- &pieceWork{index, hash, length}
+	for index, hash := range t.PieceHashes {
+		if IntArrayContain(loadedIdxs, index) {
+			if buf, start, size, ok := db.GetFilesManagerDb().GetPartDataByIdx(t.FileId, index); ok {
+				t.ResultsChan <- LoadedPiece{Data: buf, Len: size, StartByte: start}
+				donePieces ++
+				continue
+			} else {
+				db.GetFilesManagerDb().DropDataPartByIdx(t.FileId, index)
+			}
 		}
-	}()
+		length := t.calculatePieceSize(index)
+		//logrus.Debugf("Prepared piece idx=%v, len=%v", index, length)
+		piece := pieceWork{index, hash, length}
+		priorityManager.Pieces = append(priorityManager.Pieces, &piece)
+	}
+
+	if len(priorityManager.Pieces) == 0 { // значит все уже загружено
+		return nil
+	}
+
+	//workQueue := make(chan *pieceWork, len(priorityManager.Pieces))
+	results := make(chan *pieceResult, len(priorityManager.Pieces))
+
+	//defer close(workQueue)
+	defer close(results)
+
+	topPriorityPieceChan := priorityManager.InitSorter(ctx)
 
 	// Start workers as they arrive from Pool
 	go func() {
@@ -188,12 +202,11 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 					continue
 				}
 				logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
-				go t.startDownloadWorker(activeClient, workQueue, results)
+				go t.startDownloadWorker(activeClient, topPriorityPieceChan, results)
 			}
 		}
 	}()
 
-	donePieces := 0
 	for donePieces < len(t.PieceHashes) {
 		select {
 		case <- ctx.Done():

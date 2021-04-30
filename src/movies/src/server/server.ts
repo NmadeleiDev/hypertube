@@ -9,7 +9,7 @@ import log from '../logger/logger';
 const bodyParser = require('body-parser').json();
 
 export default function startServer() {
-  const port = process.env.MOVIES_API_PORT || '2223';
+  const port = "2222";
 
   const app = express();
 

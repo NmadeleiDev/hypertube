@@ -7,7 +7,7 @@ import { initDatabase } from "../db/postgres/config";
 const bodyParser = require("body-parser").json();
 
 export default function startServer() {
-  const port = process.env.MOVIES_API_PORT || "2222";
+  const port = "2222";
   enableTorrentSearch();
   initDatabase();
 

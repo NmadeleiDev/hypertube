@@ -1,7 +1,10 @@
 package redis
 
 import (
+	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"torrentClient/parser/env"
 
@@ -15,6 +18,12 @@ const (
 
 type manager struct {
 	conn	*redis.Client
+}
+
+type PriorityUpdateMsg struct {
+	TorrentId	string
+	FileName string
+	ByteIdx	int64
 }
 
 var Manager manager
@@ -38,6 +47,32 @@ func (m *manager) DeleteSliceIndexesSet(fileName string) {
 	if _, err := m.conn.Del(m.GetSliceIndexesKey(fileName)).Result(); err != nil {
 		logrus.Errorf("Error deleting key: %v", err)
 	}
+}
+
+func (m *manager) GetLoadPriorityUpdatesChan(ctx context.Context, fileId string) chan PriorityUpdateMsg {
+	sub := m.conn.PSubscribe(fmt.Sprintf("%s:*", fileId))
+
+	updatesChan := make(chan PriorityUpdateMsg, 100)
+
+	go func() {
+		for {
+			select {
+			case <- ctx.Done():
+				close(updatesChan)
+				return
+			case msg := <- sub.Channel():
+				logrus.Debugf("Got priority msg '%v' in chan '%v'", msg.Payload, msg.Channel)
+				fileName := strings.Split(msg.Channel, ":")[1]
+				if byteIdx, err := strconv.Atoi(msg.Payload); err != nil {
+					logrus.Errorf("Error parsing msg payload for byte index: %v", err)
+				} else {
+					updatesChan <- PriorityUpdateMsg{FileName: fileName, TorrentId: fileId, ByteIdx: int64(byteIdx)}
+				}
+			}
+		}
+	}()
+
+	return updatesChan
 }
 
 func (m *manager) InitConnection() {

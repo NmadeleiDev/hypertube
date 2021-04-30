@@ -6,6 +6,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	defaultPieceSize = 1e4
+)
+
 func (d *manager) GetTorrentOrMagnetForByFileId(fileId string) ([]byte, string, bool) {
 	query := `
 SELECT coalesce(torrent_file, ''), coalesce(magnet_link, '') FROM %s 
@@ -149,6 +153,31 @@ SELECT data FROM %s ORDER BY start`, d.PartsTablePathForFile(fileId))
 	}
 
 	return
+}
+
+func (d *manager) GetPartDataByIdx(fileId string, idx int) ([]byte, int64, int64, bool) {
+	query := fmt.Sprintf(`
+SELECT data, start, size FROM %s WHERE id = $1`, d.PartsTablePathForFile(fileId))
+
+	data := make([]byte, 0, defaultPieceSize)
+	var start, size int64
+
+	if err := d.conn.QueryRow(query, idx).Scan(&data, &start, &size); err != nil {
+		logrus.Errorf("Error getting data by idx: %v", err)
+		return nil, 0, 0, false
+	}
+	return data, start, size, true
+}
+
+func (d *manager) DropDataPartByIdx(fileId string, idx int) bool {
+	query := fmt.Sprintf(`
+DROP %s WHERE id = $1`, d.PartsTablePathForFile(fileId))
+
+	if _, err := d.conn.Exec(query, idx); err != nil {
+		logrus.Errorf("Error dropping data by idx: %v", err)
+		return false
+	}
+	return true
 }
 
 func (d *manager) RemoveFilePartsPlace(fileId string) {

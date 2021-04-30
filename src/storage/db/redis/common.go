@@ -32,6 +32,13 @@ func (m *manager) GetSliceIndexesForFile(fileName string) (slices []int64) {
 	return slices
 }
 
+func (m *manager) PubPriorityByteIdx(fileId, fileName string, idx int64) {
+	if res := m.conn.Publish(fmt.Sprintf("%s:%s", fileId, fileName), idx); res.Err() != nil {
+		logrus.Errorf("Error publish priority: %v", res.Err())
+	}
+	logrus.Debugf("Published new priority=%v for %v:%v", idx, fileId, fileName)
+}
+
 func (m *manager) InitConnection() {
 	m.conn = redis.NewClient(&redis.Options{
 		Addr: env.GetParser().GetRedisDbAddr(),

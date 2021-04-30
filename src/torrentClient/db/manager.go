@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"os"
 
 	"torrentClient/db/postgres"
@@ -13,6 +14,7 @@ type LoaderStateDbManager interface {
 
 	AddSliceIndexForFile(fileName string, sliceByteIdx ...int64)
 	DeleteSliceIndexesSet(fileName string)
+	GetLoadPriorityUpdatesChan(ctx context.Context, fileId string) chan redis.PriorityUpdateMsg
 }
 
 func GetLoadedStateDb() LoaderStateDbManager  {
@@ -31,7 +33,9 @@ type FilesDbManager interface {
 	SetLoadedStatusForRecord(fileId string, status bool)
 
 	GetLoadedIndexesForFile(fileId string) []int
+	GetPartDataByIdx(fileId string, idx int) ([]byte, int64, int64, bool)
 	SaveFilePartsToFile(dest *os.File, fileId string, start int, length int) error
+	DropDataPartByIdx(fileId string, idx int) bool
 	LoadPartsForFile(fileId string, writeChan chan []byte)
 	GetTorrentOrMagnetForByFileId(fileId string) ([]byte, string, bool)
 

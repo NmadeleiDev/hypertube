@@ -29,7 +29,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 		fileName, inProgress, isLoaded, fileLength, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
 		if err != nil {
 			logrus.Errorf("File not found by id '%v', err: %v", fileId, err)
-			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found: %s", fileId, err.Error()), http.StatusNotFound)
+			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
 			return
 		}
 
@@ -49,6 +49,8 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 		} else if inProgress {
 			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start)
 			if !filesReader.GetManager().IsPartWritten(fileName, filePart, fileRange.Start) || err != nil {
+				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
+
 				readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
 				defer readCancel()
 
@@ -63,6 +65,8 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 60)
 			defer readCancel()
+
+			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
 
 			logrus.Debugf("Got file name from client: %v, waiting for data", fileName)
 			filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start)

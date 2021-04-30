@@ -10,6 +10,7 @@ type LoadedFilesDbManager interface {
 	CloseConnection()
 
 	GetFileInfoById(id string) (path string, inProgress, isLoaded bool, fLen int64, err error)
+	GetInProgressFileIds() (result []string)
 }
 
 type FileReader interface {
@@ -25,4 +26,5 @@ type LoaderStateDbManager interface {
 	CloseConnection()
 
 	GetSliceIndexesForFile(fileName string) []int64
+	PubPriorityByteIdx(fileId, fileName string, idx int64)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"torrentClient/db"
 	"torrentClient/magnetToTorrent"
@@ -64,17 +65,21 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		//var fLen int64
 
 		response.FileName, _ = torrent.PrepareFile()
-		go torrent.SaveLoadedPiecesToFS()
 
 		go func() {
 			db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, true)
-			defer db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
 
 			err = torrent.DownloadToFile()
 			if err != nil {
+				if strings.Contains(err.Error(), "already loading") {
+					logrus.Debugf("Tried to double load file %v", torrent.SysInfo.FileId)
+					return
+				}
 				logrus.Errorf("Error downloading to file: %v", err)
+				db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
 			} else {
 				db.GetFilesManagerDb().SetLoadedStatusForRecord(torrent.SysInfo.FileId, true)
+				db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
 			}
 		}()
 		SendDataResponse(w, response)
