@@ -24,7 +24,7 @@ func (m *manager) GetSliceIndexesKey(fileName string) string {
 }
 
 func (m *manager) GetSliceIndexesForFile(fileName string) (slices []int64) {
-	err := m.conn.SMembers(m.GetSliceIndexesKey(fileName)).ScanSlice(&slices)
+	err := m.conn.Sort(m.GetSliceIndexesKey(fileName), &redis.Sort{Order: "ASC"}).ScanSlice(&slices)
 	if err != nil {
 		logrus.Errorf("Error GetSliceIndexesForFile: %v", err)
 	}
