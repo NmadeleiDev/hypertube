@@ -3,6 +3,9 @@ import Backend from 'i18next-http-backend';
 import languageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 
+console.log(`[i18n] env`, process.env);
+
+const url = window.location.href;
 i18n
   .use(Backend)
   .use(languageDetector)
@@ -11,7 +14,7 @@ i18n
     lng: 'en',
     fallbackLng: 'en',
     backend: {
-      loadPath: 'http://localhost:3000/locales/{{lng}}/{{ns}}.json',
+      loadPath: `${url}locales/{{lng}}/{{ns}}.json`,
     },
     detection: ['queryString', 'cookie'],
     cache: ['cookie'],
