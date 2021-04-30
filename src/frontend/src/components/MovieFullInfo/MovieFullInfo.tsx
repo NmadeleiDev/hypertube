@@ -177,8 +177,8 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
         <NativePlayer src={`/api/test/${movie.en.id}`} />
 
         <Player
-          src={`/api/test/${movie.en.id}`}
-          // id={movie.en.id}
+          // src={`/api/test/${movie.en.id}`}
+          id={movie.en.id}
           title={movie[i18n.language as 'en' | 'ru'].title}
         />
       </Grid>
