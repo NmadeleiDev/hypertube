@@ -11,7 +11,7 @@ enum LEVEL {
 }
 
 const time = () => dayjs().format("YYYY-MM-DDTHH:mm:ss.SSS");
-const level = process.env.LOG_LEVEL.toLocaleUpperCase() || "DEBUG";
+const level = process.env.LOG_LEVEL?.toLocaleUpperCase() || "DEBUG";
 const getFileAndLineNumber = () => {
   let initiator = "unknown place";
   try {
