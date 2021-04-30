@@ -1,1 +1,1 @@
-Hypertube backend
+School 42 project
