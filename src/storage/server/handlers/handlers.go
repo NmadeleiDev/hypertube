@@ -65,7 +65,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 				SendFailResponseWithCode(w, "Failed to call torrent client", http.StatusInternalServerError)
 				return
 			}
-			readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 60)
+			readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
 			defer readCancel()
 
 			fileLength = int64(newFileLength)

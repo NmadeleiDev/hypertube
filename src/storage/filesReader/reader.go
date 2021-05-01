@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const readMaxLimit = 1e7
+const readMaxLimit = 1e6
 const readMinLimit = 1e5
 
 var filesDir = env.GetParser().GetFilesDir()
@@ -76,7 +76,7 @@ func (f *fileReader) IsPartWritten(fileName string, part []byte, start int64) bo
 	return true
 }
 
-func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start int64) ([]byte, int64, error) {
+func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start int64, expectedLen int64) ([]byte, int64, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		logrus.Errorf("Error init watcher: %v", err)
@@ -108,9 +108,10 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 					resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("ok is false during watching event")}
 				}
 
-				buf, totalLen, err := f.GetFileInRange(fileName, start)
+				buf, totalLen, err := f.GetFileInRange(fileName, start, expectedLen)
 				if err != nil {
-					resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("read file error: %v", err)}
+					logrus.Debugf("File load err in watch, keep watching: %v", err)
+					//resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("read file error: %v", err)}
 				} else if buf != nil && f.IsPartWritten(fileName, buf, start) {
 					logrus.Debugf("Sending res with len = %v", totalLen)
 					resultsChan <- resultStruct{Data: buf, TotalLen: totalLen, Err: nil}
@@ -150,7 +151,7 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 	}
 }
 
-func (f *fileReader) GetFileInRange(fileName string, start int64) (result []byte, totalLength int64, err error) {
+func (f *fileReader) GetFileInRange(fileName string, start int64, expectedLen int64) (result []byte, totalLength int64, err error) {
 	file, err := os.Open(path.Join(filesDir, fileName))
 	if err != nil {
 		logrus.Errorf("Error open file: %v", err)
@@ -166,6 +167,7 @@ func (f *fileReader) GetFileInRange(fileName string, start int64) (result []byte
 	}
 
 	end := start + readMaxLimit
+	minEnd := start + readMinLimit
 
 	if start > info.Size() {
 		logrus.Debugf("start byte %v exceeds file lenght (%d)", start, info.Size())
@@ -174,7 +176,11 @@ func (f *fileReader) GetFileInRange(fileName string, start int64) (result []byte
 
 	if end > info.Size() {
 		logrus.Debugf("end (%v) > info.Size(), so end=%v", end, info.Size())
-		end = info.Size()
+		if minEnd > info.Size() {
+			end = info.Size()
+		} else {
+			end = minEnd
+		}
 	}
 
 	totalLength = end - start

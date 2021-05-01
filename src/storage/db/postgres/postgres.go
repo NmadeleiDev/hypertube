@@ -29,7 +29,7 @@ func (d *manager) InitTables() {
     id           serial                                      not null
         constraint %s_pk
             primary key,
-    file_id      varchar(64)   unique						not null,
+    file_id      varchar(64)   unique						 not null,
     torrent_file bytea,
     magnet_link  varchar(2048) default ''::character varying not null,
     file_name    varchar(256)  default ''::character varying not null,
@@ -37,7 +37,8 @@ func (d *manager) InitTables() {
     comment      varchar(256)  default ''::character varying not null,
     error        varchar(1024) default ''::character varying not null,
     in_progress  boolean       default false                 not null,
-    is_loaded    boolean       default false                 not null
+    is_loaded    boolean       default false                 not null,
+    loaded_date    timestamp       default now()::timestamp	 not null
 )`
 
 	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath(), d.loadedFilesTable)); err != nil {
