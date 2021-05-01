@@ -51,11 +51,6 @@ func (state *pieceProgress) readMessage() error {
 func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 	logrus.Debugf("Attempting to download piece (len=%v, idx=%v)", pw.length, pw.index)
 
-	if pw.length < 0 {
-		logrus.Errorf("Attempting to download incorrect pw: %v", *pw)
-		return nil, fmt.Errorf("incorrect pw")
-	}
-
 	state := pieceProgress{
 		index:  pw.index,
 		client: c,
@@ -106,10 +101,15 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 	return nil
 }
 
-func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *pieceWork, results chan *pieceResult) {
+func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *pieceWork, results chan *pieceResult, deadPeerChan chan *client.Client) {
 	defer c.Conn.Close()
 
 	for pw := range workQueue {
+		if pw.length < 0 {
+			logrus.Errorf("Attempting to download incorrect pw: %v", *pw)
+			continue
+		}
+
 		if !c.Bitfield.HasPiece(pw.index) {
 			workQueue <- pw // Put piece back on the queue
 			continue
@@ -118,7 +118,8 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 		// Download the piece
 		buf, err := attemptDownloadPiece(c, pw)
 		if err != nil {
-			logrus.Errorf("Exiting piece download worker due to error: %v", err)
+			logrus.Errorf("Throwing dead peer %v cause err: %v", c.GetShortInfo(), err)
+			deadPeerChan <- c
 			workQueue <- pw // Put piece back on the queue
 			return
 		}
@@ -182,10 +183,8 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 		return nil
 	}
 
-	//workQueue := make(chan *pieceWork, len(priorityManager.Pieces))
 	results := make(chan *pieceResult, len(priorityManager.Pieces))
 
-	//defer close(workQueue)
 	defer close(results)
 
 	topPriorityPieceChan := priorityManager.InitSorter(ctx)
@@ -196,13 +195,13 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 			select {
 			case <- ctx.Done():
 				return
-			case activeClient := <- t.ActiveClientsChan:
+			case activeClient := <- t.ClientFactoryChan:
 				if activeClient == nil {
 					logrus.Errorf("Got nil active client...")
 					continue
 				}
 				logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
-				go t.startDownloadWorker(activeClient, topPriorityPieceChan, results)
+				go t.startDownloadWorker(activeClient, topPriorityPieceChan, results, t.ClientFactoryChan)
 			}
 		}
 	}()

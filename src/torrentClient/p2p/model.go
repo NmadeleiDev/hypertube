@@ -12,16 +12,16 @@ const MaxBacklog = 5
 
 // TorrentMeta holds data required to download a torrent from a list of peers
 type TorrentMeta struct {
-	ActiveClientsChan	<- chan *client.Client
-	PieceLoadPriorityUpdates	<- chan int64
-	PeerID      [20]byte
-	InfoHash    [20]byte
-	PieceHashes [][20]byte
-	PieceLength int
-	Length      int
-	Name        string
-	FileId		string
-	ResultsChan chan LoadedPiece
+	ClientFactoryChan        chan *client.Client
+	PieceLoadPriorityUpdates <- chan int64
+	PeerID                   [20]byte
+	InfoHash                 [20]byte
+	PieceHashes              [][20]byte
+	PieceLength              int
+	Length                   int
+	Name                     string
+	FileId                   string
+	ResultsChan              chan LoadedPiece
 }
 
 type LoadedPiece struct {

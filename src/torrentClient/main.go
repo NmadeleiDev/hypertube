@@ -23,7 +23,10 @@ func main() {
 		db.GetLoadedStateDb().CloseConnection()
 	}()
 
-	go restartInProgressLoads()
+	if env.GetParser().DoRestartInProgressLoads() {
+		go restartInProgressLoads()
+	}
+
 	go fsWriter.GetWriter().StartWaitingForData()
 
 	server.Start()

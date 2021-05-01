@@ -11,5 +11,6 @@ type LoaderTaskResponse struct {
 		IsLoaded	bool	`json:"isLoaded"`
 		IsLoading	bool	`json:"isLoading"`
 		FileName	string		`json:"fileName"`
+		FileLength	int			`json:"fileLength"`
 	}
 }

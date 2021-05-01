@@ -10,8 +10,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	reconnectAttemptWait = time.Second * 30
+	reconnectAttempts = 5
+)
+
 func (p *PeersPool) StartRefreshing(ctx context.Context)  {
-	if p.ActiveClientsChan == nil {
+	if p.ClientFactoryChan == nil {
 		logrus.Errorf("Pool not initialized!")
 		return
 	}
@@ -58,10 +63,12 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 							activeClient := p.InitPeer(&peerToInit)
 							if activeClient != nil {
 								sentPeersMap[peerToInit.GetAddr()] = true
-								p.ActiveClientsChan <- activeClient
+								peerToInit.IsDead = false
+								p.ClientFactoryChan <- activeClient
 								logrus.Infof("Wrote peer %v to active clients chan", activeClient.GetShortInfo())
 							} else {
 								peerToInit.IsDead = true
+								go p.StartConnAttempts(ctx, peerToInit)
 							}
 						}(peer)
 					}
@@ -70,23 +77,44 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 			}
 		}(ctx)
 	}
+
+	p.ListenForDeadPeers(ctx)
 }
 
-func (p *PeersPool) StartRetyingPeerConn(returnPeer chan <- *client.Client) {
-	ticker := time.NewTicker(time.Second * 60)
+func (p *PeersPool) ListenForDeadPeers(ctx context.Context) {
+	for {
+		select {
+		case <- ctx.Done():
+			return
+		case peer := <- p.ClientFactoryChan: // сюда из загрузчика приходят пиры, с которыми оборвалось соединение
+			logrus.Debugf("Got dead peer %v, tring to raise him...", peer.GetShortInfo())
+			go p.StartConnAttempts(ctx, peer.GetPeer())
+		}
+	}
+}
+
+func (p *PeersPool) StartConnAttempts(ctx context.Context, peer peers.Peer) {
+	nAttempt := 1
+
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
-		<- ticker.C
-
-		for _, peer := range p.Peers {
-			if peer.IsDead {
-				activeClient := p.InitPeer(peer)
-				if activeClient != nil {
-					peer.IsDead = false
-					returnPeer <- activeClient
-				}
+		select {
+		case <- ctx.Done():
+			return
+		case <- ticker.C:
+			activeClient := p.InitPeer(&peer)
+			if activeClient != nil {
+				peer.IsDead = false
+				p.ClientFactoryChan <- activeClient
+				logrus.Infof("Raised peer %v from %v attempts, sending to chan", activeClient.GetShortInfo(), nAttempt)
+				return
+			} else {
+				peer.IsDead = true
 			}
+			ticker.Reset(time.Second * time.Duration(nAttempt * 5))
+			nAttempt ++
 		}
 	}
 }
@@ -108,9 +136,9 @@ func (p *PeersPool) InitPeer(peer *peers.Peer) *client.Client {
 }
 
 func (p *PeersPool) InitPool() {
-	p.ActiveClientsChan = make(chan *client.Client, 10)
+	p.ClientFactoryChan = make(chan *client.Client, 10)
 }
 
 func (p *PeersPool) DestroyPool()  {
-	close(p.ActiveClientsChan)
+	close(p.ClientFactoryChan)
 }

@@ -26,3 +26,7 @@ func (c *Client) GetClientInfo() string {
 func (c *Client) GetShortInfo() string {
 	return fmt.Sprintf("Peer addr: %v, is choked = %v", c.peer.GetAddr(), c.Choked)
 }
+
+func (c *Client) GetPeer() peers.Peer {
+	return c.peer
+}

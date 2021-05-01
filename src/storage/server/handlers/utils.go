@@ -71,16 +71,16 @@ func SetCookieForHour(w http.ResponseWriter, cookieName, value string) {
 	http.SetCookie(w, &c)
 }
 
-func SendTaskToTorrentClient(fileId string) (string, bool) {
+func SendTaskToTorrentClient(fileId string) (string, int, bool) {
 	req, err := http.Get(fmt.Sprintf("http://%s/download?file_id=%s", env.GetParser().GetLoaderServiceHost(), fileId))
 	if err != nil {
 		logrus.Errorf("Error calling loader service: %v", err)
-		return "", false
+		return "", 0, false
 	}
 
 	if req.StatusCode != http.StatusOK {
 		logrus.Errorf("Not ok status from torrent client: %v %v", req.StatusCode, req.Status)
-		return "", false
+		return "", 0, false
 	}
 
 	info := model.LoaderTaskResponse{}
@@ -88,15 +88,15 @@ func SendTaskToTorrentClient(fileId string) (string, bool) {
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		logrus.Errorf("Error reading body: %v", err)
-		return "", false
+		return "", 0, false
 	}
 
 	if err := json.Unmarshal(body, &info); err != nil {
 		logrus.Errorf("Error unmarshal body from loader: %v", err)
-		return "", false
+		return "", 0, false
 	}
 
-	return info.Data.FileName, true
+	return info.Data.FileName, info.Data.FileLength, true
 }
 
 

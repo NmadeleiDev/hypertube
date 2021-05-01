@@ -15,6 +15,7 @@ type Parser interface {
 	IsDevMode() bool
 	GetFilesDir() string
 	GetPostgresDbDsn() string
+	DoRestartInProgressLoads() bool
 	GetTorrentPeerPort() uint16
 }
 

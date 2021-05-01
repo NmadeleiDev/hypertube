@@ -25,7 +25,6 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// TODO: каким образом здесь появляется fileLength=0??
 		fileName, inProgress, isLoaded, fileLength, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
 		if err != nil {
 			logrus.Errorf("File not found by id '%v', err: %v", fileId, err)
@@ -61,13 +60,15 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 				filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start)
 			}
 		} else {
-			fileName, ok := SendTaskToTorrentClient(fileId)
+			fileName, newFileLength, ok := SendTaskToTorrentClient(fileId)
 			if !ok {
 				SendFailResponseWithCode(w, "Failed to call torrent client", http.StatusInternalServerError)
 				return
 			}
 			readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 60)
 			defer readCancel()
+
+			fileLength = int64(newFileLength)
 
 			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
 

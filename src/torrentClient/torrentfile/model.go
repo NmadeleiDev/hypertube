@@ -98,7 +98,7 @@ func (bto *bencodeTorrentMultiFiles) SumFilesLength() int {
 
 type PeersPool struct {
 	Peers             []*peers.Peer
-	ActiveClientsChan chan *client.Client
+	ClientFactoryChan chan *client.Client
 
 	torrent *TorrentFile
 }

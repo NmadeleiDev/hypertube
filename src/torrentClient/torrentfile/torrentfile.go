@@ -41,16 +41,16 @@ func (t *TorrentFile) DownloadToFile() error {
 	priorityManager := LoadPriority{torrentFile: t}
 
 	torrent := p2p.TorrentMeta{
-		ActiveClientsChan: peersPoolObj.ActiveClientsChan,
+		ClientFactoryChan:        peersPoolObj.ClientFactoryChan,
 		PieceLoadPriorityUpdates: priorityManager.StartPriorityUpdating(downloadCtx),
-		PeerID:      t.Download.MyPeerId,
-		InfoHash:    t.InfoHash,
-		PieceHashes: t.PieceHashes,
-		PieceLength: t.PieceLength,
-		Length:      t.Length,
-		Name:        t.Name,
-		FileId: 	 t.SysInfo.FileId,
-		ResultsChan: make(chan p2p.LoadedPiece, 100),
+		PeerID:                   t.Download.MyPeerId,
+		InfoHash:                 t.InfoHash,
+		PieceHashes:              t.PieceHashes,
+		PieceLength:              t.PieceLength,
+		Length:                   t.Length,
+		Name:                     t.Name,
+		FileId:                   t.SysInfo.FileId,
+		ResultsChan:              make(chan p2p.LoadedPiece, 100),
 	}
 
 	t.CreateFileBoundariesMapping()
@@ -81,6 +81,11 @@ func (t *TorrentFile) PrepareDownload() (string, int64) {
 func (t *TorrentFile) GetVideoFileName() string {
 	videoFile := t.getHeaviestFile()
 	return videoFile.EncodeFileName()
+}
+
+func (t *TorrentFile) GetVideoFileLength() int {
+	videoFile := t.getHeaviestFile()
+	return videoFile.Length
 }
 
 func (t *TorrentFile) InitMyPeerIDAndPort() {

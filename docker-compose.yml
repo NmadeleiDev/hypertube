@@ -131,6 +131,8 @@ services:
       FILES_DIR: ${FILES_DIR}
       LOG_LEVEL: ${LOG_LEVEL}
       TORRENT_PEER_PORT: ${TORRENT_PEER_PORT}
+
+      RESTART_IN_PROGRESS_ON_START: ${RESTART_IN_PROGRESS_ON_START}
     networks:
       - docker_net
     restart: always
@@ -186,22 +188,12 @@ services:
     volumes:
       - ./data/redis:/data
 
-  #  redis-commander:
-  #    container_name: redis-commander
-  #    hostname: redis-commander
-  #    image: rediscommander/redis-commander:latest
-  #    restart: always
-  #    environment:
-  #      - REDIS_HOSTS=local:redis-db:6379:0:${REDIS_PASSWORD}
-  #    ports:
-  #      - ${REDIS_UI_PORT}:8081
-
   postgres-db:
     image: postgres:9.6.17
     hostname: postgres-db
     volumes:
-      #      - ./data/pgsql:/var/lib/postgresql/data:Z
-      - ./data/pgsql:/home/${POSTGRES_USER}/data:Z
+      - ./data/pgsql_general:/var/lib/postgresql/data:Z
+      - ./data/pgsql_user:/home/${POSTGRES_USER}/data:Z
     ports:
       - ${POSTGRES_PORT}:${POSTGRES_PORT}
     environment:

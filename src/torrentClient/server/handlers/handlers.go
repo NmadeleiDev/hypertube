@@ -20,6 +20,7 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			IsLoaded	bool	`json:"isLoaded"`
 			IsLoading	bool	`json:"isLoading"`
 			FileName	string		`json:"fileName"`
+			FileLength	int			`json:"fileLength"`
 		}{}
 
 		inProgress, isLoaded, ok := db.GetFilesManagerDb().GetFileStatus(fileId)

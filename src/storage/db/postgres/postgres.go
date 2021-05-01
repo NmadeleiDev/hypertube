@@ -29,7 +29,7 @@ func (d *manager) InitTables() {
     id           serial                                      not null
         constraint %s_pk
             primary key,
-    file_id      varchar(64)                                 not null,
+    file_id      varchar(64)   unique						not null,
     torrent_file bytea,
     magnet_link  varchar(2048) default ''::character varying not null,
     file_name    varchar(256)  default ''::character varying not null,

@@ -26,6 +26,10 @@ func (p *Parser) IsDevMode() bool {
 	return os.Getenv("DEV_MODE") == "on"
 }
 
+func (p *Parser) DoRestartInProgressLoads() bool {
+	return os.Getenv("RESTART_IN_PROGRESS_ON_START") == "true"
+}
+
 func (p *Parser) GetFilesDir() string {
 	return os.Getenv("FILES_DIR")
 }
