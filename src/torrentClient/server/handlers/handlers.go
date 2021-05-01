@@ -34,6 +34,7 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			SendFailResponseWithCode(w, fmt.Sprintf("Error loading torrent from db: %v", err), http.StatusBadRequest)
 			return
 		}
+		response.FileLength = torrent.GetVideoFileLength()
 
 		if isLoaded || inProgress {
 			response.IsLoaded = isLoaded
