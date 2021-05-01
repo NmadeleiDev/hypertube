@@ -114,6 +114,7 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 				} else if buf != nil && f.IsPartWritten(fileName, buf, start) {
 					logrus.Debugf("Sending res with len = %v", totalLen)
 					resultsChan <- resultStruct{Data: buf, TotalLen: totalLen, Err: nil}
+					return
 				} else {
 					logrus.Debugf("Read buf not written or nil (%v %v)", f.IsPartWritten(fileName, buf, start), buf == nil)
 					if buf != nil {
@@ -168,13 +169,10 @@ func (f *fileReader) GetFileInRange(fileName string, start int64) (result []byte
 
 	if start > info.Size() {
 		logrus.Debugf("start byte %v exceeds file lenght (%d)", start, info.Size())
-		return nil, 0, nil
+		return nil, info.Size(), nil
 	}
 
-	if start + readMinLimit > info.Size() {
-		logrus.Debugf("start byte %v + readMinLimit (%v) exceeds file lenght (%d)", start, readMinLimit, info.Size())
-		end = info.Size()
-	} else if end > info.Size() {
+	if end > info.Size() {
 		logrus.Debugf("end (%v) > info.Size(), so end=%v", end, info.Size())
 		end = info.Size()
 	}
@@ -187,7 +185,7 @@ func (f *fileReader) GetFileInRange(fileName string, start int64) (result []byte
 	n, err := file.ReadAt(buf, start)
 	if err != nil {
 		logrus.Errorf("Error reading file to buf: %v", err)
-		return nil, 0, err
+		return nil, info.Size(), err
 	}
 
 	return buf[:n], info.Size(), nil

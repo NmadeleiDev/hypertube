@@ -10,10 +10,6 @@ import (
 	"torrentClient/peers"
 )
 
-// Port to listen on
-const Port uint16 = 6881
-
-// TorrentFile encodes the metadata from a .torrent file
 type TorrentFile struct {
 	Announce    string
 	AnnounceList	[]string

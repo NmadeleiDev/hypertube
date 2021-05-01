@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"torrentClient/db"
 	"torrentClient/magnetToTorrent"
@@ -19,67 +18,42 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 
 		response := struct {
 			IsLoaded	bool	`json:"isLoaded"`
-			Key			string	`json:"key"`
-			LoadedPiecesTable string	`json:"loadedPiecesTable"`
+			IsLoading	bool	`json:"isLoading"`
 			FileName	string		`json:"fileName"`
 		}{}
 
-		response.IsLoaded = false
-		response.Key = fileId
-		response.LoadedPiecesTable = db.GetFilesManagerDb().PartsTableNameForFile(fileId)
-
-		torrentBytes, magnetLink, ok := db.GetFilesManagerDb().GetTorrentOrMagnetForByFileId(fileId)
+		inProgress, isLoaded, ok := db.GetFilesManagerDb().GetFileStatus(fileId)
 		if !ok {
-			SendFailResponseWithCode(w, "File not found or not downloadable", http.StatusNotFound)
-			return
+			SendFailResponseWithCode(w, "Not found torrent in db", http.StatusBadRequest)
 		}
 
-		doChangeAnnounce := false
-
-		if (torrentBytes == nil || len(torrentBytes) == 0) && len(magnetLink) > 0 {
-			torrentBytes = magnetToTorrent.ConvertMagnetToTorrent(magnetLink)
-			logrus.Info("Converted! ", len(torrentBytes))
-			doChangeAnnounce = true
-		}
-
-		torrent, err := torrentfile.GetManager().ReadTorrentFileFromBytes(bytes.NewBuffer(torrentBytes))
+		torrent, err := torrentfile.GetManager().LoadTorrentFileFromDB(fileId)
 		if err != nil {
-			logrus.Errorf("Error reading torrent file: %v", err)
-			SendFailResponseWithCode(w, fmt.Sprintf("Error reading body: %s; body: %s", err.Error(), string(torrentBytes)), http.StatusInternalServerError)
-			return
-		}
-		torrent.SysInfo.FileId = fileId
-
-		if doChangeAnnounce {
-			trackerUrl := GetTrackersFromMagnet(magnetLink)
-			logrus.Infof("Tracker url: %v", trackerUrl)
-			torrent.Announce = trackerUrl
-		}
-
-		if torrent.Announce == "" || len(torrent.AnnounceList) == 0 {
-			SendFailResponseWithCode(w, "Announce is empty", http.StatusBadRequest)
+			logrus.Errorf("Error loading torrent: %v", err)
+			SendFailResponseWithCode(w, fmt.Sprintf("Error loading torrent from db: %v", err), http.StatusBadRequest)
 			return
 		}
 
-		//logrus.Infof("Ready torrent info: %v %v", torrent.Announce, torrent.AnnounceList)
-		//var fLen int64
+		if isLoaded || inProgress {
+			response.IsLoaded = isLoaded
+			response.IsLoading = inProgress
+			response.FileName = torrent.GetVideoFileName()
 
-		response.FileName, _ = torrent.PrepareFile()
+			SendDataResponse(w, response)
+			return
+		}
+
+		response.FileName, _ = torrent.PrepareDownload()
 
 		go func() {
 			db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, true)
+			defer db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
 
 			err = torrent.DownloadToFile()
 			if err != nil {
-				if strings.Contains(err.Error(), "already loading") {
-					logrus.Debugf("Tried to double load file %v", torrent.SysInfo.FileId)
-					return
-				}
 				logrus.Errorf("Error downloading to file: %v", err)
-				db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
 			} else {
 				db.GetFilesManagerDb().SetLoadedStatusForRecord(torrent.SysInfo.FileId, true)
-				db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
 			}
 		}()
 		SendDataResponse(w, response)

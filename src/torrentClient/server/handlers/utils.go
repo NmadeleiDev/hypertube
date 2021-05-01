@@ -2,9 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -66,13 +64,4 @@ func SetCookieForHour(w http.ResponseWriter, cookieName, value string) {
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(time.Hour.Seconds())}
 	http.SetCookie(w, &c)
-}
-
-func GetTrackersFromMagnet(magnet string) string {
-	decoded, err := url.ParseQuery(magnet)
-	if err != nil {
-		log.Fatal(err)
-		return ""
-	}
-	return decoded.Get("tr")
 }

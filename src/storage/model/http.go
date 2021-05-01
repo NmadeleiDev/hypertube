@@ -9,8 +9,7 @@ type LoaderTaskResponse struct {
 	Status bool        `json:"status"`
 	Data	struct{
 		IsLoaded	bool	`json:"isLoaded"`
-		Key			string	`json:"key"`
-		LoadedPiecesTable string	`json:"loadedPiecesTable"`
+		IsLoading	bool	`json:"isLoading"`
 		FileName	string		`json:"fileName"`
 	}
 }

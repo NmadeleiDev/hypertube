@@ -19,12 +19,13 @@ import (
 func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		fileId := mux.Vars(r)["file_id"]
-		logrus.Debugf("Got req for id: %v", fileId)
 		fileRange := model.FileRangeDescription{}
 		if err := fileRange.ParseHeader(r.Header.Get("range")); err != nil {
 			SendFailResponseWithCode(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		// TODO: каким образом здесь появляется fileLength=0??
 		fileName, inProgress, isLoaded, fileLength, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
 		if err != nil {
 			logrus.Errorf("File not found by id '%v', err: %v", fileId, err)
@@ -32,7 +33,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Sprintf("Got request with start = %v. File length = %v",
+		logrus.Debugf("Got request with start = %v. File length = %v",
 			fileRange.Start, fileLength)
 
 		if fileRange.Start >= fileLength && isLoaded {

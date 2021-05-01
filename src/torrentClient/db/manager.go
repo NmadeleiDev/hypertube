@@ -31,6 +31,8 @@ type FilesDbManager interface {
 	SetFileNameAndLengthForRecord(fileId, fileName string, length int64)
 	SetInProgressStatusForRecord(fileId string, status bool)
 	SetLoadedStatusForRecord(fileId string, status bool)
+	GetFileStatus(fileId string) (inProgress bool, isLoaded bool, ok bool)
+	GetInProgressFileIds() (fileIds []string, ok bool)
 
 	GetLoadedIndexesForFile(fileId string) []int
 	GetPartDataByIdx(fileId string, idx int) ([]byte, int64, int64, bool)

@@ -105,6 +105,42 @@ UPDATE %s SET is_loaded=$1 WHERE file_id=$2`
 	}
 }
 
+func (d *manager) GetFileStatus(fileId string) (inProgress bool, isLoaded bool, ok bool) {
+	query := `
+SELECT in_progress, is_loaded FROM %s WHERE file_id=$1`
+
+	if err := d.conn.QueryRow(fmt.Sprintf(query, d.LoadedFilesTablePath()), fileId).Scan(&inProgress, &isLoaded); err != nil {
+		logrus.Errorf("Error saving file loaded status: %v", err)
+		return false, false, false
+	}
+	return inProgress, isLoaded, true
+}
+
+func (d *manager) GetInProgressFileIds() (fileIds []string, ok bool) {
+	query := `
+SELECT file_id FROM %s WHERE in_progress=true`
+
+	rows, err := d.conn.Query(fmt.Sprintf(query, d.LoadedFilesTablePath()))
+	if err != nil {
+		logrus.Errorf("Error saving file loaded status: %v", err)
+		return nil, false
+	}
+
+	fileIds = make([]string, 0, 10)
+
+	for rows.Next() {
+		var cont string
+
+		if err := rows.Scan(&cont); err != nil {
+			logrus.Errorf("Error scanning file id: %v", err)
+			continue
+		}
+
+		fileIds = append(fileIds, cont)
+	}
+	return fileIds, true
+}
+
 func (d *manager) GetLoadedIndexesForFile(fileId string) []int {
 
 	result := make([]int, 0, 400)
