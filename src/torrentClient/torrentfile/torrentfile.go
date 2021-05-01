@@ -7,6 +7,7 @@ import (
 
 	"torrentClient/db"
 	"torrentClient/fsWriter"
+	"torrentClient/loadMaster"
 	"torrentClient/p2p"
 	"torrentClient/parser/env"
 
@@ -16,17 +17,23 @@ import (
 type torrentsManager struct {
 }
 
-var activeDownloads = make(map[string]bool, 100)
 
 func (t *TorrentFile) DownloadToFile() error {
-	if active, exists := activeDownloads[t.SysInfo.FileId]; active && exists {
-		return fmt.Errorf("file %v is already loading", t.SysInfo.FileId)
-	} else {
-		activeDownloads[t.SysInfo.FileId] = true
-		defer delete(activeDownloads, t.SysInfo.FileId)
-	}
 	downloadCtx, downloadCancel := context.WithCancel(context.Background())
 	defer downloadCancel()
+
+	db.GetFilesManagerDb().SetInProgressStatusForRecord(t.SysInfo.FileId, true)
+	defer db.GetFilesManagerDb().SetInProgressStatusForRecord(t.SysInfo.FileId, false)
+
+	loadEntry := &loadMaster.LoadEntry{
+		ExecutionCtxCancel: downloadCancel,
+		DonePieces: 0,
+		TotalPieces: len(t.PieceHashes)}
+
+	if !loadMaster.GetMaster().AddLoadEntry(t.SysInfo.FileId, loadEntry) {
+		logrus.Debugf("Failed to add loading entry (propably, file is already in progress)")
+		return fmt.Errorf("failed to add loading entry")
+	}
 
 	t.InitMyPeerIDAndPort()
 
@@ -51,6 +58,7 @@ func (t *TorrentFile) DownloadToFile() error {
 		Name:                     t.Name,
 		FileId:                   t.SysInfo.FileId,
 		ResultsChan:              make(chan p2p.LoadedPiece, 100),
+		LoadStats: loadEntry,
 	}
 
 	t.CreateFileBoundariesMapping()
@@ -66,7 +74,7 @@ func (t *TorrentFile) DownloadToFile() error {
 	if err := torrent.Download(downloadCtx); err != nil {
 		return fmt.Errorf("file download error: %v", err)
 	}
-
+	db.GetFilesManagerDb().SetLoadedStatusForRecord(t.SysInfo.FileId, true)
 	logrus.Infof("Download for %v completed!", t.SysInfo.FileId)
 	return nil
 }

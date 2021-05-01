@@ -6,15 +6,17 @@ import (
 	"net/http"
 
 	"torrentClient/db"
+	"torrentClient/loadMaster"
 	"torrentClient/magnetToTorrent"
 	"torrentClient/torrentfile"
 
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
 func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		fileId := r.URL.Query().Get("file_id")
+		fileId := mux.Vars(r)["file_id"]
 
 		response := struct {
 			IsLoaded	bool	`json:"isLoaded"`
@@ -48,14 +50,9 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		response.FileName, _ = torrent.PrepareDownload()
 
 		go func() {
-			db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, true)
-			defer db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
-
 			err = torrent.DownloadToFile()
 			if err != nil {
 				logrus.Errorf("Error downloading to file: %v", err)
-			} else {
-				db.GetFilesManagerDb().SetLoadedStatusForRecord(torrent.SysInfo.FileId, true)
 			}
 		}()
 		SendDataResponse(w, response)
@@ -64,7 +61,7 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 
 func WriteLoadedPartsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		fileId := r.URL.Query().Get("file_id")
+		fileId := mux.Vars(r)["file_id"]
 
 		torrentBytes, magnetLink, ok := db.GetFilesManagerDb().GetTorrentOrMagnetForByFileId(fileId)
 		if !ok {
@@ -89,3 +86,40 @@ func WriteLoadedPartsHandler(w http.ResponseWriter, r *http.Request) {
 		SendDataResponse(w, logs)
 	}
 }
+
+func LoadingStatsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		fileId := mux.Vars(r)["file_id"]
+
+		stats, ok := loadMaster.GetMaster().GetStatsForEntry(fileId)
+		if !ok {
+			SendFailResponseWithCode(w, "Load not found", http.StatusBadRequest)
+		} else {
+			SendDataResponse(w, struct {
+				ActivePeers	int `json:"activePeers"`
+				LoadedPercent	int `json:"loadedPercent"`
+			}{
+				ActivePeers: stats.NumOfActivePeers,
+				LoadedPercent: stats.GetLoadedPercent(),
+			})
+		}
+	} else {
+		SendFailResponseWithCode(w, "Not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func TerminateLoadHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		fileId := mux.Vars(r)["file_id"]
+
+		ok := loadMaster.GetMaster().StopLoad(fileId)
+		if !ok {
+			SendFailResponseWithCode(w, fmt.Sprintf("Load '%v' not found", fileId), http.StatusBadRequest)
+		} else {
+			SendSuccessResponse(w)
+		}
+	} else {
+		SendFailResponseWithCode(w, "Not allowed", http.StatusMethodNotAllowed)
+	}
+}
+

@@ -3,6 +3,7 @@ package main
 import (
 	"torrentClient/db"
 	"torrentClient/fsWriter"
+	"torrentClient/loadMaster"
 	"torrentClient/parser/env"
 	"torrentClient/server"
 	"torrentClient/torrentfile"
@@ -26,6 +27,8 @@ func main() {
 	if env.GetParser().DoRestartInProgressLoads() {
 		go restartInProgressLoads()
 	}
+
+	loadMaster.GetMaster().Init()
 
 	go fsWriter.GetWriter().StartWaitingForData()
 

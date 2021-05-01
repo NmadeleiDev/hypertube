@@ -26,8 +26,11 @@ func Start() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/download", handlers.DownloadRequestsHandler)
-	router.HandleFunc("/save", handlers.WriteLoadedPartsHandler)
+	router.HandleFunc("/download/{file_id}", handlers.DownloadRequestsHandler)
+	router.HandleFunc("/save/{file_id}", handlers.WriteLoadedPartsHandler)
+
+	router.HandleFunc("/stats/{file_id}", handlers.LoadingStatsHandler)
+	router.HandleFunc("/stop/{file_id}", handlers.TerminateLoadHandler)
 
 	logrus.Info("Listening localhost:2222")
 	if err := http.ListenAndServe(":2222", router); err != nil {

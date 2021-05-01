@@ -72,7 +72,7 @@ func SetCookieForHour(w http.ResponseWriter, cookieName, value string) {
 }
 
 func SendTaskToTorrentClient(fileId string) (string, int, bool) {
-	req, err := http.Get(fmt.Sprintf("http://%s/download?file_id=%s", env.GetParser().GetLoaderServiceHost(), fileId))
+	req, err := http.Get(fmt.Sprintf("http://%s/download/%s", env.GetParser().GetLoaderServiceHost(), fileId))
 	if err != nil {
 		logrus.Errorf("Error calling loader service: %v", err)
 		return "", 0, false

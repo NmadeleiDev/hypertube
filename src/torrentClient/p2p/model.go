@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"torrentClient/client"
+	"torrentClient/loadMaster"
 )
 
 // MaxBlockSize is the largest number of bytes a request can ask for
@@ -22,6 +23,7 @@ type TorrentMeta struct {
 	Name                     string
 	FileId                   string
 	ResultsChan              chan LoadedPiece
+	LoadStats				*loadMaster.LoadEntry
 }
 
 type LoadedPiece struct {
