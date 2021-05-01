@@ -1,5 +1,5 @@
 import { makeStyles } from '@material-ui/core';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/rootReducer';
 
@@ -32,6 +32,22 @@ const NativePlayer = ({ src, id }: Props) => {
   const poster = movie?.en.img;
 
   const url = id ? `/api/storage/load/${id}` : src;
+
+  useEffect(() => {
+    if (!videoRef || !videoRef.current) return;
+    const video = videoRef.current;
+    const handleProgress = () => {
+      console.log('[handleProgress]');
+      const buffered = video.buffered;
+      const currentTime = video.currentTime;
+      console.log('buffered', buffered);
+      console.log('currentTime', currentTime);
+    };
+    video.addEventListener('progress', handleProgress);
+    return () => {
+      video.removeEventListener('progress', handleProgress);
+    };
+  });
 
   return (
     <div>

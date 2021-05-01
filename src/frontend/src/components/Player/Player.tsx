@@ -47,7 +47,7 @@ const format = (seconds: number) => {
 function Player({ title, id, src }: Props) {
   const classes = useStyles();
   const [state, setState] = useState({
-    playing: true,
+    playing: false,
     muted: true,
     volume: 0.5,
     playbackRate: 1.0,
@@ -71,7 +71,7 @@ function Player({ title, id, src }: Props) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const timeoutId = useRef<NodeJS.Timeout>();
-  const url = id ? `/api/loader/${id}` : src;
+  const url = id ? `/api/storage/load/${id}` : src;
   const { t } = useTranslation();
 
   const handlePlayPause = () => {
@@ -125,7 +125,7 @@ function Player({ title, id, src }: Props) {
     timeoutId.current = setTimeout(() => {
       if (!controlsRef || !controlsRef.current) return;
       controlsRef.current.style.visibility = 'hidden';
-    }, 3000);
+    }, 1000);
     if (!state.seeking) {
       setState({ ...state, played });
     }
@@ -155,7 +155,7 @@ function Player({ title, id, src }: Props) {
   };
   const handleError = (e: Error) => {
     console.log('handleError', e);
-    setState({ ...state, error: true });
+    // setState({ ...state, error: true });
   };
 
   const currentTime =
@@ -167,60 +167,56 @@ function Player({ title, id, src }: Props) {
       ? format(currentTime)
       : `-${format(duration - currentTime)}`;
   const totalDuration = format(duration);
-  return (
-    <>
-      <div
-        ref={playerContainerRef}
-        className={classes.playerWrapper}
-        onMouseMove={handleMouseMove}
-      >
-        {error ? (
-          <div className={classes.Error}>{t`Cannot load movie`}</div>
-        ) : (
-          <>
-            <ReactPlayer
-              ref={playerRef}
-              width="100%"
-              height="100%"
-              url={url}
-              muted={muted}
-              playing={playing}
-              volume={volume}
-              controls={false}
-              playbackRate={playbackRate}
-              onProgress={handleProgress}
-              onError={handleError}
-            />
-            {controlsVisible && (
-              <PlayerControls
-                ref={controlsRef}
-                onPlayPause={handlePlayPause}
-                onMuted={handleMute}
-                playing={playing}
-                muted={muted}
-                volume={volume}
-                played={played}
-                seeking={seeking}
-                onRewind={handleRewind}
-                onFastForward={handleFastForward}
-                onVolumeChange={handleVolumeChange}
-                onVolumeSeekUp={handleVolumeSeekUp}
-                playbackRate={playbackRate}
-                onPlaybackRateChange={handlePlaybackRateChange}
-                onToggleFullScreen={toggleFullScreen}
-                onSeek={handleSeek}
-                onSeekMouseDown={handleSeekMouseDown}
-                onSeekMouseUp={handleSeekMouseUp}
-                elapsedTime={elapsedTime}
-                totalDuration={totalDuration}
-                onChangeDisplayFormat={handleChangeDisplayFormat}
-                title={title}
-              />
-            )}
-          </>
-        )}
-      </div>
-    </>
+  return error ? (
+    <div className={classes.Error}>{t`Cannot load movie`}</div>
+  ) : (
+    <div
+      ref={playerContainerRef}
+      className={classes.playerWrapper}
+      onMouseMove={handleMouseMove}
+    >
+      <ReactPlayer
+        ref={playerRef}
+        width="100%"
+        height="100%"
+        url={url}
+        muted={muted}
+        playing={playing}
+        volume={volume}
+        controls={false}
+        playbackRate={playbackRate}
+        onProgress={handleProgress}
+        onError={handleError}
+        onBuffer={() => console.log('onBuffer')}
+        onBufferEnd={() => console.log('onBufferEnd')}
+      />
+      {controlsVisible && (
+        <PlayerControls
+          ref={controlsRef}
+          onPlayPause={handlePlayPause}
+          onMuted={handleMute}
+          playing={playing}
+          muted={muted}
+          volume={volume}
+          played={played}
+          seeking={seeking}
+          onRewind={handleRewind}
+          onFastForward={handleFastForward}
+          onVolumeChange={handleVolumeChange}
+          onVolumeSeekUp={handleVolumeSeekUp}
+          playbackRate={playbackRate}
+          onPlaybackRateChange={handlePlaybackRateChange}
+          onToggleFullScreen={toggleFullScreen}
+          onSeek={handleSeek}
+          onSeekMouseDown={handleSeekMouseDown}
+          onSeekMouseUp={handleSeekMouseUp}
+          elapsedTime={elapsedTime}
+          totalDuration={totalDuration}
+          onChangeDisplayFormat={handleChangeDisplayFormat}
+          title={title}
+        />
+      )}
+    </div>
   );
 }
 

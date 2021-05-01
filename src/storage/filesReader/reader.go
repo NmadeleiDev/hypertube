@@ -11,8 +11,8 @@ import (
 	"hypertube_storage/db"
 	"hypertube_storage/parser/env"
 
-	"github.com/sirupsen/logrus"
 	"github.com/fsnotify/fsnotify"
+	"github.com/sirupsen/logrus"
 )
 
 const readMaxLimit = 1e7
@@ -173,7 +173,7 @@ func (f *fileReader) GetFileInRange(fileName string, start int64) (result []byte
 
 	if start + readMinLimit > info.Size() {
 		logrus.Debugf("start byte %v + readMinLimit (%v) exceeds file lenght (%d)", start, readMinLimit, info.Size())
-		return nil, 0, nil
+		end = info.Size()
 	} else if end > info.Size() {
 		logrus.Debugf("end (%v) > info.Size(), so end=%v", end, info.Size())
 		end = info.Size()

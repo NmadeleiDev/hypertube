@@ -25,13 +25,15 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			SendFailResponseWithCode(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
 		fileName, inProgress, isLoaded, fileLength, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
 		if err != nil {
 			logrus.Errorf("File not found by id '%v', err: %v", fileId, err)
 			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
 			return
 		}
+
+		fmt.Sprintf("Got request with start = %v. File length = %v",
+			fileRange.Start, fileLength)
 
 		if fileRange.Start >= fileLength && isLoaded {
 			SendFailResponseWithCode(w,
@@ -76,8 +78,8 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			SendFailResponseWithCode(w, err.Error(), http.StatusInternalServerError)
 		} else {
-			fileRange.End = fileRange.Start + int64(len(filePart))
-			contentLen := fileRange.End - fileRange.Start
+			fileRange.End = fileRange.Start + int64(len(filePart)) - 1
+			contentLen := int64(len(filePart))
 			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", fileRange.Start, fileRange.End, fileLength))
 			w.Header().Set("Content-Length", fmt.Sprint(contentLen))
 			w.Header().Set("Accept-Ranges", "bytes")
