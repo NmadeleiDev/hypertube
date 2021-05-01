@@ -104,6 +104,8 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *pieceWork, results chan *pieceResult, deadPeerChan chan *client.Client) {
 	defer c.Conn.Close()
 
+	t.LoadStats.IncrActivePeers()
+
 	for pw := range workQueue {
 		if pw.length < 0 {
 			logrus.Errorf("Attempting to download incorrect pw: %v", *pw)
@@ -121,6 +123,7 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 			logrus.Errorf("Throwing dead peer %v cause err: %v", c.GetShortInfo(), err)
 			deadPeerChan <- c
 			workQueue <- pw // Put piece back on the queue
+			t.LoadStats.DecrActivePeers()
 			return
 		}
 
@@ -154,7 +157,6 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 	logrus.Infof("starting download %v parts, file.len=%v, p.length=%v for %v",
 		len(t.PieceHashes), t.Length, t.PieceLength, t.Name)
 
-	donePieces := 0
 	loadedIdxs := db.GetFilesManagerDb().GetLoadedIndexesForFile(t.FileId)
 	logrus.Debugf("Got loaded idxs: %v", loadedIdxs)
 
@@ -167,7 +169,7 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 		if IntArrayContain(loadedIdxs, index) {
 			if buf, start, size, ok := db.GetFilesManagerDb().GetPartDataByIdx(t.FileId, index); ok {
 				t.ResultsChan <- LoadedPiece{Data: buf, Len: size, StartByte: start}
-				donePieces ++
+				t.LoadStats.IncrDone()
 				continue
 			} else {
 				db.GetFilesManagerDb().DropDataPartByIdx(t.FileId, index)
@@ -206,11 +208,11 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 		}
 	}()
 
-	for donePieces < len(t.PieceHashes) {
+	for t.LoadStats.CountDone() < len(t.PieceHashes) {
 		select {
 		case <- ctx.Done():
 			logrus.Debugf("Got DONE in Download, exiting")
-			return nil
+			return fmt.Errorf("load terminated by context")
 		case res := <- results:
 			if res == nil {
 				logrus.Errorf("Piece result invalid: %v", res)
@@ -222,10 +224,10 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 			db.GetFilesManagerDb().SaveFilePart(t.FileId, res.buf, int64(begin), int64(end-begin), int64(res.index))
 			//db.GetLoadedStateDb().AnnounceLoadedPart(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
 			//db.GetLoadedStateDb().SaveLoadedPartInfo(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
-			donePieces++
+			t.LoadStats.IncrDone()
 
-			percent := float64(donePieces) / float64(len(t.PieceHashes)) * 100
-			logrus.Infof("(%0.2f%%) Downloaded piece idx=%d from %v peers\n", percent, res.index, "n=unknown")
+			percent := t.LoadStats.GetLoadedPercent()
+			logrus.Infof("(%d%%) Downloaded piece idx=%d from %v peers\n", percent, res.index, "n=unknown")
 		}
 	}
 	return nil
