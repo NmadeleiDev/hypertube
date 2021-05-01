@@ -35,6 +35,7 @@ services:
       - docker_net
     depends_on:
       - postgres-db
+    restart: always
 
   movies:
     build:
