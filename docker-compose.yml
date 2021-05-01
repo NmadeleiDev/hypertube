@@ -21,6 +21,7 @@ services:
       - docker_net
     depends_on:
       - postgres-db
+    restart: always
 
   auth:
     build:
@@ -28,7 +29,7 @@ services:
       dockerfile: Dockerfile
     hostname: auth
     ports:
-    - ${AUTH_BACKEND_PORT}:2222
+      - ${AUTH_BACKEND_PORT}:2222
     links:
       - postgres-db
     networks:
@@ -56,6 +57,7 @@ services:
       - docker_net
     depends_on:
       - postgres-db
+    restart: always
 
   storage:
     build:
@@ -202,6 +204,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: ${PGDATA}
     networks:
       - docker_net
     restart: on-failure
