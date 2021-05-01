@@ -133,7 +133,7 @@ interface Props {
   onPlaybackRateChange: (n: number) => void;
   onToggleFullScreen: () => void;
   onSeek: (n: number | number[]) => void;
-  onSeekMouseDown: () => void;
+  onSeekMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
   onSeekMouseUp: () => void;
   onChangeDisplayFormat: () => void;
   elapsedTime: string;
@@ -159,11 +159,20 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
     setAnchorEl(null);
   };
 
+  const handlePlayPause = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    props.onPlayPause();
+  };
+
   const open = Boolean(anchorEl);
   const id = open ? 'playbackrate-popover' : undefined;
   // debugger
   return (
-    <div className={classes.controlsWrapper} ref={ref}>
+    <div
+      className={classes.controlsWrapper}
+      onClick={handlePlayPause}
+      ref={ref}
+    >
       <Grid
         container
         direction="row"

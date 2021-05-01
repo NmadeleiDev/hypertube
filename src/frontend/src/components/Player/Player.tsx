@@ -1,10 +1,11 @@
 // ts-nocheck
 
-import { makeStyles } from '@material-ui/core';
-import React, { useRef, useState } from 'react';
+import { makeStyles, Typography } from '@material-ui/core';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactPlayer from 'react-player';
 import screenfull from 'screenfull';
+import ActivePeers from './ActivePeers';
 import PlayerControls from './PlayerControls';
 
 const useStyles = makeStyles({
@@ -48,7 +49,7 @@ function Player({ title, id, src }: Props) {
   const classes = useStyles();
   const [state, setState] = useState({
     playing: false,
-    muted: true,
+    muted: false,
     volume: 0.5,
     playbackRate: 1.0,
     played: 0,
@@ -121,6 +122,7 @@ function Player({ title, id, src }: Props) {
   };
 
   const handleProgress = ({ played }: { played: number }) => {
+    console.log('handleProgress', played);
     if (!controlsRef || !controlsRef.current) return;
     timeoutId.current = setTimeout(() => {
       if (!controlsRef || !controlsRef.current) return;
@@ -137,7 +139,8 @@ function Player({ title, id, src }: Props) {
     setState({ ...state, played });
     playerRef.current.seekTo(played, 'fraction');
   };
-  const handleSeekMouseDown = () => {
+  const handleSeekMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     setState({ ...state, seeking: true });
   };
   const handleSeekMouseUp = () => {
@@ -155,7 +158,7 @@ function Player({ title, id, src }: Props) {
   };
   const handleError = (e: Error) => {
     console.log('handleError', e);
-    // setState({ ...state, error: true });
+    setState((prev) => ({ ...prev }));
   };
 
   const currentTime =

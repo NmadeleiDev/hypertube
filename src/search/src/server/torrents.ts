@@ -435,13 +435,12 @@ export const YTSsearch = async (
       const torrents = await Promise.all(torrentsPromises);
       log.debug("[YTSsearch] found torrents", torrents);
       const reduced = torrents.reduce((acc: ITorrent[], torrent) => {
-        log.debug("[YTSsearch] acc, torrent", acc, torrent);
         if (!torrent) return acc;
         return !acc.find((movie) => movie.movieTitle === torrent.movieTitle)
           ? [...acc, torrent]
           : acc;
       }, []);
-      log.debug("[YTSsearch] reduced torrents", reduced);
+      log.debug("[YTSsearch] not null torrents", reduced);
       const movies = await loadMoviesInfo(reduced);
       log.info("[YTSsearch] found movies", movies);
       return movies;

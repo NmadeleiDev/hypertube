@@ -19,6 +19,9 @@ import { loadMovies } from '../../store/features/MoviesSlice';
 import { useToast } from '../../hooks/useToast';
 import { useAppDispatch } from '../../store/store';
 import { theme } from '../../theme';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/rootReducer';
+import { movies } from '../../axios';
 
 const useStyles = makeStyles({
   root: {
@@ -64,6 +67,7 @@ const Search = () => {
   const dispatch = useAppDispatch();
   const [search, setSearch] = useState('');
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const loading = useSelector((state: RootState) => state.movies.loading);
   const history = useHistory();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -116,6 +120,7 @@ const Search = () => {
           onChange={handleInput}
           onKeyPress={handleSearch}
           placeholder={t('search')}
+          disabled={loading}
         />
         <SearchRounded className={classes.Icon} />
       </Grid>

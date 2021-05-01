@@ -14,6 +14,7 @@ import { primaryColor } from '../../theme';
 import Player from '../Player/Player';
 import { useToast } from '../../hooks/useToast';
 import NativePlayer from '../Player/NativePlayer';
+import ActivePeers from '../Player/ActivePeers';
 
 interface TParams {
   id: string;
@@ -175,6 +176,7 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
       <Grid container className={classes.Video}>
         {/* <NativePlayer id={movie.en.id} />
         <NativePlayer src={`/api/test/id000`} /> */}
+        <ActivePeers movieId={movie.en.id} />
 
         <Player
           id={movie.en.id}

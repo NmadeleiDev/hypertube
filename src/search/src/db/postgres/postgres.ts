@@ -249,7 +249,8 @@ export const insertTorrentIntoLoadedFiles = (torrent: ITorrent) => {
     query(
       `INSERT INTO ${POSTGRES_SCHEME}.loaded_files
     (file_id, torrent_file, comment, magnet_link)
-    values ($1, $2, $3, $4)`,
+    values ($1, $2, $3, $4)
+    ON CONFLICT DO NOTHING`,
       [torrent.torrent.imdb, trnt.torrent, torrent.torrentTitle, trnt.magnet]
     );
   } catch (e) {

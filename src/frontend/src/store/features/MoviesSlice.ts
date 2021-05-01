@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import axios from 'axios';
 import { movies, search as axiosSearch } from '../../axios';
 import { IComment, ITranslatedMovie } from '../../models/MovieInfo';
 import { AppDispatch } from '../store';
@@ -235,6 +236,25 @@ export const loadMovies = ({
     if (movies?.error) dispatch(setError({ error: movies.error }));
     return null;
   }
+};
+interface ILoaderInfo {
+  activePeers: number;
+  loadedPercent: number;
+}
+
+export const loadActivePeers = async (
+  id: string
+): Promise<ILoaderInfo | null> => {
+  let data = null;
+  try {
+    const res = await axios(`/api/loader/stats/${id}`);
+    if (res.status < 400 && res.data.status) {
+      data = res.data.data as ILoaderInfo;
+    }
+  } catch (e) {
+    console.log(e);
+  }
+  return data;
 };
 
 export const loadMovie = (id: string) => async (dispatch: AppDispatch) => {
