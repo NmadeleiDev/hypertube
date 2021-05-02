@@ -16,7 +16,7 @@ type FileRangeDescription struct {
 func (f *FileRangeDescription) ParseHeader(header string) error {
 	parts := strings.Split(header, "=")
 	if len(parts) != 2 || parts[0] != "bytes" {
-		return fmt.Errorf("Range header is incorrect: %v", header)
+		return fmt.Errorf("range header is incorrect: '%v'", header)
 	}
 	limits := strings.Split(parts[1], "-")
 	if len(limits) != 2 {

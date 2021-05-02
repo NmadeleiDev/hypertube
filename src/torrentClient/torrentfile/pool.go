@@ -99,14 +99,18 @@ func (p *PeersPool) ListenForDeadPeers(ctx context.Context) {
 func (p *PeersPool) StartConnAttempts(ctx context.Context, peer peers.Peer) {
 	nAttempt := 1
 
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	timer := time.NewTimer(time.Second)
+	defer timer.Stop()
 
 	for {
 		select {
 		case <- ctx.Done():
 			return
-		case <- ticker.C:
+		case <- timer.C:
+			if nAttempt > 5 {
+				return
+			}
+
 			activeClient := p.InitPeer(&peer)
 			if activeClient != nil {
 				peer.IsDead = false
@@ -116,7 +120,7 @@ func (p *PeersPool) StartConnAttempts(ctx context.Context, peer peers.Peer) {
 			} else {
 				peer.IsDead = true
 			}
-			ticker.Reset(time.Second * time.Duration(nAttempt * 5))
+			timer.Reset(time.Second * time.Duration(nAttempt * 5))
 			nAttempt ++
 		}
 	}
