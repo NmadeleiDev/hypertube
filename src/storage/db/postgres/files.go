@@ -15,6 +15,17 @@ SELECT coalesce(file_name, ''), in_progress, is_loaded, file_length FROM %s WHER
 	return path, inProgress, isLoaded, fLen, err
 }
 
+func (d *manager) DeleteLoadedFileInfo(id string) error  {
+	query := `
+DELETE FROM %s WHERE file_id LIKE $1`
+
+	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath()), id); err != nil {
+		logrus.Errorf("Error deleteing loaded file record: %v", err)
+		return err
+	}
+	return nil
+}
+
 func (d *manager) GetInProgressFileIds() (result []string) {
 	query := `
 SELECT file_id FROM %s WHERE in_progress=true`
@@ -39,26 +50,37 @@ SELECT file_id FROM %s WHERE in_progress=true`
 	return result
 }
 
-func (d *manager) GetFileIdsWithLoadedDateUnder(under time.Time) (result []string) {
+func (d *manager) GetFileIdsWithWatchedUnder(under time.Time) (ids []string, names []string) {
 	query := `
-SELECT file_id FROM %s WHERE loaded_date < $1`
+SELECT file_id, file_name FROM %s WHERE last_watched < $1`
 
 	rows, err := d.conn.Query(fmt.Sprintf(query, d.LoadedFilesTablePath()), under)
 	if err != nil {
 		logrus.Errorf("Error getting in progress files: %v", err)
-		return nil
+		return nil, nil
 	}
 
-	result = make([]string, 0, 10)
+	ids = make([]string, 0, 10)
+	names = make([]string, 0, 10)
 
 	for rows.Next() {
-		var dest string
-		if err := rows.Scan(&dest); err != nil {
+		var dest1 string
+		var dest2 string
+		if err := rows.Scan(&dest1, &dest2); err != nil {
 			logrus.Errorf("Scan error: %v", err)
 			continue
 		}
-		result = append(result, dest)
+		ids = append(ids, dest1)
+		names = append(names, dest2)
 	}
 
-	return result
+	return ids, names
+}
+
+func (d *manager) UpdateLastWatchedDate(fileId string) {
+	query := `UPDATE %s SET last_watched = now()::timestamp WHERE file_id=$1`
+
+	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath()), fileId); err != nil {
+		logrus.Errorf("Error deleteing loaded file record: %v", err)
+	}
 }

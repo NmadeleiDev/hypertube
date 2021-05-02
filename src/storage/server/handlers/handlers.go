@@ -90,6 +90,8 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			if _, err := io.Copy(w, bytes.NewReader(filePart)); err != nil {
 				logrus.Errorf("Error piping response: %v", err)
 			}
+
+			go db.GetLoadedFilesManager().UpdateLastWatchedDate(fileId)
 		}
 	} else {
 		SendFailResponseWithCode(w, "Incorrect method", http.StatusMethodNotAllowed)

@@ -57,14 +57,14 @@ func recvBitfield(conn net.Conn) (bitfield.Bitfield, error) {
 	return msg.Payload, nil
 }
 
-// New connects with a peer, completes a handshake, and receives a handshake
+// New connects with a Peer, completes a handshake, and receives a handshake
 // returns an err if any of those fail.
 func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	conn, err := net.DialTimeout("tcp", peer.GetAddr(), 10 * time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("dial error: %v; was connecting to %v", err, peer.GetAddr())
 	} else {
-		logrus.Infof("Connected to peer on %v", peer.GetAddr())
+		logrus.Infof("Connected to Peer on %v", peer.GetAddr())
 	}
 
 	_, err = completeHandshake(conn, infoHash, peerID)
@@ -83,7 +83,7 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 		Conn:     conn,
 		Choked:   true,
 		Bitfield: bf,
-		peer:     peer,
+		Peer:     peer,
 		infoHash: infoHash,
 		peerID:   peerID,
 	}, nil
@@ -95,14 +95,14 @@ func (c *Client) Read() (*message.Message, error) {
 	return msg, err
 }
 
-// SendRequest sends a Request message to the peer
+// SendRequest sends a Request message to the Peer
 func (c *Client) SendRequest(index, begin, length int) error {
 	req := message.FormatRequest(index, begin, length)
 	_, err := c.Conn.Write(req.Serialize())
 	return err
 }
 
-// SendInterested sends an Interested message to the peer
+// SendInterested sends an Interested message to the Peer
 func (c *Client) SendInterested() error {
 	msg := message.Message{ID: message.MsgInterested}
 	_, err := c.Conn.Write(msg.Serialize())
@@ -112,7 +112,7 @@ func (c *Client) SendInterested() error {
 	return err
 }
 
-// SendNotInterested sends a NotInterested message to the peer
+// SendNotInterested sends a NotInterested message to the Peer
 func (c *Client) SendNotInterested() error {
 	msg := message.Message{ID: message.MsgNotInterested}
 	_, err := c.Conn.Write(msg.Serialize())
@@ -122,7 +122,7 @@ func (c *Client) SendNotInterested() error {
 	return err
 }
 
-// SendUnchoke sends an Unchoke message to the peer
+// SendUnchoke sends an Unchoke message to the Peer
 func (c *Client) SendUnchoke() error {
 	msg := message.Message{ID: message.MsgUnchoke}
 	_, err := c.Conn.Write(msg.Serialize())
@@ -132,7 +132,7 @@ func (c *Client) SendUnchoke() error {
 	return err
 }
 
-// SendHave sends a Have message to the peer
+// SendHave sends a Have message to the Peer
 func (c *Client) SendHave(index int) error {
 	msg := message.FormatHave(index)
 	_, err := c.Conn.Write(msg.Serialize())

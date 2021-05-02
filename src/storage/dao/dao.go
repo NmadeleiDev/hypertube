@@ -12,7 +12,9 @@ type LoadedFilesDbManager interface {
 
 	GetFileInfoById(id string) (path string, inProgress, isLoaded bool, fLen int64, err error)
 	GetInProgressFileIds() (result []string)
-	GetFileIdsWithLoadedDateUnder(under time.Time) (result []string)
+	GetFileIdsWithWatchedUnder(under time.Time) (ids []string, names []string)
+	UpdateLastWatchedDate(fileId string)
+	DeleteLoadedFileInfo(id string) error
 }
 
 type FileReader interface {
@@ -21,6 +23,11 @@ type FileReader interface {
 	HasNullBytes(src []byte) bool
 	HasNotNullBytes(src []byte) bool
 	IsPartWritten(fileName string, part []byte, start int64) bool
+	RemoveFile(fileName string) bool
+}
+
+type RecordsEraseManager interface {
+	StartCheckingForRecords()
 }
 
 type LoaderStateDbManager interface {

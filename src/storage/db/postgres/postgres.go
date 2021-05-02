@@ -38,7 +38,7 @@ func (d *manager) InitTables() {
     error        varchar(1024) default ''::character varying not null,
     in_progress  boolean       default false                 not null,
     is_loaded    boolean       default false                 not null,
-    loaded_date    timestamp       default now()::timestamp	 not null
+    last_watched    timestamp       default now()::timestamp	 not null
 )`
 
 	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath(), d.loadedFilesTable)); err != nil {

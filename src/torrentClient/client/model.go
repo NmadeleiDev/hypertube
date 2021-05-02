@@ -10,11 +10,11 @@ import (
 )
 
 type Client struct {
-	Mu sync.Mutex
+	Mu       sync.Mutex
 	Conn     net.Conn
 	Choked   bool
 	Bitfield bitfield.Bitfield
-	peer     peers.Peer
+	Peer     peers.Peer
 	infoHash [20]byte
 	peerID   [20]byte
 }

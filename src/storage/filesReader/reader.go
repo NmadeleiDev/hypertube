@@ -176,10 +176,10 @@ func (f *fileReader) GetFileInRange(fileName string, start int64, expectedLen in
 
 	if end > info.Size() {
 		logrus.Debugf("end (%v) > info.Size(), so end=%v", end, info.Size())
-		if minEnd > info.Size() {
-			end = info.Size()
+		if minEnd > expectedLen {
+			end = expectedLen
 		} else {
-			end = minEnd
+			return nil, info.Size(), fmt.Errorf("no enoght bytes written yet")
 		}
 	}
 
@@ -195,6 +195,14 @@ func (f *fileReader) GetFileInRange(fileName string, start int64, expectedLen in
 	}
 
 	return buf[:n], info.Size(), nil
+}
+
+func (f *fileReader) RemoveFile(fileName string) bool {
+	if err := os.Remove(path.Join(filesDir, fileName)); err != nil {
+		logrus.Errorf("Error deleting file %v: %v", fileName, err)
+		return false
+	}
+	return true
 }
 
 func GetManager() dao.FileReader {
