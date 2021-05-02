@@ -4,6 +4,7 @@ import (
 	"auth_backend/configurator"
 	"auth_backend/controller"
 	"auth_backend/controller/hash"
+	"auth_backend/dbInit"
 	"auth_backend/controller/mailer"
 	"auth_backend/errors"
 	"auth_backend/logger"
@@ -80,6 +81,14 @@ func InitPackages(configFileName string) *errors.Error {
 		return errors.ConfigurationFail.SetArgs("controller/mailer", "controller/mailer").SetOrigin(err)
 	}
 	println(logger.GREEN + "успешно" + logger.NO_COLOR)
+	/*
+	**	Recreate tables if it needed
+	 */
+	if cfgPostgres.RecreateTables {
+		if Err := dbInit.RecreateTables(); Err != nil {
+			return Err
+		}
+	}
 	return nil
 }
 

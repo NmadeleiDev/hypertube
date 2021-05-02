@@ -4,21 +4,21 @@ import (
 	"auth_backend/controller"
 	"auth_backend/initer"
 	"auth_backend/logger"
-	"auth_backend/dbInit"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
+	// "time"
 )
 
 func main() {
+	// time.Sleep(4 * time.Second)
+
 	if Err := initer.InitPackages("conf.json"); Err != nil {
 		println(logger.RED + Err.Error() + logger.NO_COLOR)
 		return
 	}
-
-	dbInit.InitDB()
 
 	mux := controller.Router()
 	println("Настраиваю роутер\t\t\t- " + logger.GREEN + "успешно" + logger.NO_COLOR)
