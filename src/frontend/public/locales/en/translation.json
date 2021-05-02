@@ -110,6 +110,7 @@
   "Cannot load movie": "Cannot load movie",
   "Loading error": "Loading error",
   "loadingTimeoutWarning": "Sorry, we cannot find any peers. You can wait or search for another movie",
+  "NoMoviesSearch": "No movies to show, please search some",
 
   "Leave a comment!": "Leave a comment!",
   "Send": "Send",

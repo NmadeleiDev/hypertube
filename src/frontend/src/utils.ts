@@ -104,3 +104,7 @@ export const getSearchParam = (search?: string) => {
         }, {} as { [key: string]: any })
     : null;
 };
+
+export const notEmpty = <T>(value: T | null | undefined): value is T => {
+  return value !== null && value !== undefined;
+}

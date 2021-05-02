@@ -26,6 +26,7 @@ import ForgotPassword from './components/ForgotPassword/ForgotPassword';
 import ResetPassword from './components/ResetPassword/ResetPassword';
 import ChangeEmail from './components/ChangeEmail/ChangeEmail';
 import Settings from './components/Settings/Settings';
+import SearchPage from './pages/SearchPage/SearchPage';
 
 const useStyles = makeStyles({
   root: {
@@ -78,11 +79,8 @@ function App() {
       <Route path="/settings" component={Settings} />
       <Route path="/forgot_password" component={ForgotPassword} />
       <Route path="/change_email" component={ChangeEmail} />
+      <Route path="/search/:id" component={SearchPage} />
       <Route path="/movies/:id" component={MovieFullInfo} />
-      <Route
-        path="/search/:id"
-        render={(props) => <MainPage {...props} route={'search'} />}
-      />
       <Route
         path="/byname/:id"
         render={(props) => <MainPage {...props} route={'byname'} />}
@@ -96,11 +94,8 @@ function App() {
       <Route path="/login" component={LoginPage} />
       <Route path="/reset_password" component={ResetPassword} />
       <Route path="/forgot_password" component={ForgotPassword} />
+      <Route path="/search/:id" component={SearchPage} />
       <Route path="/movies/:id" component={MovieFullInfo} />
-      <Route
-        path="/search/:id"
-        render={(props) => <MainPage {...props} route={'search'} />}
-      />
       <Route
         path="/byname/:id"
         render={(props) => <MainPage {...props} route={'byname'} />}

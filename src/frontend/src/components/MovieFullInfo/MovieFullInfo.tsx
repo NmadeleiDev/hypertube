@@ -87,7 +87,7 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
   useEffect(() => {
     if (error) {
       history.push('/');
-      toast({ text: error[i18n.language as 'en' | 'ru'] }, 'error');
+      toast({ text: t(error) }, 'error');
       dispatch(resetError());
     }
   }, [error, dispatch, history, t, toast, i18n.language]);

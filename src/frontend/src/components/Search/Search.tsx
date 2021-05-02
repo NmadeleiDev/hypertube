@@ -85,15 +85,8 @@ const Search = () => {
     if (e.key === 'Enter') {
       console.log(`Searching for: ${search}`);
       const filter = { search };
-      dispatch(loadMovies({ filter })).then((res) => {
-        // check responce here
-        console.log(res);
-        if (res) {
-          history.push(encodeURI(`/search/${search}`));
-        } else {
-          toast(t`Loading error`, 'error');
-        }
-      });
+      dispatch(loadMovies({ filter }));
+      history.push(encodeURI(`/search/${search}`));
       setSearch('');
     }
   };

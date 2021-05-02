@@ -17,12 +17,12 @@ export interface CommentsItems {
   id?: string;
 }
 export interface ErrorItem {
-  error: MoviesError;
+  error: string;
 }
 
 export interface MoviesState {
   loading: boolean;
-  error: MoviesError | null;
+  error: string | null;
   movies: ITranslatedMovie[];
   search: string[];
   popular: string[];
@@ -37,7 +37,7 @@ interface MoviesError {
 
 export interface IMoviesResponse {
   data: ITranslatedMovie[] | null;
-  error: MoviesError;
+  error?: string;
   status: boolean;
 }
 
@@ -50,6 +50,10 @@ export interface IFilter {
   years?: [] | number[][];
   countries?: CountriesKeys[];
   id?: string | number;
+}
+interface ILoaderInfo {
+  activePeers: number;
+  loadedPercent: number;
 }
 
 const initialState = {
@@ -233,14 +237,14 @@ export const loadMovies = ({
     return removedNulls;
   } else {
     dispatch(stopLoading());
-    if (movies?.error) dispatch(setError({ error: movies.error }));
+    const error = {
+      en: 'Loading error',
+      ru: 'Не удалось загрузить фильмы',
+    };
+    dispatch(setError({ error: movies?.error || 'Loading error' }));
     return null;
   }
 };
-interface ILoaderInfo {
-  activePeers: number;
-  loadedPercent: number;
-}
 
 export const loadActivePeers = async (
   id: string
@@ -263,11 +267,7 @@ export const loadMovie = (id: string) => async (dispatch: AppDispatch) => {
   console.log('loadMovie', movie);
   if (movie?.status && movie.data) dispatch(addMovies({ search: movie.data }));
   else {
-    const error = {
-      ru: 'Ошибка загруки фильма',
-      en: 'Cannot load movie',
-    };
-    dispatch(setError({ error }));
+    dispatch(setError({ error: 'Loading error' }));
   }
 };
 

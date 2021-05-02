@@ -1,5 +1,6 @@
-import { Container } from '@material-ui/core';
+import { Container, Typography } from '@material-ui/core';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { RouteComponentProps } from 'react-router-dom';
 import { LIMIT } from '../..';
@@ -11,6 +12,7 @@ import { ITranslatedMovie } from '../../models/MovieInfo';
 import { IFilter, loadMovies } from '../../store/features/MoviesSlice';
 import { RootState } from '../../store/rootReducer';
 import { useAppDispatch } from '../../store/store';
+import { notEmpty } from '../../utils';
 
 interface IMainPageProps {
   route?: string;
@@ -31,6 +33,7 @@ const MainPage = ({
   const [displayedMovies, setDisplayedMovies] = useState<ITranslatedMovie[]>(
     []
   );
+  const { t } = useTranslation();
 
   console.log(match, route);
 
@@ -39,9 +42,9 @@ const MainPage = ({
     const location = window.location.href;
     const filter: IFilter = { limit: LIMIT };
     switch (route) {
-      case 'search':
-        filter.search = location.split('/').pop();
-        break;
+      // case 'search':
+      //   filter.search = location.split('/').pop();
+      //   break;
       case 'byname':
         filter.letter = location.split('/').pop();
         break;
@@ -51,15 +54,15 @@ const MainPage = ({
     console.log('[MainPage] useEffect. movies, filter', movies, filter);
     // load popular and search/byName
     dispatch(loadMovies({ filter: { limit: LIMIT + 10 } }));
-    if (route === 'search')
-      dispatch(loadMovies({ filter })).then((res) =>
-        setDisplayedMovies(res || [])
-      );
-    else if (route === 'byname')
+    if (route === 'byname')
       dispatch(loadMovies({ filter })).then((res) => {
         console.log('[MainPage] useEffect. res, byName', res, byName);
         setDisplayedMovies(res || []);
       });
+    // else if (route === 'search')
+    //   dispatch(loadMovies({ filter })).then((res) =>
+    //     setDisplayedMovies(res || [])
+    //   );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -70,11 +73,9 @@ const MainPage = ({
     else cards = popular;
 
     console.log(cards);
-    const displayedMovies: ITranslatedMovie[] = [];
-    cards.forEach((id) => {
-      const movie = movies.find((movie) => movie.en.id === id);
-      if (movie) displayedMovies.push(movie);
-    });
+    const displayedMovies: ITranslatedMovie[] = cards
+      .map((movieId) => movies.find((movie) => movie.en.id === movieId))
+      .filter(notEmpty);
     console.log(displayedMovies);
     setDisplayedMovies(displayedMovies);
   }, [byName, search, popular, match.path, movies]);
@@ -84,7 +85,14 @@ const MainPage = ({
       <AlphabetNav />
       <FilterSortPanel />
       <CardsSlider />
-      <Cards movies={displayedMovies} />
+      {displayedMovies.length ? (
+        <Cards movies={displayedMovies} />
+      ) : (
+        <Typography
+          variant="h5"
+          style={{ width: '100%', textAlign: 'center' }}
+        >{t`NoMoviesSearch`}</Typography>
+      )}
     </Container>
   );
 };
