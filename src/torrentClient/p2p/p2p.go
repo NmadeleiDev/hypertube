@@ -57,6 +57,8 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 		buf:    make([]byte, pw.length),
 	}
 
+	chokeCount := 0
+
 	//Setting a deadline helps get unresponsive peers unstuck.
 	//30 seconds is more than enough time to download a 262 KB piece
 	defer c.Conn.SetDeadline(time.Time{}) // Disable the deadline
@@ -80,8 +82,14 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 				state.backlog++
 				state.requested += blockSize
 			}
+			chokeCount = 0
 		} else {
+			if chokeCount > 5 {
+				return nil, nil
+			}
 			logrus.Warnf("CHOKED by %v for idx=%v, waiting for unchoke", state.client.GetShortInfo(), pw.index)
+			c.SendUnchoke()
+			chokeCount ++
 		}
 
 		err := state.readMessage()
@@ -119,6 +127,9 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 
 		// Download the piece
 		buf, err := attemptDownloadPiece(c, pw)
+		if buf == nil {
+			return
+		}
 		if err != nil {
 			logrus.Errorf("Throwing dead peer %v cause err: %v", c.GetShortInfo(), err)
 			deadPeerChan <- c
