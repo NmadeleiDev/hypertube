@@ -131,7 +131,7 @@ func (p *PeersPool) InitPool() {
 }
 
 func (pi *PeersInitializer) Init() {
-	pi.RawPeersChan = make(chan peers.Peer, 200)
+	pi.RawPeersChan = make(chan peers.Peer, 400)
 	pi.DeadPeersChan = make(chan *client.Client, 200)
 	pi.InitializedPeersChan = make(chan *client.Client, 200)
 }
