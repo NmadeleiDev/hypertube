@@ -20,8 +20,8 @@ export const useToast = () => {
           header: message.header,
           variant: variant || 'default',
           options: {
-            ...options,
             autoHideDuration: 3000,
+            ...options,
           },
         })
       );

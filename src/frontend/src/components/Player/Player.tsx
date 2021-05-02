@@ -139,8 +139,7 @@ function Player({ title, id, src }: Props) {
     setState({ ...state, played });
     playerRef.current.seekTo(played, 'fraction');
   };
-  const handleSeekMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
+  const handleSeekMouseDown = () => {
     setState({ ...state, seeking: true });
   };
   const handleSeekMouseUp = () => {
