@@ -17,7 +17,6 @@ import (
 type torrentsManager struct {
 }
 
-
 func (t *TorrentFile) DownloadToFile() error {
 	downloadCtx, downloadCancel := context.WithCancel(context.Background())
 	defer downloadCancel()
