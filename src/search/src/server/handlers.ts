@@ -8,7 +8,11 @@ import {
   YTSsearch,
 } from './torrents';
 import { dbToIMovie, loadMoviesInfo, removeDuplicates } from './imdb';
-import { getKinopoiskMovieByImdbid } from './kinopoisk';
+import {
+  getKinopoiskMovieByImdbid,
+  ITranslatedMovie,
+  translateMovie,
+} from './kinopoisk';
 import { selectMoviesFromDB } from '../db/postgres/postgres';
 
 export const searchMovies = async (search: string, category: string) => {
@@ -43,9 +47,13 @@ export default function addHandlers(app: Express) {
     const search = req.query['search'].toString();
 
     try {
-      let movies;
+      let movies: ITranslatedMovie[] = null;
       let dbMovies = await selectMoviesFromDB(search);
-      if (dbMovies) movies = dbMovies.map((movie) => dbToIMovie(movie));
+      if (dbMovies) {
+        const ens = dbMovies.map((movie) => dbToIMovie(movie));
+        const promises = ens.map((en) => translateMovie(en));
+        movies = await Promise.all(promises);
+      }
       log.info('[GET /find] movies from database', movies);
       if (!movies.length) {
         movies = await YTSsearch(search);

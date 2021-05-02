@@ -272,7 +272,7 @@ export const selectMoviesFromDB = async (
       left join ${POSTGRES_SCHEME}.comments c on
         m.id = c.movieid 
       where
-        m.title='%${search}%'
+        m.title='%${search}%' and
         t.magnet is not null
         or t.torrent is not null
       group by m.id, avalibility

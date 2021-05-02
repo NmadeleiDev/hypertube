@@ -44,11 +44,11 @@ const parseDottedFormat = (torrent: Torrent): ITorrent => {
 };
 
 const parseSpacedFormat = (torrent: Torrent): ITorrent => {
-  const titleRE = /^([.\w '’:-]+?)\.? \(?(\d{4})\)?|(\d{3,4}p)/;
+  const titleRE = /^([.\w "'’,:-]+?)\.? \(?(\d{4})\)?|(\d{3,4}p)/;
   const match = torrent.title.match(titleRE);
   log.debug('[parseSpacedFormat]', match);
   const name = match ? match[1] : torrent.title;
-  const seriesName = name.match(/^([\w\s:'’-]+?) \(?(s\d{1,2})\)?/i);
+  const seriesName = name.match(/^([\w\s"'’,:-]+?) \(?(s\d{1,2})\)?/i);
   const title = seriesName ? seriesName[1] : name;
   return {
     torrentTitle: torrent.title,
@@ -113,7 +113,7 @@ export const groupTorrentsByTitle = (
 
   const grouppedTorrents = torrents.reduce(
     (acc: ITorrent[], cur: FullTorrent) => {
-      log.debug('acc:', acc, '\ncur:', cur);
+      log.trace('acc:', acc, '\ncur:', cur);
       try {
         const currentMovie = getMovieInfo(cur);
         log.info('[groupTorrentsByTitle] got parsed ITorrent', currentMovie);
@@ -391,8 +391,8 @@ const getTorrentsFromPage = async (page?: IPage): Promise<ITorrent | null> => {
     torrent: {
       title: `${title} (${page.year})`,
       size: specs
-        .find((el) => el.innerHTML.match(/File Size/))
-        .innerText.trim(),
+        ? specs.find((el) => el.innerHTML.match(/File Size/)).innerText.trim()
+        : '',
       time: '',
       magnet: '',
       desc: root
