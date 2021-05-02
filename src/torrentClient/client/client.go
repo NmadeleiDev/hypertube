@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -24,7 +25,7 @@ func completeHandshake(conn net.Conn, infohash, peerID [20]byte) (*handshake.Han
 	if err != nil {
 		return nil, fmt.Errorf("request write error: %v", err)
 	} else {
-		logrus.Infof("Wrote handshake msg (%v bytes)", len(req.Serialize()))
+		logrus.Debugf("Wrote handshake msg (%v bytes)", len(req.Serialize()))
 	}
 
 	res, err := handshake.Read(conn)
@@ -64,7 +65,7 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("dial error: %v; was connecting to %v", err, peer.GetAddr())
 	} else {
-		logrus.Infof("Connected to Peer on %v", peer.GetAddr())
+		logrus.Debugf("Connected to Peer on %v", peer.GetAddr())
 	}
 
 	_, err = completeHandshake(conn, infoHash, peerID)
@@ -93,6 +94,49 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 func (c *Client) Read() (*message.Message, error) {
 	msg, err := message.Read(c.Conn)
 	return msg, err
+}
+
+func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
+	defer c.Conn.SetDeadline(time.Time{}) // Disable the deadline
+
+	for {
+		select {
+		case <- ctx.Done():
+			return false, fmt.Errorf("exited because of ctx done")
+		default:
+			if err := c.SendUnchoke(); err != nil {
+				logrus.Errorf("Error sending unchoke: %v", err)
+				c.Peer.IsDead = true
+				return false, fmt.Errorf("failed to send unchoke: %v", err)
+			}
+
+			c.Conn.SetDeadline(time.Now().Add(15 * time.Second))
+
+			msg, err := c.Read() // this call blocks
+			if err != nil {
+				return false, err
+			}
+
+			if msg == nil { // keep-alive
+				continue
+			}
+
+			switch msg.ID {
+			case message.MsgUnchoke:
+				c.Choked = false
+				logrus.Infof("Got UNCHOKE from %v", c.GetShortInfo())
+				return true, nil
+			case message.MsgChoke:
+				c.Choked = true
+			case message.MsgHave:
+				index, err := message.ParseHave(msg)
+				if err != nil {
+					return false, err
+				}
+				c.Bitfield.SetPiece(index)
+			}
+		}
+	}
 }
 
 // SendRequest sends a Request message to the Peer

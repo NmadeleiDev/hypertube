@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"torrentClient/client"
-	"torrentClient/peers"
 )
 
 type TorrentFile struct {
@@ -93,17 +90,5 @@ func (bto *bencodeTorrentMultiFiles) SumFilesLength() int {
 		res += file.Length
 	}
 	return res
-}
-
-
-type PeersPool struct {
-	Peers             []*peers.Peer
-	ClientFactoryChan chan *client.Client
-
-	torrent *TorrentFile
-}
-
-func (p *PeersPool) SetTorrent(src *TorrentFile) {
-	p.torrent = src
 }
 

@@ -51,10 +51,10 @@ func ParsePiece(index int, buf []byte, msg *Message) (int, error) {
 // ParseHave parses a HAVE message
 func ParseHave(msg *Message) (int, error) {
 	if msg.ID != MsgHave {
-		return 0, fmt.Errorf("Expected HAVE (ID %d), got ID %d", MsgHave, msg.ID)
+		return 0, fmt.Errorf("expected HAVE (ID %d), got ID %d", MsgHave, msg.ID)
 	}
 	if len(msg.Payload) != 4 {
-		return 0, fmt.Errorf("Expected payload length 4, got length %d", len(msg.Payload))
+		return 0, fmt.Errorf("expected payload length 4, got length %d", len(msg.Payload))
 	}
 	index := int(binary.BigEndian.Uint32(msg.Payload))
 	return index, nil

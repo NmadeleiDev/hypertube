@@ -47,7 +47,8 @@ func (t *TorrentFile) DownloadToFile() error {
 	priorityManager := LoadPriority{torrentFile: t}
 
 	torrent := p2p.TorrentMeta{
-		ClientFactoryChan:        peersPoolObj.ClientFactoryChan,
+		ActivatedClientsChan:     peersPoolObj.ClientMaker.InitializedPeersChan,
+		DeadPeersChan: 			peersPoolObj.ClientMaker.DeadPeersChan,
 		PieceLoadPriorityUpdates: priorityManager.StartPriorityUpdating(downloadCtx),
 		PeerID:                   t.Download.MyPeerId,
 		InfoHash:                 t.InfoHash,
@@ -57,7 +58,7 @@ func (t *TorrentFile) DownloadToFile() error {
 		Name:                     t.Name,
 		FileId:                   t.SysInfo.FileId,
 		ResultsChan:              make(chan p2p.LoadedPiece, 100),
-		LoadStats: loadEntry,
+		LoadStats:                loadEntry,
 	}
 
 	t.CreateFileBoundariesMapping()

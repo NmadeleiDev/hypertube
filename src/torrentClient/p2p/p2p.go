@@ -15,8 +15,8 @@ import (
 )
 
 
-func (state *pieceProgress) readMessage() error {
-	msg, err := state.client.Read() // this call blocks
+func (piece *pieceProgress) readMessage() error {
+	msg, err := piece.client.Read() // this call blocks
 	if err != nil {
 		return err
 	}
@@ -27,37 +27,45 @@ func (state *pieceProgress) readMessage() error {
 
 	switch msg.ID {
 	case message.MsgUnchoke:
-		state.client.Choked = false
-		logrus.Infof("Got UNCHOKE from %v", state.client.GetShortInfo())
+		piece.client.Choked = false
+		logrus.Infof("Got UNCHOKE from %v", piece.client.GetShortInfo())
 	case message.MsgChoke:
-		state.client.Choked = true
+		piece.client.Choked = true
 	case message.MsgHave:
 		index, err := message.ParseHave(msg)
 		if err != nil {
 			return err
 		}
-		state.client.Bitfield.SetPiece(index)
+		piece.client.Bitfield.SetPiece(index)
 	case message.MsgPiece:
-		n, err := message.ParsePiece(state.index, state.buf, msg)
+		n, err := message.ParsePiece(piece.index, piece.buf, msg)
 		if err != nil {
 			return err
 		}
-		state.downloaded += n
-		state.backlog--
+		piece.downloaded += n
+		piece.backlog--
 	}
 	return nil
 }
 
-func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
+func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, error) {
 	logrus.Debugf("Attempting to download piece (len=%v, idx=%v)", pw.length, pw.index)
 
-	state := pieceProgress{
-		index:  pw.index,
-		client: c,
-		buf:    make([]byte, pw.length),
-	}
+	var state pieceProgress
 
-	chokeCount := 0
+	if pw.progress != nil {
+		state.index = pw.progress.index
+		state.buf = pw.progress.buf
+		state.downloaded = pw.progress.downloaded
+	} else {
+		state = pieceProgress{
+			index:  pw.index,
+			buf:    make([]byte, pw.length),
+		}
+	}
+	state.client = c
+
+	//chokeCount := 0
 
 	//Setting a deadline helps get unresponsive peers unstuck.
 	//30 seconds is more than enough time to download a 262 KB piece
@@ -77,28 +85,29 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 
 				err := c.SendRequest(pw.index, state.requested, blockSize)
 				if err != nil {
-					return nil, err
+					return &state, err
 				}
 				state.backlog++
 				state.requested += blockSize
 			}
-			chokeCount = 0
+			//chokeCount = 0
 		} else {
-			if chokeCount > 5 {
-				return nil, nil
-			}
-			logrus.Warnf("CHOKED by %v for idx=%v, waiting for unchoke", state.client.GetShortInfo(), pw.index)
-			c.SendUnchoke()
-			chokeCount ++
+			return &state, fmt.Errorf("choked")
+			//if chokeCount > 5 {
+			//	return nil, nil
+			//}
+			//logrus.Warnf("CHOKED by %v for idx=%v, waiting for unchoke", state.client.GetShortInfo(), pw.index)
+			//c.SendUnchoke()
+			//chokeCount ++
 		}
 
 		err := state.readMessage()
 		if err != nil {
-			return nil, fmt.Errorf("read msg err: %v", err)
+			return &state, fmt.Errorf("read msg err: %v", err)
 		}
 	}
 
-	return state.buf, nil
+	return &state, nil
 }
 
 func checkIntegrity(pw *pieceWork, buf []byte) error {
@@ -109,7 +118,7 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 	return nil
 }
 
-func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *pieceWork, results chan *pieceResult, deadPeerChan chan *client.Client) {
+func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *pieceWork, results chan *pieceResult, deadPeerChan chan <- *client.Client) {
 	defer c.Conn.Close()
 
 	t.LoadStats.IncrActivePeers()
@@ -126,20 +135,18 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 		}
 
 		// Download the piece
-		buf, err := attemptDownloadPiece(c, pw)
-		if buf == nil { // TODO: сделать тут нормально
-			workQueue <- pw // Put piece back on the queue
-			return
-		}
+		loadState, err := attemptDownloadPiece(c, pw)
 		if err != nil {
-			logrus.Errorf("Throwing dead peer %v cause err: %v", c.GetShortInfo(), err)
-			deadPeerChan <- c
+			pw.progress = loadState // сохраняем прогресс по кусочку
 			workQueue <- pw // Put piece back on the queue
 			t.LoadStats.DecrActivePeers()
+
+			logrus.Errorf("Throwing dead peer %v cause err: %v", c.GetShortInfo(), err)
+			deadPeerChan <- c
 			return
 		}
 
-		err = checkIntegrity(pw, buf)
+		err = checkIntegrity(pw, loadState.buf)
 		if err != nil {
 			logrus.Errorf("Check err: %v", err)
 			workQueue <- pw // Put piece back on the queue
@@ -147,7 +154,7 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 		}
 
 		c.SendHave(pw.index)
-		results <- &pieceResult{pw.index, buf}
+		results <- &pieceResult{pw.index, loadState.buf}
 	}
 }
 
@@ -189,7 +196,7 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 		}
 		length := t.calculatePieceSize(index)
 		//logrus.Debugf("Prepared piece idx=%v, len=%v", index, length)
-		piece := pieceWork{index, hash, length}
+		piece := pieceWork{index, hash, length, nil}
 		priorityManager.Pieces = append(priorityManager.Pieces, &piece)
 	}
 
@@ -205,17 +212,29 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 
 	// Start workers as they arrive from Pool
 	go func() {
+		maxWorkers := 30
+		numWorkers := 0
+		jobs := make(chan struct{}, maxWorkers)
+
 		for {
 			select {
 			case <- ctx.Done():
 				return
-			case activeClient := <- t.ClientFactoryChan:
+			case activeClient := <- t.ActivatedClientsChan:
 				if activeClient == nil {
 					logrus.Errorf("Got nil active client...")
 					continue
 				}
 				logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
-				go t.startDownloadWorker(activeClient, topPriorityPieceChan, results, t.ClientFactoryChan)
+
+				jobs <- struct{}{}
+				go func() {
+					numWorkers ++
+					logrus.Debugf("Starting worker. Total workers=%d of %v", numWorkers, maxWorkers)
+					t.startDownloadWorker(activeClient, topPriorityPieceChan, results, t.DeadPeersChan)
+					<- jobs
+					numWorkers --
+				}()
 			}
 		}
 	}()

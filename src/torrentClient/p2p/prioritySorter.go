@@ -35,7 +35,7 @@ func (s *prioritySorter) InitSorter(ctx context.Context) chan *pieceWork {
 				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
 				fmt.Printf("Got priority update=%v; Found new top piece idx=%v\n", newTopIdx, s.topPiece.index)
 				s.mu.Unlock()
-			case returnedPiece := <- topPriorityPieceChan: // нам вернули часть
+			case returnedPiece := <- topPriorityPieceChan: // нам вернули часть, которую не получилось скачать
 				s.mu.Lock()
 				s.Pieces = append(s.Pieces, returnedPiece)
 				s.mu.Unlock()

@@ -58,6 +58,9 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 
 				logrus.Debugf("Got file inProgress=true from db: %v, waiting for data (%v %v %v)", fileName, filesReader.GetManager().HasNullBytes(filePart), filePart == nil, err)
 				filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start, fileLength)
+				logrus.Debugf("Wait success (start=%v, len=%v) from disk", fileRange.Start, len(filePart))
+			} else {
+				logrus.Debugf("Read part (start=%v, len=%v) from disk", fileRange.Start, len(filePart))
 			}
 		} else {
 			fileName, newFileLength, ok := SendTaskToTorrentClient(fileId)
@@ -75,7 +78,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			logrus.Debugf("Got file name from client: %v, waiting for data", fileName)
 			filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start, fileLength)
 		}
-		logrus.Debugf("Writing response: %v", len(filePart))
+		logrus.Debugf("Writing response, part len=%v", len(filePart))
 
 		if err != nil {
 			SendFailResponseWithCode(w, err.Error(), http.StatusInternalServerError)

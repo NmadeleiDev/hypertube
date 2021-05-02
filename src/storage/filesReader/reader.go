@@ -113,7 +113,7 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 					logrus.Debugf("File load err in watch, keep watching: %v", err)
 					//resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("read file error: %v", err)}
 				} else if buf != nil && f.IsPartWritten(fileName, buf, start) {
-					logrus.Debugf("Sending res with len = %v", totalLen)
+					logrus.Debugf("Sending read res with len = %v", totalLen)
 					resultsChan <- resultStruct{Data: buf, TotalLen: totalLen, Err: nil}
 					return
 				} else {
@@ -173,14 +173,16 @@ func (f *fileReader) GetFileInRange(fileName string, start int64, expectedLen in
 		logrus.Debugf("start byte %v exceeds file lenght (%d)", start, info.Size())
 		return nil, info.Size(), nil
 	}
+	if minEnd > expectedLen {
+		minEnd = expectedLen
+		end = expectedLen
+	}
 
-	if end > info.Size() {
-		logrus.Debugf("end (%v) > info.Size(), so end=%v", end, info.Size())
-		if minEnd > expectedLen {
-			end = expectedLen
-		} else {
-			return nil, info.Size(), fmt.Errorf("no enoght bytes written yet")
-		}
+	if minEnd > info.Size() {
+		logrus.Debugf("min_end (%v) > info.Size() (%v), returning nil", minEnd, info.Size())
+		return nil, info.Size(), fmt.Errorf("no enoght bytes written yet")
+	} else if end > info.Size() {
+		end = info.Size()
 	}
 
 	totalLength = end - start

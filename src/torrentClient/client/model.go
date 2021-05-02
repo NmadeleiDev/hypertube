@@ -20,11 +20,11 @@ type Client struct {
 }
 
 func (c *Client) GetClientInfo() string {
-	return fmt.Sprintf("Peer: %v\nChoked = %v\nBitfield: %v\n", c.Peer.GetAddr(), c.Choked, c.Bitfield)
+	return fmt.Sprintf("Peer addr=%v\nChoked=%v\nBitfield: %v\n", c.Peer.GetAddr(), c.Choked, c.Bitfield)
 }
 
 func (c *Client) GetShortInfo() string {
-	return fmt.Sprintf("Peer addr: %v, is choked = %v", c.Peer.GetAddr(), c.Choked)
+	return fmt.Sprintf("Peer addr=%v, choked=%v", c.Peer.GetAddr(), c.Choked)
 }
 
 func (c *Client) GetPeer() peers.Peer {
