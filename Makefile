@@ -23,6 +23,12 @@ build: ## build all containers (docker compose)
 #up: build-front up-back
 up: up-back
 
+re: down up
+
+clean:
+	rm -f files/*
+	rm -rf data/*
+
 up-back:
 	docker-compose up --build -d
 

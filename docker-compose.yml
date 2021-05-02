@@ -1,4 +1,4 @@
-version: "3"
+version: '3'
 
 services:
   search:
@@ -194,8 +194,7 @@ services:
     image: postgres:9.6.17
     hostname: postgres-db
     volumes:
-      - ./data/pgsql_general:/var/lib/postgresql/data:Z
-      - ./data/pgsql_user:/home/${POSTGRES_USER}/data:Z
+      - ./data/pgsql:${PG_DATA_PATH}:Z
     ports:
       - ${POSTGRES_PORT}:${POSTGRES_PORT}
     environment:
