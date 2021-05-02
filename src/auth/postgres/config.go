@@ -5,12 +5,13 @@ import (
 )
 
 type Config struct {
-	Host     string `conf:"host"`
-	User     string `conf:"user"`
-	Passwd   string `conf:"passwd"`
-	Database string `conf:"databaseName"`
-	Type     string `conf:"databaseType"`
-	ConnMax  uint   `conf:"connectionsMax"`
+	Host           string `conf:"host"`
+	User           string `conf:"user"`
+	Passwd         string `conf:"passwd"`
+	Database       string `conf:"databaseName"`
+	Type           string `conf:"databaseType"`
+	ConnMax        uint   `conf:"connectionsMax"`
+	RecreateTables bool   `conf:"recreateTables"`
 }
 
 var cfg *Config

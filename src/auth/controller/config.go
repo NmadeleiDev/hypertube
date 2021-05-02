@@ -5,20 +5,20 @@ import (
 )
 
 type Config struct {
-	ProjectRoot         string `conf:"projectRoot"`
-	ServerPasswd        string `conf:"passwd"`
-	ServerIp            string `conf:"ip"`
-	ServerPort          uint   `conf:"port"`
-	SocketRedirect      string `conf:"socketRedirect"`
-	OauthRedirect       string `conf:"oauthRedirect"`
-	ErrorRedirect       string `conf:"errorRedirect"`
-	PasswdResetRedirect string `conf:"passwdResetRedirect"`
-	Ecole42ClientId     string `conf:"ecole42ClientId"`
-	Ecole42Secret       string `conf:"ecole42Secret"`
-	FacebookClientId    string `conf:"facebookClientId"`
-	FacebookSecret      string `conf:"facebookSecret"`
-	VkClientId          string `conf:"vkClientId"`
-	VkSecret            string `conf:"vkSecret"`
+	ProjectRoot          string `conf:"projectRoot"`
+	ServerPasswd         string `conf:"passwd"`
+	ServerIp             string `conf:"ip"`
+	ServerPort           uint   `conf:"port"`
+	SocketRedirect       string `conf:"socketRedirect"`
+	OauthRedirect        string `conf:"oauthRedirect"`
+	ErrorRedirect        string `conf:"errorRedirect"`
+	PasswdResetRedirect  string `conf:"passwdResetRedirect"`
+	Ecole42ClientId      string `conf:"ecole42ClientId"`
+	Ecole42Secret        string `conf:"ecole42Secret"`
+	FacebookClientId     string `conf:"facebookClientId"`
+	FacebookSecret       string `conf:"facebookSecret"`
+	VkClientId           string `conf:"vkClientId"`
+	VkSecret             string `conf:"vkSecret"`
 }
 
 var cfg *Config

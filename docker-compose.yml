@@ -29,7 +29,7 @@ services:
       dockerfile: Dockerfile
     hostname: auth
     ports:
-      - ${AUTH_BACKEND_PORT}:2222
+      - ${AUTH_BACKEND_PORT}:4000
     links:
       - postgres-db
     networks:
@@ -193,8 +193,8 @@ services:
   postgres-db:
     image: postgres:9.6.17
     hostname: postgres-db
-    volumes:
-      - ./data/pgsql:${PG_DATA_PATH}:Z
+    #    volumes:
+    #      - ./data/pgsql:${PG_DATA_PATH}:Z
     ports:
       - ${POSTGRES_PORT}:${POSTGRES_PORT}
     environment:
@@ -203,7 +203,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      PGDATA: ${PGDATA}
+      #PGDATA: ${PGDATA}
     networks:
       - docker_net
     restart: on-failure
