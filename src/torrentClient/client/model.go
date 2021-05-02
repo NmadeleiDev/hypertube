@@ -28,5 +28,5 @@ func (c *Client) GetShortInfo() string {
 }
 
 func (c *Client) GetPeer() peers.Peer {
-	return c.peer
+	return c.Peer
 }
