@@ -127,7 +127,8 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 
 		// Download the piece
 		buf, err := attemptDownloadPiece(c, pw)
-		if buf == nil {
+		if buf == nil { // TODO: сделать тут нормально
+			workQueue <- pw // Put piece back on the queue
 			return
 		}
 		if err != nil {
