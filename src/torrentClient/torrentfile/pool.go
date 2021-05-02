@@ -71,7 +71,7 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 								logrus.Infof("Wrote peer %v to active clients chan", activeClient.GetShortInfo())
 							} else {
 								peerToInit.IsDead = true
-								go p.StartConnAttempts(ctx, peerToInit)
+								p.StartConnAttempts(ctx, peerToInit)
 							}
 						}(peer)
 					}
@@ -110,7 +110,6 @@ func (p *PeersPool) StartConnAttempts(ctx context.Context, peer peers.Peer) {
 			if nAttempt > 5 {
 				return
 			}
-
 			activeClient := p.InitPeer(&peer)
 			if activeClient != nil {
 				peer.IsDead = false
