@@ -16,39 +16,53 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	videoRequest = "video"
+	srtRequest = "srt"
+)
+
 func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		fileId := mux.Vars(r)["file_id"]
+		reqType := mux.Vars(r)["request"]
+		if reqType == "" { // TODO потом удалить
+			reqType = videoRequest
+		}
+		if reqType != videoRequest && reqType != srtRequest {
+			SendFailResponseWithCode(w, fmt.Sprintf("Unknown req type: %v", reqType), http.StatusBadRequest)
+			return
+		}
+
 		fileRange := model.FileRangeDescription{}
 		if err := fileRange.ParseHeader(r.Header.Get("range")); err != nil {
 			SendFailResponseWithCode(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		fileName, inProgress, isLoaded, fileLength, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
+		info, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
 		if err != nil {
-			logrus.Errorf("File not found by id '%v', err: %v", fileId, err)
+			logrus.Errorf("Err loading file '%v' info, err: %v", fileId, err)
 			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
 			return
 		}
+		fileName, fileLength := GetFileInfoForReqType(info, reqType)
 
-		logrus.Debugf("Got request with start = %v. File length = %v",
-			fileRange.Start, fileLength)
+		logrus.Debugf("Got request with start = %v. Info: %v",
+			fileRange.Start, info)
 
-		if fileRange.Start >= fileLength && isLoaded {
-			SendFailResponseWithCode(w,
-				fmt.Sprintf("Start byte (%v) in Content-Range exceeds file length (%v)",
-					fileRange.Start, fileLength), http.StatusBadRequest)
+		if (info.IsLoaded || info.InProgress) && fileRange.Start >= fileLength {
+			SendFailResponseWithCode(w, fmt.Sprintf(
+				"Start byte (%v) in Content-Range exceeds file length (%v); info: %v",
+					fileRange.Start, fileLength, info), http.StatusBadRequest)
 			return
 		}
 
-		logrus.Debugf("Trying to upload file %v", fileName)
-
+		logrus.Debugf("Trying to upload type %v from %v", reqType, info)
 		var filePart []byte
 
-		if isLoaded {
+		if info.IsLoaded {
 			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start, fileLength)
-		} else if inProgress {
+		} else if info.InProgress {
 			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start, fileLength)
 			if !filesReader.GetManager().IsPartWritten(fileName, filePart, fileRange.Start) || err != nil {
 				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
@@ -63,15 +77,18 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 				logrus.Debugf("Read part (start=%v, len=%v) from disk", fileRange.Start, len(filePart))
 			}
 		} else {
-			fileName, newFileLength, ok := SendTaskToTorrentClient(fileId)
+			ok := SendTaskToTorrentClient(fileId)
 			if !ok {
 				SendFailResponseWithCode(w, "Failed to call torrent client", http.StatusInternalServerError)
 				return
 			}
+			fileName, fileLength, err = LoadFileInfoFromDbForReqType(fileId, reqType)
+			if err != nil {
+				SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
+				return
+			}
 			readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
 			defer readCancel()
-
-			fileLength = int64(newFileLength)
 
 			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
 
@@ -88,8 +105,8 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", fileRange.Start, fileRange.End, fileLength))
 			w.Header().Set("Content-Length", fmt.Sprint(contentLen))
 			w.Header().Set("Accept-Ranges", "bytes")
-			w.Header().Set("Content-Type", "video/mp4")
-			w.WriteHeader(http.StatusPartialContent)
+			w.Header().Set("Content-Type", GetContentTypeForReqType(reqType))
+			w.WriteHeader(GetResponseStatusForReqType(reqType))
 			if _, err := io.Copy(w, bytes.NewReader(filePart)); err != nil {
 				logrus.Errorf("Error piping response: %v", err)
 			}
@@ -103,4 +120,5 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 
 func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
 	logrus.Debugf("Catchall: %v", *r)
+	SendFailResponseWithCode(w, "catchall", http.StatusNotFound)
 }

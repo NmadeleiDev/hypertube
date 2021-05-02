@@ -10,6 +10,8 @@ build/
 static/
 .DS_Store
 
+docker-compose.yml
+
 conf.json
 
 src/magnetCoverter

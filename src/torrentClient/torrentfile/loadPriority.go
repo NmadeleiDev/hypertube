@@ -13,15 +13,18 @@ type LoadPriority struct {
 }
 
 func (p *LoadPriority) StartPriorityUpdating(ctx context.Context) chan int64 {
-	updatesChan := db.GetLoadedStateDb().GetLoadPriorityUpdatesChan(ctx, p.torrentFile.SysInfo.FileId)
+	inputChan := db.GetLoadedStateDb().GetLoadPriorityUpdatesChan(ctx, p.torrentFile.SysInfo.FileId)
 
-	resultsChan := make(chan int64, 100)
+	outputChan := make(chan int64, 100)
+
 	go func() {
+		defer close(outputChan)
+
 		for {
 			select {
 			case <- ctx.Done():
 				return
-			case update := <- updatesChan:
+			case update := <-inputChan:
 				for _, file := range p.torrentFile.FileBoundariesMapping {
 					if file.FileName == update.FileName {
 						if update.ByteIdx > (file.End - file.Start) {
@@ -34,12 +37,12 @@ func (p *LoadPriority) StartPriorityUpdating(ctx context.Context) chan int64 {
 							logrus.Errorf("Wow! pieceIdx (%v) > int64(len(p.torrentFile.PieceHashes)) (%v)", pieceIdx, len(p.torrentFile.PieceHashes))
 							continue
 						}
-						resultsChan <- pieceIdx
+						outputChan <- pieceIdx
 					}
 				}
 			}
 		}
 	}()
 
-	return resultsChan
+	return outputChan
 }

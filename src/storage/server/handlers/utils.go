@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"time"
 
+	"hypertube_storage/db"
 	"hypertube_storage/model"
 	"hypertube_storage/parser/env"
 
 	"github.com/sirupsen/logrus"
 )
-
 
 func SendFailResponseWithCode(w http.ResponseWriter, text string, code int) {
 	var packet []byte
@@ -71,16 +71,60 @@ func SetCookieForHour(w http.ResponseWriter, cookieName, value string) {
 	http.SetCookie(w, &c)
 }
 
-func SendTaskToTorrentClient(fileId string) (string, int, bool) {
+func GetFileInfoForReqType(info model.LoadInfo, reqType string) (fileName string, fileLength int64) {
+	if reqType == videoRequest {
+		fileName = info.VideoFile.Name
+		fileLength = info.VideoFile.Length
+	} else {
+		fileName = info.SrtFile.Name
+		fileLength = info.SrtFile.Length
+	}
+
+	return fileName, fileLength
+}
+
+func LoadFileInfoFromDbForReqType(fileId string, reqType string) (fileName string, fileLength int64, err error) {
+	info, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
+	if err != nil {
+		logrus.Errorf("File not found by id '%v', err: %v", fileId, err)
+		return "", 0, err
+	}
+	fileName, fileLength = GetFileInfoForReqType(info, reqType)
+	return fileName, fileLength, nil
+}
+
+func GetContentTypeForReqType(reqType string) string {
+	switch reqType {
+	case videoRequest:
+		return "video/mp4"
+	case srtRequest:
+		return "application/octet-stream"
+	default:
+		return "plain/text"
+	}
+}
+
+func GetResponseStatusForReqType(reqType string) int {
+	switch reqType {
+	case videoRequest:
+		return http.StatusPartialContent
+	case srtRequest:
+		return http.StatusOK
+	default:
+		return http.StatusOK
+	}
+}
+
+func SendTaskToTorrentClient(fileId string) bool {
 	req, err := http.Get(fmt.Sprintf("http://%s/download/%s", env.GetParser().GetLoaderServiceHost(), fileId))
 	if err != nil {
 		logrus.Errorf("Error calling loader service: %v", err)
-		return "", 0, false
+		return false
 	}
 
 	if req.StatusCode != http.StatusOK {
 		logrus.Errorf("Not ok status from torrent client: %v %v", req.StatusCode, req.Status)
-		return "", 0, false
+		return false
 	}
 
 	info := model.LoaderTaskResponse{}
@@ -88,15 +132,15 @@ func SendTaskToTorrentClient(fileId string) (string, int, bool) {
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		logrus.Errorf("Error reading body: %v", err)
-		return "", 0, false
+		return false
 	}
 
 	if err := json.Unmarshal(body, &info); err != nil {
 		logrus.Errorf("Error unmarshal body from loader: %v", err)
-		return "", 0, false
+		return false
 	}
 
-	return info.Data.FileName, info.Data.FileLength, true
+	return true
 }
 
 

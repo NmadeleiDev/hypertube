@@ -78,12 +78,21 @@ UPDATE %s SET file_length=$1 WHERE file_id=$2`
 	}
 }
 
-func (d *manager) SetFileNameAndLengthForRecord(fileId, fileName string, length int64) {
+func (d *manager) SetVideoFileNameAndLengthForRecord(fileId, fileName string, length int64) {
 	query := `
 UPDATE %s SET file_name=$1, file_length=$2 WHERE file_id=$3`
 
 	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath()), fileName, length, fileId); err != nil {
-		logrus.Errorf("Error saving file len: %v", err)
+		logrus.Errorf("Error saving file name and len: %v", err)
+	}
+}
+
+func (d *manager) SetSrtFileNameAndLengthForRecord(fileId, fileName string, length int64) {
+	query := `
+UPDATE %s SET srt_file_name=$1, srt_file_length=$2 WHERE file_id=$3`
+
+	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath()), fileName, length, fileId); err != nil {
+		logrus.Errorf("Error saving srt file name and len: %v", err)
 	}
 }
 
