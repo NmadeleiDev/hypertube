@@ -47,9 +47,9 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 		var filePart []byte
 
 		if isLoaded {
-			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start)
+			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start, fileLength)
 		} else if inProgress {
-			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start)
+			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start, fileLength)
 			if !filesReader.GetManager().IsPartWritten(fileName, filePart, fileRange.Start) || err != nil {
 				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
 
@@ -57,7 +57,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 				defer readCancel()
 
 				logrus.Debugf("Got file inProgress=true from db: %v, waiting for data (%v %v %v)", fileName, filesReader.GetManager().HasNullBytes(filePart), filePart == nil, err)
-				filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start)
+				filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start, fileLength)
 			}
 		} else {
 			fileName, newFileLength, ok := SendTaskToTorrentClient(fileId)
@@ -73,7 +73,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
 
 			logrus.Debugf("Got file name from client: %v, waiting for data", fileName)
-			filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start)
+			filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start, fileLength)
 		}
 		logrus.Debugf("Writing response: %v", len(filePart))
 
