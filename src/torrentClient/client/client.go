@@ -106,6 +106,7 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 		default:
 			c.Conn.SetDeadline(time.Now().Add(15 * time.Second))
 
+			c.SendInterested()
 			if err := c.SendUnchoke(); err != nil {
 				logrus.Errorf("Error sending unchoke: %v", err)
 				c.Peer.IsDead = true
@@ -114,7 +115,9 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 
 			msg, err := c.Read() // this call blocks
 			if err != nil {
-				return false, err
+				logrus.Debugf("Error waiting for peer msg: %v", err)
+				continue
+				//return false, err
 			}
 
 			if msg == nil { // keep-alive

@@ -106,6 +106,7 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, erro
 			return &state, fmt.Errorf("download read msg error: %v, idx=%v, loaded=%v%%", err, pw.index, (state.downloaded * 100) / pw.length)
 		}
 	}
+	logrus.Debugf("Done loading piece idx=%v from %v", state.index, state.client.Peer.GetAddr())
 
 	return &state, nil
 }
@@ -119,7 +120,12 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 }
 
 func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *pieceWork, results chan *pieceResult) error {
-	defer c.Conn.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Debugf("Recovered in piece load: %v", r)
+		}
+		c.Conn.Close()
+	}()
 
 	for pw := range workQueue {
 		if pw.length < 0 {

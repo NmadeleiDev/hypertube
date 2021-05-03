@@ -43,7 +43,7 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 	copy(announceList[1:1 + len(p.torrent.AnnounceList)], p.torrent.AnnounceList)
 	copy(announceList[1 + len(p.torrent.AnnounceList):], generalTrackerList)
 
-	//sentPeersMap := make(map[string]bool, 50)
+	sentPeersMap := make(map[string]bool, 50)
 
 	for _, announce := range announceList {
 		tracker := Tracker{
@@ -71,12 +71,14 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 						logrus.Errorf("Error requesting peers: %v", err)
 						return
 					}
+					logrus.Debugf("Got peers from tracker %v: %v", tracker.Announce, rawPeers)
 
 					for _, peer := range rawPeers {
-						//if isSet, exists := sentPeersMap[peer.GetAddr()]; exists && isSet {
-						//	continue
-						//}
+						if isSet, exists := sentPeersMap[peer.GetAddr()]; exists && isSet {
+							continue
+						}
 						p.ClientMaker.RawPeersChan <- peer
+						sentPeersMap[peer.GetAddr()] = true
 					}
 					timer.Reset(time.Second * tracker.TrackerCallInterval)
 				}

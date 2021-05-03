@@ -37,7 +37,16 @@ func (s *prioritySorter) InitSorter(ctx context.Context) chan *pieceWork {
 				s.mu.Unlock()
 			case returnedPiece := <- topPriorityPieceChan: // нам вернули часть, которую не получилось скачать
 				s.mu.Lock()
-				s.Pieces = append(s.Pieces, returnedPiece)
+				for i, piece := range s.Pieces { // важно вставить часть на свое место
+					if piece.index > returnedPiece.index {
+						if i == 0 {
+							s.Pieces = append([]*pieceWork{returnedPiece}, s.Pieces...)
+							break
+						}
+						s.Pieces = append(append(s.Pieces[:i], returnedPiece), s.Pieces[i:]...)
+					}
+				}
+				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
 				s.mu.Unlock()
 			case topPriorityPieceChan <- s.topPiece:
 				if len(s.Pieces) == 1 { // значит, мы эту единственную часть только что и отдали, больше не осталось
@@ -45,8 +54,13 @@ func (s *prioritySorter) InitSorter(ctx context.Context) chan *pieceWork {
 					return
 				} else {
 					// удаляю отданную часть
+					pLen := len(s.Pieces)
 					for i, piece := range s.Pieces {
 						if piece.index == s.topPiece.index {
+							if i == pLen {
+								s.Pieces = s.Pieces[:]
+								break
+							}
 							copy(s.Pieces[i:], s.Pieces[i + 1:])
 							s.Pieces = s.Pieces[:len(s.Pieces) - 1]
 							break
