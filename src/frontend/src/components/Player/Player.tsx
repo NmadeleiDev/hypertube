@@ -1,11 +1,10 @@
 // ts-nocheck
 
-import { makeStyles, Typography } from '@material-ui/core';
-import React, { useEffect, useRef, useState } from 'react';
+import { makeStyles } from '@material-ui/core';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactPlayer from 'react-player';
 import screenfull from 'screenfull';
-import ActivePeers from './ActivePeers';
 import PlayerControls from './PlayerControls';
 
 const useStyles = makeStyles({
@@ -72,7 +71,7 @@ function Player({ title, id, src }: Props) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const timeoutId = useRef<NodeJS.Timeout>();
-  const url = id ? `/api/storage/load/${id}` : src;
+  const videoUrl = id ? `/api/storage/load/${id}/video` : src;
   const { t } = useTranslation();
 
   const handlePlayPause = () => {
@@ -181,7 +180,7 @@ function Player({ title, id, src }: Props) {
         ref={playerRef}
         width="100%"
         height="100%"
-        url={url}
+        url={videoUrl}
         muted={muted}
         playing={playing}
         volume={volume}
@@ -191,6 +190,19 @@ function Player({ title, id, src }: Props) {
         onError={handleError}
         onBuffer={() => console.log('onBuffer')}
         onBufferEnd={() => console.log('onBufferEnd')}
+        // config={{
+        //   file: {
+        //     tracks: [
+        //       {
+        //         kind: 'captions',
+        //         src: `/api/storage/load/${id}/srt`,
+        //         srcLang: 'en',
+        //         label: 'en',
+        //         default: true,
+        //       },
+        //     ],
+        //   },
+        // }}
       />
       {controlsVisible && (
         <PlayerControls
