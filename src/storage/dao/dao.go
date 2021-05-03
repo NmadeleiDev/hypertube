@@ -3,6 +3,8 @@ package dao
 import (
 	"context"
 	"time"
+
+	"hypertube_storage/model"
 )
 
 type LoadedFilesDbManager interface {
@@ -10,7 +12,7 @@ type LoadedFilesDbManager interface {
 	InitTables()
 	CloseConnection()
 
-	GetFileInfoById(id string) (path string, inProgress, isLoaded bool, fLen int64, err error)
+	GetFileInfoById(id string) (info model.LoadInfo, err error)
 	GetInProgressFileIds() (result []string)
 	GetFileIdsWithWatchedUnder(under time.Time) (ids []string, names []string)
 	UpdateLastWatchedDate(fileId string)

@@ -141,7 +141,7 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 			workQueue <- pw // Put piece back on the queue
 			t.LoadStats.DecrActivePeers()
 
-			logrus.Errorf("Throwing dead peer %v cause err: %v", c.GetShortInfo(), err)
+			logrus.Errorf("Throwing dead peer %v cause err: %v; saved piece %v", c.GetShortInfo(), err, pw.index)
 			deadPeerChan <- c
 			return
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"strings"
 
 	"torrentClient/db"
 	"torrentClient/fsWriter"
@@ -81,8 +82,13 @@ func (t *TorrentFile) DownloadToFile() error {
 
 func (t *TorrentFile) PrepareDownload() (string, int64) {
 	videoFile := t.getHeaviestFile()
+	srtFile, ok := t.getSrtFile()
+	if ok {
+		fsWriter.GetWriter().CreateEmptyFile(srtFile.EncodeFileName())
+		db.GetFilesManagerDb().SetSrtFileNameAndLengthForRecord(t.SysInfo.FileId, srtFile.EncodeFileName(), int64(srtFile.Length))
+	}
 	fsWriter.GetWriter().CreateEmptyFile(videoFile.EncodeFileName())
-	db.GetFilesManagerDb().SetFileNameAndLengthForRecord(t.SysInfo.FileId, videoFile.EncodeFileName(), int64(videoFile.Length))
+	db.GetFilesManagerDb().SetVideoFileNameAndLengthForRecord(t.SysInfo.FileId, videoFile.EncodeFileName(), int64(videoFile.Length))
 	return videoFile.EncodeFileName(), int64(videoFile.Length)
 }
 
@@ -122,6 +128,20 @@ func (t *TorrentFile) getHeaviestFile() bencodeTorrentFile {
 	}
 
 	return longest
+}
+
+func (t *TorrentFile) getSrtFile() (bencodeTorrentFile, bool) {
+	for _, file := range t.Files {
+		if len(file.Path) < 1 {
+			logrus.Errorf("File path not specified, file %v", file)
+			continue
+		}
+		if strings.HasSuffix(file.Path[len(file.Path) - 1], ".srt") {
+			return file, true
+		}
+	}
+
+	return bencodeTorrentFile{}, false
 }
 
 func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts chan p2p.LoadedPiece) {
