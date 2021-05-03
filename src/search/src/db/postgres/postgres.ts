@@ -26,7 +26,7 @@ export async function query(
     log.trace('Executing query', { text, values });
     const res = await pool.query({ text, values });
     const duration = Date.now() - start;
-    log.trace('Executed query', { text, duration, rows: res.rowCount, values });
+    log.debug('Executed query', { text, duration, rows: res.rowCount, values });
     log.trace('Result:', res.rows);
     return res;
   } catch (e) {

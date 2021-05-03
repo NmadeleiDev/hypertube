@@ -1,8 +1,6 @@
 const createProxyMiddleware = require('http-proxy-middleware');
 const dev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-const dockerhost = dev
-  ? process.env.REACT_APP_DOCKER_PATH || '192.168.99.100'
-  : 'localhost';
+const dockerhost = dev ? process.env.REACT_APP_DOCKER_PATH : 'localhost';
 const port = 8080;
 const url = `http://${dockerhost}:${port}`;
 
