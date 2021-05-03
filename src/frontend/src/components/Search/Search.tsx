@@ -16,12 +16,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router';
 
 import { loadMovies } from '../../store/features/MoviesSlice';
-import { useToast } from '../../hooks/useToast';
 import { useAppDispatch } from '../../store/store';
 import { theme } from '../../theme';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/rootReducer';
-import { movies } from '../../axios';
 
 const useStyles = makeStyles({
   root: {
@@ -69,7 +67,6 @@ const Search = () => {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const loading = useSelector((state: RootState) => state.movies.loading);
   const history = useHistory();
-  const { toast } = useToast();
   const { t } = useTranslation();
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,11 +1,8 @@
-// ts-nocheck
-
-import { makeStyles, Typography } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactPlayer from 'react-player';
 import screenfull from 'screenfull';
-import ActivePeers from './ActivePeers';
 import PlayerControls from './PlayerControls';
 
 const useStyles = makeStyles({
@@ -50,7 +47,7 @@ function Player({ title, id, src }: Props) {
   const [state, setState] = useState({
     playing: false,
     muted: false,
-    volume: 0.5,
+    volume: 1,
     playbackRate: 1.0,
     played: 0,
     seeking: false,
@@ -72,8 +69,49 @@ function Player({ title, id, src }: Props) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const timeoutId = useRef<NodeJS.Timeout>();
-  const url = id ? `/api/storage/load/${id}` : src;
+  const videoUrl = id ? `/api/storage/load/${id}/video` : src;
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (!playerRef || !playerRef.current) return;
+    console.log('[Player] useEffect');
+    const player = playerRef.current.getInternalPlayer();
+    console.log(player);
+    if (!player) return;
+    const playListener = player.addEventListener('play', () => {
+      console.log('play');
+    });
+    const emptiedListener = player.addEventListener('emptied', () => {
+      console.log('emptied');
+    });
+    const durationChangeListener = player.addEventListener(
+      'durationchange',
+      () => {
+        console.log('durationchange');
+      }
+    );
+    const endedListener = player.addEventListener('ended', () => {
+      console.log('ended');
+    });
+    const stalledListener = player.addEventListener('stalled', () => {
+      console.log('stalled');
+    });
+    const suspendListener = player.addEventListener('suspend', () => {
+      console.log('suspend');
+    });
+    const waitingListener = player.addEventListener('waiting', () => {
+      console.log('waiting');
+    });
+    return () => {
+      player.removeEventListener('play', playListener);
+      player.removeEventListener('emptied', emptiedListener);
+      player.removeEventListener('ended', endedListener);
+      player.removeEventListener('durationchange', durationChangeListener);
+      player.removeEventListener('stalled', stalledListener);
+      player.removeEventListener('suspend', suspendListener);
+      player.removeEventListener('waiting', waitingListener);
+    };
+  }, [playerRef]);
 
   const handlePlayPause = () => {
     setState({ ...state, playing: !state.playing });
@@ -157,7 +195,8 @@ function Player({ title, id, src }: Props) {
   };
   const handleError = (e: Error) => {
     console.log('handleError', e);
-    setState((prev) => ({ ...prev }));
+
+    setState((prev) => ({ ...prev, played: prev.played + 0.001 }));
   };
 
   const currentTime =
@@ -169,6 +208,7 @@ function Player({ title, id, src }: Props) {
       ? format(currentTime)
       : `-${format(duration - currentTime)}`;
   const totalDuration = format(duration);
+
   return error ? (
     <div className={classes.Error}>{t`Cannot load movie`}</div>
   ) : (
@@ -181,7 +221,7 @@ function Player({ title, id, src }: Props) {
         ref={playerRef}
         width="100%"
         height="100%"
-        url={url}
+        url={videoUrl}
         muted={muted}
         playing={playing}
         volume={volume}
@@ -191,6 +231,19 @@ function Player({ title, id, src }: Props) {
         onError={handleError}
         onBuffer={() => console.log('onBuffer')}
         onBufferEnd={() => console.log('onBufferEnd')}
+        // config={{
+        //   file: {
+        //     tracks: [
+        //       {
+        //         kind: 'captions',
+        //         src: `/api/storage/load/${id}/srt`,
+        //         srcLang: 'en',
+        //         label: 'en',
+        //         default: true,
+        //       },
+        //     ],
+        //   },
+        // }}
       />
       {controlsVisible && (
         <PlayerControls

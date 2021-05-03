@@ -16,6 +16,10 @@ const pool = new Pool({
 });
 log.debug('pool created', pool);
 log.debug('testing connection');
+pool.query(`SELECT 1 from ${POSTGRES_SCHEME}.movies`, (error) => {
+  if (error) throw error;
+  console.log('Connection succeded');
+});
 
 export async function query(
   text: string,
@@ -26,7 +30,7 @@ export async function query(
     log.trace('Executing query', { text, values });
     const res = await pool.query({ text, values });
     const duration = Date.now() - start;
-    log.trace('Executed query', { text, duration, rows: res.rowCount, values });
+    log.debug('Executed query', { text, duration, rows: res.rowCount, values });
     log.trace('Result:', res.rows);
     return res;
   } catch (e) {

@@ -302,7 +302,6 @@ export const selectMovies = async (limit: number = 5, offset: number = 0) => {
       where
         t.magnet is not null
         or t.torrent is not null
-        and m.rating != '0'
       group by m.id
       order by
         m.rating

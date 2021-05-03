@@ -266,7 +266,7 @@ export const loadMoviesInfo = (
           // saveMovieToDB(IMDBInfo);
           // en = imdbToIMovie(IMDBInfo, torrent);
         }
-        saveMovieToDB(IMDBInfo);
+        await saveMovieToDB(IMDBInfo);
         en = imdbToIMovie(IMDBInfo, torrent);
       }
       if (!en) return null;

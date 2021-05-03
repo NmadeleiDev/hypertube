@@ -30,11 +30,6 @@ export interface MoviesState {
   isEndOfMovies: boolean;
 }
 
-interface MoviesError {
-  ru: string;
-  en: string;
-}
-
 export interface IMoviesResponse {
   data: ITranslatedMovie[] | null;
   error?: string;

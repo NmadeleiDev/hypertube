@@ -120,17 +120,17 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
     return names.join(', ');
   };
 
-  // if (!isAuth)
-  //   return (
-  //     <Grid
-  //       container
-  //       direction="column"
-  //       alignItems="center"
-  //       className={classes.root}
-  //     >
-  //       <Typography className={classes.Description}>{t`AuthOnly`}</Typography>
-  //     </Grid>
-  //   );
+  if (!isAuth)
+    return (
+      <Grid
+        container
+        direction="column"
+        alignItems="center"
+        className={classes.root}
+      >
+        <Typography className={classes.Description}>{t`AuthOnly`}</Typography>
+      </Grid>
+    );
 
   if (!movie) return null;
   return (
@@ -174,8 +174,8 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
         </Grid>
       </Grid>
       <Grid container className={classes.Video}>
-        {/* <NativePlayer id={movie.en.id} />
-        <NativePlayer src={`/api/test/id000`} /> */}
+        {/* <NativePlayer id={movie.en.id} /> */}
+        {/* <NativePlayer src={`/api/test/id000`} /> */}
         <ActivePeers movieId={movie.en.id} />
 
         <Player

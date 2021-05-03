@@ -188,7 +188,7 @@ services:
       - docker_net
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
-      - ./data/redis:/data
+      - ./data/redis:/data:Z
 
   postgres-db:
     image: postgres:9.6.17
