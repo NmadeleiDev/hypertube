@@ -273,8 +273,8 @@ export const selectMoviesFromDB = async (
         m.id = c.movieid 
       where
         m.title='%${search}%' and
-        t.magnet is not null
-        or t.torrent is not null
+        (t.magnet is not null
+        or t.torrent is not null)
       group by m.id, avalibility
       order by
         m.rating`
