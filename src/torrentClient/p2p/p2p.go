@@ -83,7 +83,7 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, erro
 					blockSize = pw.length - state.requested
 				}
 
-				err := c.SendRequest(pw.index, state.requested, blockSize)
+				err := c.SendRequest(state.index, state.requested, blockSize)
 				if err != nil {
 					return &state, err
 				}
