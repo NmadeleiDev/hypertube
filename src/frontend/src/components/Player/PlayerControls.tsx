@@ -217,12 +217,12 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
         style={{ padding: 16 }}
       >
         <Grid item xs={12}>
-          <Slider
+          <PrettoSlider
             min={0}
             max={100}
-            // ValueLabelComponent={(props2) => (
-            //   <ValueLabelComponent {...props2} value={props.elapsedTime} />
-            // )}
+            ValueLabelComponent={(props2) => (
+              <ValueLabelComponent {...props2} value={props.elapsedTime} />
+            )}
             value={props.played * 100}
             onChange={(e, value) => props.onSeek(value)}
             onMouseDown={props.onSeekMouseDown}

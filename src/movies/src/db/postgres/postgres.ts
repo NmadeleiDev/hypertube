@@ -1,6 +1,7 @@
 import { Pool, QueryResult } from 'pg';
 import { DSN } from './config';
 import log from '../../logger/logger';
+const POSTGRES_SCHEME = process.env.POSTGRES_SCHEME || 'hypertube';
 
 log.debug('creating pool');
 const pool = new Pool({
@@ -10,6 +11,10 @@ const pool = new Pool({
 });
 log.debug('pool created', pool);
 log.debug('testing connection');
+pool.query(`SELECT 1 from ${POSTGRES_SCHEME}.movies`, (error) => {
+  if (error) throw error;
+  console.log('Connection succeded');
+});
 
 export async function query(
   text: string,

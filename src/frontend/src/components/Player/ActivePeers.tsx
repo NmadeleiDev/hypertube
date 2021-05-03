@@ -32,6 +32,7 @@ const ActivePeers = ({ movieId }: Props) => {
       if (data?.activePeers) clearTimeout(timeout);
     }, STATS_REQUEST_INTERVAL);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

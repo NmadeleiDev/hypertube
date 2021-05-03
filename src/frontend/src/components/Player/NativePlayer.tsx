@@ -35,19 +35,57 @@ const NativePlayer = ({ src, id }: Props) => {
 
   useEffect(() => {
     if (!videoRef || !videoRef.current) return;
-    const video = videoRef.current;
+    const player = videoRef.current;
+
+    console.log(player);
+    if (!player) return;
+    const playListener = () => {
+      console.log('play');
+    };
+    const emptiedListener = () => {
+      console.log('emptied');
+    };
+    const durationChangeListener = () => {
+      console.log('durationchange');
+    };
+    const endedListener = () => {
+      console.log('ended');
+    };
+    const stalledListener = () => {
+      console.log('stalled');
+    };
+    const suspendListener = () => {
+      console.log('suspend');
+    };
+    const waitingListener = () => {
+      console.log('waiting');
+    };
     const handleProgress = () => {
       console.log('[handleProgress]');
-      const buffered = video.buffered;
-      const currentTime = video.currentTime;
+      const buffered = player.buffered;
+      const currentTime = player.currentTime;
       console.log('buffered', buffered);
       console.log('currentTime', currentTime);
     };
-    video.addEventListener('progress', handleProgress);
+    player.addEventListener('play', playListener);
+    player.addEventListener('emptied', emptiedListener);
+    player.addEventListener('ended', endedListener);
+    player.addEventListener('durationchange', durationChangeListener);
+    player.addEventListener('stalled', stalledListener);
+    player.addEventListener('suspend', suspendListener);
+    player.addEventListener('waiting', waitingListener);
+    player.addEventListener('progress', handleProgress);
     return () => {
-      video.removeEventListener('progress', handleProgress);
+      player.removeEventListener('play', playListener);
+      player.removeEventListener('emptied', emptiedListener);
+      player.removeEventListener('ended', endedListener);
+      player.removeEventListener('durationchange', durationChangeListener);
+      player.removeEventListener('stalled', stalledListener);
+      player.removeEventListener('suspend', suspendListener);
+      player.removeEventListener('waiting', waitingListener);
+      player.removeEventListener('progress', handleProgress);
     };
-  });
+  }, []);
 
   return (
     <div>

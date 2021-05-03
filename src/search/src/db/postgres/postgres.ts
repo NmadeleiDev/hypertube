@@ -16,6 +16,10 @@ const pool = new Pool({
 });
 log.debug('pool created', pool);
 log.debug('testing connection');
+pool.query(`SELECT 1 from ${POSTGRES_SCHEME}.movies`, (error) => {
+  if (error) throw error;
+  console.log('Connection succeded');
+});
 
 export async function query(
   text: string,
