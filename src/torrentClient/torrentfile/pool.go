@@ -102,6 +102,7 @@ func (pi *PeersInitializer) InitPeer(ctx context.Context, peer *peers.Peer, myId
 	c, err := client.New(*peer, myId, infoHash)
 	if err != nil {
 		logrus.Errorf("Could not handshake with %s. Err: %v", peer.GetAddr(), err)
+		peer.IsDead = true
 		return nil
 	}
 

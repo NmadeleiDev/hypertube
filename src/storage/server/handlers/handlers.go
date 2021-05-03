@@ -11,6 +11,7 @@ import (
 	"hypertube_storage/db"
 	"hypertube_storage/filesReader"
 	"hypertube_storage/model"
+	"hypertube_storage/subtitlesManager"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -24,14 +25,6 @@ const (
 func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		fileId := mux.Vars(r)["file_id"]
-		reqType := mux.Vars(r)["request"]
-		if reqType == "" { // TODO потом удалить
-			reqType = videoRequest
-		}
-		if reqType != videoRequest && reqType != srtRequest {
-			SendFailResponseWithCode(w, fmt.Sprintf("Unknown req type: %v", reqType), http.StatusBadRequest)
-			return
-		}
 
 		fileRange := model.FileRangeDescription{}
 		if err := fileRange.ParseHeader(r.Header.Get("range")); err != nil {
@@ -45,33 +38,31 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
 			return
 		}
-		fileName, fileLength := GetFileInfoForReqType(info, reqType)
-
 		logrus.Debugf("Got request with start = %v. Info: %v",
 			fileRange.Start, info)
 
-		if (info.IsLoaded || info.InProgress) && fileRange.Start >= fileLength {
+		if (info.IsLoaded || info.InProgress) && fileRange.Start >= info.VideoFile.Length {
 			SendFailResponseWithCode(w, fmt.Sprintf(
 				"Start byte (%v) in Content-Range exceeds file length (%v); info: %v",
-					fileRange.Start, fileLength, info), http.StatusBadRequest)
+					fileRange.Start, info.VideoFile.Length, info), http.StatusBadRequest)
 			return
 		}
 
-		logrus.Debugf("Trying to upload type %v from %v", reqType, info)
+		logrus.Debugf("Trying to upload video from %v", info)
 		var filePart []byte
 
 		if info.IsLoaded {
-			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start, fileLength)
+			filePart, _, err = filesReader.GetManager().GetFileInRange(info.VideoFile.Name, fileRange.Start, info.VideoFile.Length)
 		} else if info.InProgress {
-			filePart, _, err = filesReader.GetManager().GetFileInRange(fileName, fileRange.Start, fileLength)
-			if !filesReader.GetManager().IsPartWritten(fileName, filePart, fileRange.Start) || err != nil {
-				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
+			filePart, _, err = filesReader.GetManager().GetFileInRange(info.VideoFile.Name, fileRange.Start, info.VideoFile.Length)
+			if !filesReader.GetManager().IsPartWritten(info.VideoFile.Name, filePart, fileRange.Start) || err != nil {
+				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, info.VideoFile.Name, fileRange.Start)
 
 				readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
 				defer readCancel()
 
-				logrus.Debugf("Got file inProgress=true from db: %v, waiting for data (%v %v %v)", fileName, filesReader.GetManager().HasNullBytes(filePart), filePart == nil, err)
-				filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start, fileLength)
+				logrus.Debugf("Got file inProgress=true from db: %v, waiting for data (%v %v %v)", info.VideoFile.Name, filesReader.GetManager().HasNullBytes(filePart), filePart == nil, err)
+				filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, info.VideoFile.Name, fileRange.Start, info.VideoFile.Length)
 				logrus.Debugf("Wait success (start=%v, len=%v) from disk", fileRange.Start, len(filePart))
 			} else {
 				logrus.Debugf("Read part (start=%v, len=%v) from disk", fileRange.Start, len(filePart))
@@ -82,7 +73,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 				SendFailResponseWithCode(w, "Failed to call torrent client", http.StatusInternalServerError)
 				return
 			}
-			fileName, fileLength, err = LoadFileInfoFromDbForReqType(fileId, reqType)
+			info, err = db.GetLoadedFilesManager().GetFileInfoById(fileId)
 			if err != nil {
 				SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
 				return
@@ -90,10 +81,9 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
 			defer readCancel()
 
-			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, fileName, fileRange.Start)
+			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, info.VideoFile.Name, fileRange.Start)
 
-			logrus.Debugf("Got file name from client: %v, waiting for data", fileName)
-			filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, fileName, fileRange.Start, fileLength)
+			filePart, _, err = filesReader.GetManager().WaitForFilePart(readCtx, info.VideoFile.Name, fileRange.Start, info.VideoFile.Length)
 		}
 		logrus.Debugf("Writing response, part len=%v", len(filePart))
 
@@ -102,13 +92,82 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			fileRange.End = fileRange.Start + int64(len(filePart)) - 1
 			contentLen := int64(len(filePart))
-			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", fileRange.Start, fileRange.End, fileLength))
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", fileRange.Start, fileRange.End, info.VideoFile.Length))
 			w.Header().Set("Content-Length", fmt.Sprint(contentLen))
 			w.Header().Set("Accept-Ranges", "bytes")
-			w.Header().Set("Content-Type", GetContentTypeForReqType(reqType))
-			w.WriteHeader(GetResponseStatusForReqType(reqType))
+			w.Header().Set("Content-Type", GetContentTypeForReqType("video"))
+			w.WriteHeader(GetResponseStatusForReqType("video"))
 			if _, err := io.Copy(w, bytes.NewReader(filePart)); err != nil {
 				logrus.Errorf("Error piping response: %v", err)
+			}
+
+			go db.GetLoadedFilesManager().UpdateLastWatchedDate(fileId)
+		}
+	} else {
+		SendFailResponseWithCode(w, "Incorrect method", http.StatusMethodNotAllowed)
+	}
+}
+
+func UploadSrtFileHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		fileId := mux.Vars(r)["file_id"]
+
+		info, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
+		if err != nil {
+			logrus.Errorf("Err loading file '%v' info, err: %v", fileId, err)
+			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
+			return
+		}
+
+		var subtitlesFile []byte
+
+		if info.IsLoaded {
+			subtitlesFile, err = filesReader.GetManager().ReadWholeFile(info.SrtFile.Name)
+		} else if info.InProgress {
+			subtitlesFile, err = filesReader.GetManager().ReadWholeFile(info.SrtFile.Name)
+			if int64(len(subtitlesFile)) < info.SrtFile.Length ||
+				!filesReader.GetManager().IsPartWritten(info.SrtFile.Name, subtitlesFile, 0) || err != nil {
+				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, info.SrtFile.Name, 0)
+
+				readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
+				defer readCancel()
+
+				logrus.Debugf("Got file inProgress=true from db: %v, waiting for data (%v %v %v %v)", info.SrtFile, len(subtitlesFile), filesReader.GetManager().HasNullBytes(subtitlesFile), subtitlesFile == nil, err)
+				subtitlesFile, err = filesReader.GetManager().WaitForWholeFileWritten(readCtx, info.SrtFile.Name, info.SrtFile.Length)
+				logrus.Debugf("Wait srt success (len=%v) from disk", len(subtitlesFile))
+			} else {
+				logrus.Debugf("Read srt file (len=%v) from disk", len(subtitlesFile))
+			}
+		} else {
+			ok := SendTaskToTorrentClient(fileId)
+			if !ok {
+				SendFailResponseWithCode(w, "Failed to call torrent client", http.StatusInternalServerError)
+				return
+			}
+			info, err = db.GetLoadedFilesManager().GetFileInfoById(fileId)
+			if err != nil {
+				SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
+				return
+			}
+			readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
+			defer readCancel()
+
+			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, info.SrtFile.Name, 0)
+
+			subtitlesFile, err = filesReader.GetManager().WaitForWholeFileWritten(readCtx, info.SrtFile.Name, info.SrtFile.Length)
+		}
+		logrus.Debugf("Writing response, part len=%v", len(subtitlesFile))
+
+		if err != nil {
+			SendFailResponseWithCode(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			w.Header().Set("Content-Type", GetContentTypeForReqType("srt"))
+			w.WriteHeader(GetResponseStatusForReqType("srt"))
+			if _, err := io.Copy(w, bytes.NewReader(subtitlesFile)); err != nil {
+				logrus.Errorf("Error piping response: %v", err)
+			}
+			if err := subtitlesManager.GetManager().ConvertSrtToVtt(bytes.NewReader(subtitlesFile), w); err != nil {
+				SendFailResponseWithCode(w, fmt.Sprintf("Failed to convert srt to vtt: %v", err.Error()), http.StatusInternalServerError)
 			}
 
 			go db.GetLoadedFilesManager().UpdateLastWatchedDate(fileId)

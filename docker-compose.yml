@@ -23,20 +23,20 @@ services:
       - postgres-db
     restart: always
 
-#  auth:
-#    build:
-#      context: ./src/auth
-#      dockerfile: Dockerfile
-#    hostname: auth
-#    ports:
-#      - ${AUTH_BACKEND_PORT}:4000
-#    links:
-#      - postgres-db
-#    networks:
-#      - docker_net
-#    depends_on:
-#      - postgres-db
-#    restart: always
+  auth:
+    build:
+      context: ./src/auth
+      dockerfile: Dockerfile
+    hostname: auth
+    ports:
+      - ${AUTH_BACKEND_PORT}:4000
+    links:
+      - postgres-db
+    networks:
+      - docker_net
+    depends_on:
+      - postgres-db
+    restart: always
 
   movies:
     build:
@@ -166,7 +166,7 @@ services:
       - storage
       - torrent-client
       - magnet-converter
-#      - auth
+      - auth
     networks:
       - docker_net
     restart: always
