@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path"
 
@@ -21,6 +22,12 @@ const readMinLimit = 1e5
 var filesDir = env.GetParser().GetFilesDir()
 
 type fileReader struct {
+}
+
+type resultStruct struct {
+	Data	[]byte
+	TotalLen	int64
+	Err		error
 }
 
 func (f *fileReader) HasNullBytes(src []byte) bool {
@@ -76,6 +83,75 @@ func (f *fileReader) IsPartWritten(fileName string, part []byte, start int64) bo
 	return true
 }
 
+func (f *fileReader) WaitForWholeFileWritten(ctx context.Context, fileName string, expectedLen int64) ([]byte, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		logrus.Errorf("Error init watcher: %v", err)
+		return nil, err
+	}
+	defer watcher.Close()
+
+	done := make(chan resultStruct)
+	defer close(done)
+
+	watchCtx, watchCancel := context.WithCancel(ctx)
+
+	defer watchCancel()
+
+	go func(ctx context.Context, resultsChan chan <- resultStruct) {
+		for {
+			select {
+			case <- ctx.Done():
+				logrus.Debugf("Exiting file watch due to context DONE")
+				return
+			case event, ok := <-watcher.Events:
+				if !ok {
+					resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("ok is false during watching event")}
+				}
+
+				buf, err := f.ReadWholeFile(fileName)
+				totalLen := int64(len(buf))
+				if err != nil {
+					logrus.Debugf("File load err in watch, keep watching: %v", err)
+				} else if buf != nil && int64(len(buf)) == expectedLen && f.IsPartWritten(fileName, buf, 0) {
+					logrus.Debugf("Sending read res with len = %v", totalLen)
+					resultsChan <- resultStruct{Data: buf, TotalLen: totalLen, Err: nil}
+					return
+				} else {
+					logrus.Debugf("Read buf not written or nil (%v %v), or incorrect size (%v of %v)", f.IsPartWritten(fileName, buf, 0), buf == nil, totalLen, expectedLen)
+					//if buf != nil {
+					//	logrus.Debugf("Buf: {%v; %v}", buf[:100], buf[len(buf) - 100:])
+					//}
+				}
+
+				logrus.Debugf("event: %v", event)
+				if event.Op & fsnotify.Write == fsnotify.Write {
+					logrus.Debugf("modified file: %v", event.Name)
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("ok is false during watching errors")}
+					return
+				}
+				logrus.Errorf("error: %v", err)
+			}
+		}
+	}(watchCtx, done)
+
+	err = watcher.Add(path.Join(env.GetParser().GetFilesDir(), fileName))
+	if err != nil {
+		logrus.Errorf("add file %v to watch err: %v", fileName, err)
+	}
+
+	select {
+	case result := <-done:
+		return result.Data, result.Err
+	case <-ctx.Done():
+		logrus.Debugf("Exiting file watch wait due to context DONE")
+		return nil, fmt.Errorf("context finished")
+	}
+}
+
 func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start int64, expectedLen int64) ([]byte, int64, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -83,12 +159,6 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 		return nil, 0, err
 	}
 	defer watcher.Close()
-
-	type resultStruct struct {
-		Data	[]byte
-		TotalLen	int64
-		Err		error
-	}
 
 	done := make(chan resultStruct)
 	defer close(done)
@@ -111,7 +181,6 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 				buf, totalLen, err := f.GetFileInRange(fileName, start, expectedLen)
 				if err != nil {
 					logrus.Debugf("File load err in watch, keep watching: %v", err)
-					//resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("read file error: %v", err)}
 				} else if buf != nil && f.IsPartWritten(fileName, buf, start) {
 					logrus.Debugf("Sending read res with len = %v", totalLen)
 					resultsChan <- resultStruct{Data: buf, TotalLen: totalLen, Err: nil}
@@ -149,6 +218,23 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 		logrus.Debugf("Exiting file watch wait due to context DONE")
 		return nil, 0, fmt.Errorf("context finished")
 	}
+}
+
+func (f *fileReader) ReadWholeFile(fileName string) ([]byte, error) {
+	file, err := os.Open(path.Join(filesDir, fileName))
+	if err != nil {
+		logrus.Errorf("Error open file: %v", err)
+		return nil, err
+	}
+	defer file.Close()
+
+	res, err := io.ReadAll(file)
+	if err != nil {
+		logrus.Errorf("Error reading file to buf: %v", err)
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (f *fileReader) GetFileInRange(fileName string, start int64, expectedLen int64) (result []byte, totalLength int64, err error) {

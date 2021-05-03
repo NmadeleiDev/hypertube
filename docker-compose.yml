@@ -166,7 +166,7 @@ services:
       - storage
       - torrent-client
       - magnet-converter
-    #      - auth
+      - auth
     networks:
       - docker_net
     restart: always

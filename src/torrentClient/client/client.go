@@ -104,13 +104,13 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 		case <- ctx.Done():
 			return false, fmt.Errorf("exited because of ctx done")
 		default:
+			c.Conn.SetDeadline(time.Now().Add(15 * time.Second))
+
 			if err := c.SendUnchoke(); err != nil {
 				logrus.Errorf("Error sending unchoke: %v", err)
 				c.Peer.IsDead = true
 				return false, fmt.Errorf("failed to send unchoke: %v", err)
 			}
-
-			c.Conn.SetDeadline(time.Now().Add(15 * time.Second))
 
 			msg, err := c.Read() // this call blocks
 			if err != nil {
