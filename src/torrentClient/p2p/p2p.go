@@ -119,7 +119,7 @@ func checkIntegrity(pw *pieceWork, buf []byte) error {
 	return nil
 }
 
-func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *pieceWork, results chan *pieceResult) error {
+func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue <- chan *pieceWork, results chan <- *pieceResult, recyclePiecesChan chan <- *pieceWork) error {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Debugf("Recovered in piece load: %v", r)
@@ -134,7 +134,7 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 		}
 
 		if !c.Bitfield.HasPiece(pw.index) {
-			workQueue <- pw // Put piece back on the queue
+			recyclePiecesChan <- pw // Put piece back on the queue
 			continue
 		}
 
@@ -142,7 +142,7 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 		loadState, err := attemptDownloadPiece(c, pw)
 		if err != nil {
 			pw.progress = loadState // сохраняем прогресс по кусочку
-			workQueue <- pw // Put piece back on the queue
+			recyclePiecesChan <- pw // Put piece back on the queue
 			c.Peer.IsDead = true
 			return err
 		}
@@ -150,7 +150,8 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue chan *piec
 		err = checkIntegrity(pw, loadState.buf)
 		if err != nil {
 			logrus.Errorf("Check err: %v", err)
-			workQueue <- pw // Put piece back on the queue
+			pw.progress = nil
+			recyclePiecesChan <- pw // Put piece back on the queue
 			continue
 		}
 
@@ -211,7 +212,7 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 
 	defer close(results)
 
-	topPriorityPieceChan := priorityManager.InitSorter(ctx)
+	topPriorityPieceChan, recyclePiecesChan := priorityManager.InitSorter(ctx)
 
 	// Start workers as they arrive from Pool
 	go func() {
@@ -235,7 +236,7 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 					numWorkers ++
 					logrus.Debugf("Starting worker. Total workers=%d of %v", numWorkers, maxWorkers)
 					t.LoadStats.IncrActivePeers()
-					if err := t.startDownloadWorker(activeClient, topPriorityPieceChan, results); err != nil {
+					if err := t.startDownloadWorker(activeClient, topPriorityPieceChan, results, recyclePiecesChan); err != nil {
 						logrus.Errorf("Throwing dead peer %v cause err: %v", activeClient.GetShortInfo(), err)
 						t.DeadPeersChan <- activeClient
 						t.LoadStats.DecrActivePeers()

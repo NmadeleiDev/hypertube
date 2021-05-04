@@ -14,8 +14,9 @@ type prioritySorter struct {
 	topPiece *pieceWork
 }
 
-func (s *prioritySorter) InitSorter(ctx context.Context) chan *pieceWork {
-	topPriorityPieceChan := make(chan *pieceWork)
+func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, returnedPiecesChan chan *pieceWork) {
+	topPriorityPieceChan = make(chan *pieceWork)
+	returnedPiecesChan = make(chan *pieceWork, 50)
 
 	latestTopIdx := int64(0)
 
@@ -28,6 +29,7 @@ func (s *prioritySorter) InitSorter(ctx context.Context) chan *pieceWork {
 			select {
 			case <- ctx.Done():
 				close(topPriorityPieceChan)
+				close(returnedPiecesChan)
 				return
 			case newTopIdx := <- s.PriorityUpdates:
 				latestTopIdx = newTopIdx
@@ -35,7 +37,7 @@ func (s *prioritySorter) InitSorter(ctx context.Context) chan *pieceWork {
 				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
 				fmt.Printf("Got priority update=%v; Found new top piece idx=%v\n", newTopIdx, s.topPiece.index)
 				s.mu.Unlock()
-			case returnedPiece := <- topPriorityPieceChan: // нам вернули часть, которую не получилось скачать
+			case returnedPiece := <- returnedPiecesChan: // нам вернули часть, которую не получилось скачать
 				s.mu.Lock()
 				for i, piece := range s.Pieces { // важно вставить часть на свое место
 					if piece.index > returnedPiece.index {
@@ -50,7 +52,7 @@ func (s *prioritySorter) InitSorter(ctx context.Context) chan *pieceWork {
 				s.mu.Unlock()
 			case topPriorityPieceChan <- s.topPiece:
 				if len(s.Pieces) == 1 { // значит, мы эту единственную часть только что и отдали, больше не осталось
-					close(topPriorityPieceChan)
+					//close(topPriorityPieceChan) все равно закроем после констекста
 					return
 				} else {
 					// удаляю отданную часть
@@ -75,7 +77,7 @@ func (s *prioritySorter) InitSorter(ctx context.Context) chan *pieceWork {
 		}
 	}()
 
-	return topPriorityPieceChan
+	return topPriorityPieceChan, returnedPiecesChan
 }
 
 func (s *prioritySorter) findClosestPiece(pieces []*pieceWork, ideal int64) (piece *pieceWork, distance int64) {
