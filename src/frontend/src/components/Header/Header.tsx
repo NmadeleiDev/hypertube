@@ -1,4 +1,4 @@
-import { Avatar, ButtonProps, Grid, Icon, makeStyles } from '@material-ui/core';
+import { ButtonProps, Grid, makeStyles } from '@material-ui/core';
 import { PersonOutlineRounded, PersonRounded } from '@material-ui/icons';
 import React from 'react';
 import Dropdown from '../Dropdown/Dropdown';
@@ -23,9 +23,7 @@ const useStyles = makeStyles({
 const Header: React.FC = () => {
   const classes = useStyles();
   const dispatch = useAppDispatch();
-  const { isAuth, imageBody, username, firstName, lastName } = useSelector(
-    (state: RootState) => state.user
-  );
+  const { isAuth, imageBody } = useSelector((state: RootState) => state.user);
 
   const buttonProps: ButtonProps = {
     variant: 'outlined',

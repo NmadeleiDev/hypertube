@@ -1,5 +1,5 @@
 import { Grid, Typography } from '@material-ui/core';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../hooks/useToast';
 import { loadActivePeers } from '../../store/features/MoviesSlice';
@@ -29,9 +29,13 @@ const ActivePeers = ({ movieId }: Props) => {
     const interval = setInterval(async () => {
       const data = await loadActivePeers(`${movieId}`);
       if (data) setState(data);
-      if (data?.activePeers) clearTimeout(timeout);
+      if (data?.activePeers || data?.loadedPercent === 100)
+        clearTimeout(timeout);
     }, STATS_REQUEST_INTERVAL);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
