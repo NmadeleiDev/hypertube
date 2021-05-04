@@ -6,57 +6,6 @@ const url = `http://${dockerhost}:${port}`;
 
 module.exports = function (app) {
   app.use(
-    '/api/auth/',
-    createProxyMiddleware({
-      target: url,
-      changeOrigin: true,
-    })
-  );
-  app.use(
-    '/api/profile/',
-    createProxyMiddleware({
-      target: url,
-      changeOrigin: true,
-    })
-  );
-  app.use(
-    '/api/passwd/',
-    createProxyMiddleware({
-      target: url,
-      changeOrigin: true,
-    })
-  );
-  app.use(
-    '/api/search/',
-    createProxyMiddleware({
-      target: url,
-      // pathRewrite: { '^/api/search': '' },
-      changeOrigin: true,
-    })
-  );
-  app.use(
-    '/api/movies/',
-    createProxyMiddleware({
-      target: url,
-      // pathRewrite: { '^/api/movies': '' },
-      changeOrigin: true,
-    })
-  );
-  app.use(
-    '/api/storage/load',
-    createProxyMiddleware({
-      target: url,
-      changeOrigin: true,
-    })
-  );
-  app.use(
-    '/api/loader/',
-    createProxyMiddleware({
-      target: url,
-      changeOrigin: true,
-    })
-  );
-  app.use(
     '/api/test/',
     createProxyMiddleware({
       target: `http://localhost:8000`,
@@ -68,7 +17,6 @@ module.exports = function (app) {
     '/api/',
     createProxyMiddleware({
       target: url,
-      // pathRewrite: { '^/api': '' },
       changeOrigin: true,
     })
   );
