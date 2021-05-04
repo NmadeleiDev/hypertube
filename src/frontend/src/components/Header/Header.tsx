@@ -1,5 +1,5 @@
-import { ButtonProps, Grid, makeStyles } from '@material-ui/core';
-import { PersonOutlineRounded } from '@material-ui/icons';
+import { Avatar, ButtonProps, Grid, Icon, makeStyles } from '@material-ui/core';
+import { PersonOutlineRounded, PersonRounded } from '@material-ui/icons';
 import React from 'react';
 import Dropdown from '../Dropdown/Dropdown';
 import Login from '../Login/Login';
@@ -14,12 +14,18 @@ import { resetEndOfMovies } from '../../store/features/MoviesSlice';
 import { useAppDispatch } from '../../store/store';
 const useStyles = makeStyles({
   root: {},
+  Avatar: {
+    height: '1.5rem',
+    width: '1.5rem',
+  },
 });
 
 const Header: React.FC = () => {
   const classes = useStyles();
   const dispatch = useAppDispatch();
-  const { isAuth } = useSelector((state: RootState) => state.user);
+  const { isAuth, imageBody, username, firstName, lastName } = useSelector(
+    (state: RootState) => state.user
+  );
 
   const buttonProps: ButtonProps = {
     variant: 'outlined',
@@ -45,9 +51,22 @@ const Header: React.FC = () => {
       </Grid>
       <Grid container alignItems="center" justify="center" item xs={1}></Grid>
       <Grid container alignItems="center" justify="center" item xs={1}>
-        <Dropdown icon={<PersonOutlineRounded />} buttonProps={buttonProps}>
-          {isAuth ? <UserInfo /> : <Login />}
-        </Dropdown>
+        {isAuth ? (
+          <Dropdown
+            img={imageBody || ''}
+            icon={<PersonRounded aria-label="user-profile" />}
+            buttonProps={buttonProps}
+          >
+            {<UserInfo />}
+          </Dropdown>
+        ) : (
+          <Dropdown
+            icon={<PersonOutlineRounded aria-label="user-profile" />}
+            buttonProps={buttonProps}
+          >
+            {<Login />}
+          </Dropdown>
+        )}
       </Grid>
     </Grid>
   );

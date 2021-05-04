@@ -72,11 +72,6 @@ const Search = () => {
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
   };
-  /**
-   * TODO:
-   * move this to thunk (think about redux router)
-   * add loader with random text (opening crates, searchng in dark web, ...)
-   */
 
   const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {

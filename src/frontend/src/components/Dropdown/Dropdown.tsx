@@ -7,6 +7,7 @@ import {
   Popover,
 } from '@material-ui/core';
 import React, { createContext, useRef, useState } from 'react';
+import { theme } from '../../theme';
 
 export interface IItem {
   text: string;
@@ -17,6 +18,7 @@ interface Props {
   heroText?: string;
   icon?: JSX.Element;
   items?: IItem[];
+  img?: string;
   buttonProps?: ButtonProps;
 }
 
@@ -46,6 +48,7 @@ const Dropdown: React.FC<Props> = ({
   heroText = null,
   icon,
   items,
+  img,
   buttonProps,
   children,
 }) => {
@@ -69,14 +72,24 @@ const Dropdown: React.FC<Props> = ({
   return (
     <div className={classes.root}>
       <Button
-        style={{ margin: '0 10px' }}
+        style={{
+          margin: '0 10px',
+          backgroundImage: `url(${img})`,
+          height: '2rem',
+          backgroundSize: 'cover',
+          backgroundOrigin: 'padding-box',
+          backgroundPositionY: 'center',
+          backgroundColor: img
+            ? 'currentcolor'
+            : theme.palette.background.default,
+        }}
         ref={anchorEl}
         variant="text"
         onClick={() => setOpen((open) => !open)}
-        endIcon={heroText && icon}
+        endIcon={img ? null : heroText && icon}
         {...buttonProps}
       >
-        {heroText || icon}
+        {img ? null : heroText || icon}
       </Button>
       <Popover
         open={open}
