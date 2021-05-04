@@ -191,7 +191,7 @@ func (t *Tracker) makeAnnounceUdpReq() ([]peers.Peer, error) {
 	logrus.Infof("Interval = %v; leechers = %v; seeders = %v;", interval, leechers, seeders)
 	parsedPeers, err := peers.Unmarshal(body[20:])
 	logrus.Infof("Got peers: %v", parsedPeers)
-	t.TrackerCallInterval = time.Duration(interval)
+	t.TrackerCallInterval = time.Second * time.Duration(interval)
 	return parsedPeers, err
 }
 

@@ -75,6 +75,13 @@ func (l *LoadEntry) GetLoadedPercent() int {
 	return int((float64(l.DonePieces) / float64(l.TotalPieces)) * 100)
 }
 
+func (l *LoadEntry) GetNumOfActivePeers() (res int) {
+	l.mu.Lock()
+	res = l.NumOfActivePeers
+	l.mu.Unlock()
+	return res
+}
+
 func (l *LoadEntry) CountDone() int {
 	l.mu.Lock()
 	defer l.mu.Unlock()

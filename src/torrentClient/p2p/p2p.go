@@ -9,6 +9,7 @@ import (
 
 	"torrentClient/client"
 	"torrentClient/db"
+	"torrentClient/fsWriter"
 	"torrentClient/message"
 
 	"github.com/sirupsen/logrus"
@@ -90,15 +91,8 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, erro
 				state.backlog++
 				state.requested += blockSize
 			}
-			//chokeCount = 0
 		} else {
 			return &state, fmt.Errorf("choked")
-			//if chokeCount > 5 {
-			//	return nil, nil
-			//}
-			//logrus.Warnf("CHOKED by %v for idx=%v, waiting for unchoke", state.client.GetShortInfo(), pw.index)
-			//c.SendUnchoke()
-			//chokeCount ++
 		}
 
 		err := state.readMessage()
@@ -112,14 +106,24 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, erro
 }
 
 func checkIntegrity(pw *pieceWork, buf []byte) error {
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("Recorver in checkIntegrity: %v, pw idx=%v", r, pw.index)
+		}
+	}()
+
 	hash := sha1.Sum(buf)
 	if !bytes.Equal(hash[:], pw.hash[:]) {
-		return fmt.Errorf("index %d failed integrity check", pw.index)
+		fsWriter.GetWriter().DataChan <- fsWriter.WriteTask{FileName: fmt.Sprintf("piece_%d_failed_buf", pw.index), Data: buf}
+		if pw.progress != nil {
+			fsWriter.GetWriter().DataChan <- fsWriter.WriteTask{FileName: fmt.Sprintf("piece_%d_failed_prog", pw.index), Data: pw.progress.buf}
+		}
+		return fmt.Errorf("piece idx=%d failed integrity check (loaded_hash=%v, piece_hash=%v)", pw.index, hash[:], pw.hash[:])
 	}
 	return nil
 }
 
-func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue <- chan *pieceWork, results chan <- *pieceResult, recyclePiecesChan chan <- *pieceWork) error {
+func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client, workQueue <- chan *pieceWork, results chan <- *pieceResult, recyclePiecesChan chan <- *pieceWork) error {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Debugf("Recovered in piece load: %v", r)
@@ -127,39 +131,42 @@ func (t *TorrentMeta) startDownloadWorker(c *client.Client, workQueue <- chan *p
 		c.Conn.Close()
 	}()
 
-	for pw := range workQueue {
-		if pw.length < 0 {
-			logrus.Errorf("Attempting to download incorrect pw: %v", *pw)
-			continue
-		}
+	for {
+		select {
+		case <- ctx.Done():
+			return fmt.Errorf("exited cause ctx done")
+		case pw := <- workQueue:
+			if pw.length < 0 {
+				logrus.Errorf("Attempting to download incorrect pw: %v", *pw)
+				continue
+			}
 
-		if !c.Bitfield.HasPiece(pw.index) {
-			recyclePiecesChan <- pw // Put piece back on the queue
-			continue
-		}
+			if !c.Bitfield.HasPiece(pw.index) {
+				recyclePiecesChan <- pw // Put piece back on the queue
+				continue
+			}
 
-		// Download the piece
-		loadState, err := attemptDownloadPiece(c, pw)
-		if err != nil {
-			pw.progress = loadState // сохраняем прогресс по кусочку
-			recyclePiecesChan <- pw // Put piece back on the queue
-			c.Peer.IsDead = true
-			return err
-		}
+			// Download the piece
+			loadState, err := attemptDownloadPiece(c, pw)
+			if err != nil {
+				pw.progress = loadState // сохраняем прогресс по кусочку
+				recyclePiecesChan <- pw
+				c.Peer.IsDead = true
+				return err
+			}
 
-		err = checkIntegrity(pw, loadState.buf)
-		if err != nil {
-			logrus.Errorf("Check err: %v", err)
-			pw.progress = nil
-			recyclePiecesChan <- pw // Put piece back on the queue
-			continue
-		}
+			err = checkIntegrity(pw, loadState.buf)
+			if err != nil {
+				logrus.Errorf("Piece hash check err: %v", err)
+				pw.progress = nil
+				recyclePiecesChan <- pw
+				continue
+			}
 
-		c.SendHave(pw.index)
-		results <- &pieceResult{pw.index, loadState.buf}
+			c.SendHave(pw.index)
+			results <- &pieceResult{pw.index, loadState.buf}
+		}
 	}
-
-	return nil
 }
 
 func (t *TorrentMeta) calculateBoundsForPiece(index int) (begin int, end int) {
@@ -232,11 +239,12 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 				logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
 
 				jobs <- struct{}{}
+				//workerCtx, workerCancel := context.WithCancel(ctx)
 				go func() {
 					numWorkers ++
 					logrus.Debugf("Starting worker. Total workers=%d of %v", numWorkers, maxWorkers)
 					t.LoadStats.IncrActivePeers()
-					if err := t.startDownloadWorker(activeClient, topPriorityPieceChan, results, recyclePiecesChan); err != nil {
+					if err := t.startDownloadWorker(ctx, activeClient, topPriorityPieceChan, results, recyclePiecesChan); err != nil {
 						logrus.Errorf("Throwing dead peer %v cause err: %v", activeClient.GetShortInfo(), err)
 						t.DeadPeersChan <- activeClient
 						t.LoadStats.DecrActivePeers()
@@ -267,7 +275,7 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 			t.LoadStats.IncrDone()
 
 			percent := t.LoadStats.GetLoadedPercent()
-			logrus.Infof("(%d%%) Downloaded piece idx=%d from %v peers\n", percent, res.index, "n=unknown")
+			logrus.Infof("(%d%%) Downloaded piece idx=%d from %v peers\n", percent, res.index, t.LoadStats.GetNumOfActivePeers())
 		}
 	}
 	return nil

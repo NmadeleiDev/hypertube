@@ -44,6 +44,7 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 	copy(announceList[1 + len(p.torrent.AnnounceList):], generalTrackerList)
 
 	sentPeersMap := make(map[string]bool, 50)
+	trackersCalled := make([]string, 0, len(announceList))
 
 	for _, announce := range announceList {
 		tracker := Tracker{
@@ -59,19 +60,20 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 			PieceLength: p.torrent.PieceLength,
 			Length: p.torrent.Length,
 		}
-		go func(ctx context.Context) {
-			timer := time.NewTimer(time.Second)
+		go func(ctx context.Context, trackerInstance Tracker) {
+			timer := time.NewTimer(time.Nanosecond)
 			for {
 				select {
 				case <- ctx.Done():
 					return
 				case <- timer.C:
-					rawPeers, err := tracker.CallFittingScheme()
+					rawPeers, err := trackerInstance.CallFittingScheme()
+					trackersCalled = append(trackersCalled, trackerInstance.Announce)
 					if err != nil {
 						logrus.Errorf("Error requesting peers: %v", err)
 						return
 					}
-					logrus.Debugf("Got peers from tracker %v: %v", tracker.Announce, rawPeers)
+					logrus.Debugf("Got peers from tracker(call int=%v) %v: %v", trackerInstance.TrackerCallInterval, trackerInstance.Announce, rawPeers)
 
 					for _, peer := range rawPeers {
 						if isSet, exists := sentPeersMap[peer.GetAddr()]; exists && isSet {
@@ -80,11 +82,15 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 						p.ClientMaker.RawPeersChan <- peer
 						sentPeersMap[peer.GetAddr()] = true
 					}
-					timer.Reset(time.Second * tracker.TrackerCallInterval)
+					if trackerInstance.TrackerCallInterval < time.Minute {
+						trackerInstance.TrackerCallInterval = time.Minute
+					}
+					timer.Reset(time.Second * trackerInstance.TrackerCallInterval)
 				}
 			}
-		}(ctx)
+		}(ctx, tracker)
 	}
+	logrus.Debugf("")
 }
 
 func (pi *PeersInitializer) ListenForDeadPeers(ctx context.Context) {
@@ -114,6 +120,7 @@ func (pi *PeersInitializer) InitPeer(ctx context.Context, peer *peers.Peer, myId
 	unchokeWaitCtx, waitCancel := context.WithTimeout(ctx, time.Second * 45)
 	defer waitCancel()
 
+	logrus.Debugf("Waiting for unchoke from %v", c.Peer.GetAddr())
 	ok, err := c.WaitForUnchoke(unchokeWaitCtx)
 	if err != nil {
 		logrus.Errorf("Error waiting for unchoke: %v", err)
@@ -148,6 +155,7 @@ func (pi *PeersInitializer) ListenForRawPeers(ctx context.Context, myId [20]byte
 	peersInProgress := 0
 	maxJobs := 200
 	jobs := make(chan struct{}, maxJobs)
+	defer close(jobs)
 
 	for {
 		select {
@@ -174,7 +182,7 @@ func (pi *PeersInitializer) ListenForRawPeers(ctx context.Context, myId [20]byte
 					pi.InitializedPeersChan <- activeClient
 					logrus.Infof("Wrote peer %v to active clients chan; peers in progress=%v", activeClient.GetShortInfo(), peersInProgress)
 				} else {
-					logrus.Debugf("Failed to init peer %v", peer.GetAddr())
+					logrus.Debugf("Failed to init peer %v, peersInProgress=%v", peer.GetAddr(), peersInProgress)
 					peer.IsDead = true
 					pi.RawPeersChan <- peer
 				}

@@ -34,7 +34,7 @@ func ParsePiece(index int, buf []byte, msg *Message) (int, error) {
 	}
 	parsedIndex := int(binary.BigEndian.Uint32(msg.Payload[0:4]))
 	if parsedIndex != index {
-		return 0, fmt.Errorf("expected index %d, got %d", index, parsedIndex)
+		return 0, fmt.Errorf("expected idx=%d, idx=%d", index, parsedIndex)
 	}
 	begin := int(binary.BigEndian.Uint32(msg.Payload[4:8]))
 	if begin >= len(buf) {

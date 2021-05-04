@@ -38,7 +38,7 @@ func (m *manager) AddSliceIndexForFile(fileName string, sliceByteIdx ...int64) {
 		if err != nil {
 			logrus.Errorf("Error AddSliceIndexForFile: %v", err)
 		} else {
-			logrus.Debugf("Added slices for file %v: %v", fileName, sliceByteIdx)
+			logrus.Debugf("Added slices for file %v: %v", fileName, idx)
 		}
 	}
 }

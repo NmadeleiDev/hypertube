@@ -115,7 +115,7 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 
 			msg, err := c.Read() // this call blocks
 			if err != nil {
-				logrus.Debugf("Error waiting for peer msg: %v", err)
+				logrus.Debugf("Error waiting for peer %v msg in unchoke wait: %v", c.Peer.GetAddr(), err)
 				continue
 				//return false, err
 			}
@@ -137,6 +137,8 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 					return false, err
 				}
 				c.Bitfield.SetPiece(index)
+			default:
+				logrus.Debugf("Got unexpeced msg id=%v from peer %v in init", msg.ID, c.Peer.GetAddr())
 			}
 		}
 	}
