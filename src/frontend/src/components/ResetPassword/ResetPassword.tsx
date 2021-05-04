@@ -46,10 +46,11 @@ const ResetPassword = () => {
         return;
       }
       try {
+        const repairToken = searchParams.repairToken.replaceAll('%3D', '=');
         const res = await passwd.patch(
-          'repair/patch',
+          '/repair/patch',
           { passwd: inputs.password },
-          { headers: { repairToken: searchParams.repairToken } }
+          { headers: { repairToken } }
         );
         console.log(res);
         if (res.status < 400) {
