@@ -18,6 +18,8 @@ import {
   PlayArrow,
   VolumeOff,
   VolumeUp,
+  Subtitles,
+  SubtitlesOutlined,
 } from '@material-ui/icons';
 
 const useStyles = makeStyles({
@@ -136,6 +138,7 @@ interface Props {
   onSeekMouseDown: () => void;
   onSeekMouseUp: () => void;
   onChangeDisplayFormat: () => void;
+  onChangeSubtitles: () => void;
   elapsedTime: string;
   seeking: boolean;
   playing: boolean;
@@ -145,6 +148,7 @@ interface Props {
   playbackRate: number;
   totalDuration: string;
   title: string;
+  showSubtitles: boolean;
 }
 
 const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
@@ -312,6 +316,16 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
               ))}
             </Grid>
           </Popover>
+          <IconButton
+            onClick={props.onChangeSubtitles}
+            className={classes.bottomIcons}
+          >
+            {props.showSubtitles ? (
+              <Subtitles fontSize="large" />
+            ) : (
+              <SubtitlesOutlined fontSize="large" />
+            )}
+          </IconButton>
           <IconButton
             onClick={props.onToggleFullScreen}
             className={classes.bottomIcons}

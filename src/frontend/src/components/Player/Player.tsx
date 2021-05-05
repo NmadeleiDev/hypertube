@@ -1,9 +1,11 @@
 import { makeStyles } from '@material-ui/core';
+import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactPlayer from 'react-player';
 import screenfull from 'screenfull';
 import PlayerControls from './PlayerControls';
+import vtt from './TheHobbit.vtt';
 
 const useStyles = makeStyles({
   playerWrapper: {
@@ -49,11 +51,14 @@ function Player({ title, id, src }: Props) {
     muted: false,
     volume: 1,
     playbackRate: 1.0,
-    played: 0,
+    played: 0, //0.10374984039784949
     seeking: false,
     controlsVisible: true,
     error: false,
+    srt: '',
+    showSubtitles: true,
   });
+  const [player, setPlayer] = React.useState<Record<string, any>>();
   const [timeDisplayFormat, setTimeDisplayFormat] = useState('normal');
   const {
     playing,
@@ -64,6 +69,8 @@ function Player({ title, id, src }: Props) {
     seeking,
     controlsVisible,
     error,
+    srt,
+    showSubtitles,
   } = state;
   const playerRef = useRef<ReactPlayer>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
@@ -74,9 +81,13 @@ function Player({ title, id, src }: Props) {
 
   useEffect(() => {
     if (!playerRef || !playerRef.current) return;
+
     console.log('[Player] useEffect');
     const player = playerRef.current.getInternalPlayer();
-    console.log(player);
+    console.dir(player);
+    console.log(playerRef.current);
+    setPlayer(player);
+
     if (!player) return;
     const playListener = player.addEventListener('play', () => {
       console.log('play');
@@ -112,6 +123,36 @@ function Player({ title, id, src }: Props) {
       player.removeEventListener('waiting', waitingListener);
     };
   }, [playerRef]);
+
+  // useEffect(() => {
+  //   const loadSubtitles = async () => {
+  //     try {
+  //       const res = await axios(`/api/storage/load/${id}/srt`);
+  //       console.log(res.data);
+  //       if (!res.data) return;
+  //       const srt = URL.createObjectURL(res.data);
+  //       setState({ ...state, srt });
+  //     } catch (e) {
+  //       console.log(e);
+  //     }
+  //   };
+  //   loadSubtitles();
+  //   return () => URL.revokeObjectURL(srt);
+  // }, []);
+
+  const handleChangeSubtitles = () => {
+    if (playerRef === null || playerRef.current === null) return;
+    if (!player) {
+      const player = playerRef.current.getInternalPlayer();
+      setPlayer(() => player);
+    }
+    const tracks = player?.textTracks;
+    if (!tracks || !tracks.length) return;
+    const showing = tracks[0].mode === 'showing';
+    tracks[0].mode = showing ? 'disabled' : 'showing';
+    console.log(tracks[0]);
+    setState({ ...state, showSubtitles: showing });
+  };
 
   const handlePlayPause = () => {
     setState({ ...state, playing: !state.playing });
@@ -231,19 +272,19 @@ function Player({ title, id, src }: Props) {
         onError={handleError}
         onBuffer={() => console.log('onBuffer')}
         onBufferEnd={() => console.log('onBufferEnd')}
-        // config={{
-        //   file: {
-        //     tracks: [
-        //       {
-        //         kind: 'captions',
-        //         src: `/api/storage/load/${id}/srt`,
-        //         srcLang: 'en',
-        //         label: 'en',
-        //         default: true,
-        //       },
-        //     ],
-        //   },
-        // }}
+        config={{
+          file: {
+            tracks: [
+              {
+                kind: 'subtitles',
+                src: vtt,
+                srcLang: 'en',
+                label: 'en',
+                default: true,
+              },
+            ],
+          },
+        }}
       />
       {controlsVisible && (
         <PlayerControls
@@ -255,6 +296,7 @@ function Player({ title, id, src }: Props) {
           volume={volume}
           played={played}
           seeking={seeking}
+          showSubtitles={showSubtitles}
           onRewind={handleRewind}
           onFastForward={handleFastForward}
           onVolumeChange={handleVolumeChange}
@@ -267,6 +309,7 @@ function Player({ title, id, src }: Props) {
           onSeekMouseUp={handleSeekMouseUp}
           elapsedTime={elapsedTime}
           totalDuration={totalDuration}
+          onChangeSubtitles={handleChangeSubtitles}
           onChangeDisplayFormat={handleChangeDisplayFormat}
           title={title}
         />
