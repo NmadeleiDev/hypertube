@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultAnnouncePeers = 50
+	defaultAnnounceNumWant = 300
 )
 
 func (t *Tracker) buildHttpTrackerURL(announce string) (string, error) {
@@ -59,11 +59,11 @@ func (t *Tracker) buildUdpTrackerAnnounceReq() (request []byte, err error) {
 	copy(req[36:56], t.MyPeerId[:])
 	binary.BigEndian.PutUint64(req[56:64], 0) // downloaded
 	binary.BigEndian.PutUint64(req[64:72], uint64(t.PieceLength * len(t.PieceHashes)))
-	binary.BigEndian.PutUint64(req[72:80], 0)                    // uploaded
-	binary.BigEndian.PutUint32(req[80:84], 0)                    // event
-	binary.BigEndian.PutUint32(req[84:88], 0)                    // ip addr
-	binary.BigEndian.PutUint32(req[88:92], 0) // key
-	binary.BigEndian.PutUint32(req[92:96], uint32(defaultAnnouncePeers)) // num want
+	binary.BigEndian.PutUint64(req[72:80], 0)                              // uploaded
+	binary.BigEndian.PutUint32(req[80:84], 0)                              // event
+	binary.BigEndian.PutUint32(req[84:88], 0)                              // ip addr
+	binary.BigEndian.PutUint32(req[88:92], 0)                              // key
+	binary.BigEndian.PutUint32(req[92:96], uint32(defaultAnnounceNumWant)) // num want
 	binary.BigEndian.PutUint16(req[96:98], t.MyPeerPort)
 
 	logrus.Infof("my peer id: %v; left: %v; my port: %v", t.MyPeerId, uint64(t.PieceLength * len(t.PieceHashes)), t.MyPeerPort)

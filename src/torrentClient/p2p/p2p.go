@@ -39,12 +39,12 @@ func (piece *pieceProgress) readMessage() error {
 		}
 		piece.client.Bitfield.SetPiece(index)
 	case message.MsgPiece:
+		piece.backlog--
 		n, err := message.ParsePiece(piece.index, piece.buf, msg)
 		if err != nil {
 			return err
 		}
 		piece.downloaded += n
-		piece.backlog--
 	}
 	return nil
 }
@@ -97,6 +97,10 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, erro
 
 		err := state.readMessage()
 		if err != nil {
+			//if err == io.EOF {
+			//	logrus.Debugf("Mitigating EOF error from read msg peer %v in idx=%v", c.GetShortInfo(), state.index)
+			//	continue
+			//}
 			return &state, fmt.Errorf("download read msg error: %v, idx=%v, loaded=%v%%", err, pw.index, (state.downloaded * 100) / pw.length)
 		}
 	}
@@ -240,18 +244,18 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 
 				jobs <- struct{}{}
 				//workerCtx, workerCancel := context.WithCancel(ctx)
-				go func() {
+				go func(workerClient *client.Client) {
 					numWorkers ++
 					logrus.Debugf("Starting worker. Total workers=%d of %v", numWorkers, maxWorkers)
 					t.LoadStats.IncrActivePeers()
-					if err := t.startDownloadWorker(ctx, activeClient, topPriorityPieceChan, results, recyclePiecesChan); err != nil {
-						logrus.Errorf("Throwing dead peer %v cause err: %v", activeClient.GetShortInfo(), err)
-						t.DeadPeersChan <- activeClient
+					if err := t.startDownloadWorker(ctx, workerClient, topPriorityPieceChan, results, recyclePiecesChan); err != nil {
+						logrus.Errorf("Throwing dead peer %v cause err: %v", workerClient.GetShortInfo(), err)
+						t.DeadPeersChan <- workerClient
 						t.LoadStats.DecrActivePeers()
 						<- jobs
 						numWorkers --
 					}
-				}()
+				}(activeClient)
 			}
 		}
 	}()

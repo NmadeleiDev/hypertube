@@ -38,7 +38,7 @@ func (t *TorrentFile) DownloadToFile() error {
 	t.InitMyPeerIDAndPort()
 
 	peersPoolObj := PeersPool{}
-	peersPoolObj.InitPool()
+	peersPoolObj.Init()
 	defer peersPoolObj.DestroyPool()
 	peersPoolObj.SetTorrent(t)
 	poolCtx, poolCancel := context.WithCancel(downloadCtx)

@@ -42,28 +42,6 @@ type Tracker struct {
 	Length      int
 }
 
-//func (t *TorrentFile) RequestPeers() ([]peers.Peer, error) {
-//	allPeers := make([]peers.Peer, 0, 50)
-//	if peerIds, err := t.CallFittingScheme(t.Announce); err == nil {
-//		allPeers = append(allPeers, peerIds...)
-//	} else {
-//		logrus.Errorf("Error calling main announce: %v", err)
-//	}
-//
-//	for _, announce := range t.AnnounceList {
-//		if peerIds, err := t.CallFittingScheme(announce); err == nil {
-//			allPeers = append(allPeers, peerIds...)
-//		} else {
-//			logrus.Errorf("Error calling announce list member: %v", err)
-//		}
-//	}
-//	if len(allPeers) > 0 {
-//		return allPeers, nil
-//	} else {
-//		return nil, fmt.Errorf("failed to call any tracker")
-//	}
-//}
-
 func (t *Tracker) CallFittingScheme() ([]peers.Peer, error) {
 	trackerUrl, err := url.Parse(t.Announce)
 	if err != nil {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 type prioritySorter struct {
@@ -33,27 +35,44 @@ func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, 
 				return
 			case newTopIdx := <- s.PriorityUpdates:
 				latestTopIdx = newTopIdx
+				if len(s.Pieces) == 0 {
+					s.topPiece = nil
+					continue
+				}
 				s.mu.Lock()
 				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
 				fmt.Printf("Got priority update=%v; Found new top piece idx=%v\n", newTopIdx, s.topPiece.index)
 				s.mu.Unlock()
 			case returnedPiece := <- returnedPiecesChan: // нам вернули часть, которую не получилось скачать
 				s.mu.Lock()
-				for i, piece := range s.Pieces { // важно вставить часть на свое место
-					if piece.index > returnedPiece.index {
-						if i == 0 {
-							s.Pieces = append([]*pieceWork{returnedPiece}, s.Pieces...)
-							break
+				if len(s.Pieces) == 0 {
+					s.Pieces = append(s.Pieces, returnedPiece)
+					s.topPiece = returnedPiece
+					s.mu.Unlock()
+					continue
+				} else {
+					for i, piece := range s.Pieces { // важно вставить часть на свое место
+						if piece.index > returnedPiece.index {
+							if i == 0 {
+								s.Pieces = append([]*pieceWork{returnedPiece}, s.Pieces...)
+								break
+							}
+							s.Pieces = append(append(s.Pieces[:i], returnedPiece), s.Pieces[i:]...)
 						}
-						s.Pieces = append(append(s.Pieces[:i], returnedPiece), s.Pieces[i:]...)
 					}
 				}
 				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
 				s.mu.Unlock()
-			case topPriorityPieceChan <- s.topPiece:
+			default:
+				if s.topPiece == nil {
+					continue
+				}
+				topPriorityPieceChan <- s.topPiece
 				if len(s.Pieces) == 1 { // значит, мы эту единственную часть только что и отдали, больше не осталось
-					//close(topPriorityPieceChan) все равно закроем после констекста
-					return
+					//close(topPriorityPieceChan) все равно закроем после контекста
+					//return
+					logrus.Debugf("All pieces are sent to workers!")
+					s.Pieces = s.Pieces[:0]
 				} else {
 					// удаляю отданную часть
 					pLen := len(s.Pieces)
@@ -69,6 +88,10 @@ func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, 
 						}
 					}
 					//fmt.Printf("Deleted piece in sorter, new len=%v\n", len(s.Pieces))
+				}
+				if len(s.Pieces) == 0 {
+					s.topPiece = nil
+					continue
 				}
 				s.mu.Lock()
 				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)

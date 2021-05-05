@@ -98,24 +98,35 @@ func (c *Client) Read() (*message.Message, error) {
 
 func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 	defer c.Conn.SetDeadline(time.Time{}) // Disable the deadline
+	tries := 0
 
 	for {
 		select {
 		case <- ctx.Done():
 			return false, fmt.Errorf("exited because of ctx done")
 		default:
-			c.Conn.SetDeadline(time.Now().Add(15 * time.Second))
+			if tries > 10 {
+				return false, fmt.Errorf("too many tries (%v) to init peer %v", tries, c.Peer.GetAddr())
+			}
+			if err := c.Conn.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
+				logrus.Debugf("Error setting deadline for conn for init peer %v", c.Peer.GetAddr())
+				c.Peer.IsDead = true
+				tries++
+				return false, err
+			}
 
 			c.SendInterested()
 			if err := c.SendUnchoke(); err != nil {
 				logrus.Errorf("Error sending unchoke: %v", err)
 				c.Peer.IsDead = true
+				tries++
 				return false, fmt.Errorf("failed to send unchoke: %v", err)
 			}
 
 			msg, err := c.Read() // this call blocks
 			if err != nil {
 				logrus.Debugf("Error waiting for peer %v msg in unchoke wait: %v", c.Peer.GetAddr(), err)
+				tries++
 				continue
 				//return false, err
 			}
