@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { Grid } from '@material-ui/core';
 import { useSelector } from 'react-redux';
 
@@ -46,7 +46,7 @@ const sortByAvalibility = (movies: ITranslatedMovie[]) => {
   );
 };
 
-const Cards = ({ movies }: ICardsProps) => {
+const Cards = forwardRef<HTMLDivElement, ICardsProps>(({ movies }) => {
   const { sortBy, view } = useSelector((state: RootState) => state.UI);
   const { genres, years, countries } = useSelector(
     (state: RootState) => state.filter
@@ -60,7 +60,12 @@ const Cards = ({ movies }: ICardsProps) => {
   const location = window.location.href;
 
   // selected letter if we're at /byname page
-  const letter = location.search(/byname/)
+  const letter = location.match(/byname/)
+    ? location.split('/').pop()
+    : undefined;
+
+  // selected genre if we're at /genres page
+  const genre = location.match(/genres/)
     ? location.split('/').pop()
     : undefined;
 
@@ -68,6 +73,8 @@ const Cards = ({ movies }: ICardsProps) => {
   const search = location.match(/search/)
     ? location.split('/').pop()
     : undefined;
+
+  console.log('[Cards] letter, search, genre', letter, search, genre);
 
   // track scroll position and load movies if at the bottom
   useEffect(() => {
@@ -79,6 +86,7 @@ const Cards = ({ movies }: ICardsProps) => {
             filter: {
               search,
               letter,
+              genre,
               limit: LIMIT,
               offset: movies.length,
             },
@@ -96,7 +104,7 @@ const Cards = ({ movies }: ICardsProps) => {
     );
     window.addEventListener('scroll', trackScrolling);
     return () => window.removeEventListener('scroll', trackScrolling);
-  }, [movies.length, dispatch, letter, search, isEndOfMovies, loading]);
+  }, [movies.length, dispatch, letter, search, genre, isEndOfMovies, loading]);
 
   useEffect(() => {
     let cards = !isYearsStateEmpty(years)
@@ -119,14 +127,17 @@ const Cards = ({ movies }: ICardsProps) => {
 
   // sort movies on <sortBy> change
   useEffect(() => {
-    console.log('[Cards] sort useEffect', movies, sortedCards);
-    if (movies.length > sortedCards.length) return;
-    if (sortBy === 'name') setSortedCards(sortByName(sortedCards));
-    else if (sortBy === 'year') setSortedCards(sortByYear(sortedCards));
-    else if (sortBy === 'rating') setSortedCards(sortByRating(sortedCards));
+    console.log('[Cards] sort useEffect');
+    // if (movies.length > sortedCards.length) return;
+    if (sortBy === 'name')
+      setSortedCards((sortedCards) => sortByName(sortedCards));
+    else if (sortBy === 'year')
+      setSortedCards((sortedCards) => sortByYear(sortedCards));
+    else if (sortBy === 'rating')
+      setSortedCards((sortedCards) => sortByRating(sortedCards));
     else if (sortBy === 'avalibility')
-      setSortedCards(sortByAvalibility(sortedCards));
-  }, [sortBy, movies, sortedCards]);
+      setSortedCards((sortedCards) => sortByAvalibility(sortedCards));
+  }, [sortBy, movies]);
 
   return (
     <Grid ref={gridRef} container justify="space-evenly">
@@ -136,6 +147,6 @@ const Cards = ({ movies }: ICardsProps) => {
       {loading && <CardLoader display={view} />}
     </Grid>
   );
-};
+});
 
 export default Cards;

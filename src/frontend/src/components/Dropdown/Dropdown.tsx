@@ -48,7 +48,7 @@ const Dropdown: React.FC<Props> = ({
   heroText = null,
   icon,
   items,
-  img,
+  img = '',
   buttonProps,
   children,
 }) => {
@@ -69,19 +69,25 @@ const Dropdown: React.FC<Props> = ({
     onClose: handleClose,
   };
 
+  const style = img
+    ? {
+        backgroundImage: `url(${img})`,
+        height: '2rem',
+        backgroundSize: 'cover',
+        backgroundOrigin: 'padding-box',
+        backgroundPositionY: 'center',
+        backgroundColor: img
+          ? 'currentcolor'
+          : theme.palette.background.default,
+      }
+    : {};
+
   return (
     <div className={classes.root}>
       <Button
         style={{
           margin: '0 10px',
-          backgroundImage: `url(${img})`,
-          height: '2rem',
-          backgroundSize: 'cover',
-          backgroundOrigin: 'padding-box',
-          backgroundPositionY: 'center',
-          backgroundColor: img
-            ? 'currentcolor'
-            : theme.palette.background.default,
+          ...style,
         }}
         ref={anchorEl}
         variant="text"

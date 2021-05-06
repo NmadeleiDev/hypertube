@@ -81,10 +81,8 @@ function App() {
       <Route path="/change_email" component={ChangeEmail} />
       <Route path="/search/:id" component={SearchPage} />
       <Route path="/movies/:id" component={MovieFullInfo} />
-      <Route
-        path="/byname/:id"
-        render={(props) => <MainPage {...props} route={'byname'} />}
-      />
+      <Route path="/genres/:id" component={MainPage} />
+      <Route path="/byname/:id" component={MainPage} />
       <Route path="/" component={MainPage} />
     </Switch>
   ) : (
@@ -96,10 +94,8 @@ function App() {
       <Route path="/forgot_password" component={ForgotPassword} />
       <Route path="/search/:id" component={SearchPage} />
       <Route path="/movies/:id" component={MovieFullInfo} />
-      <Route
-        path="/byname/:id"
-        render={(props) => <MainPage {...props} route={'byname'} />}
-      />
+      <Route path="/genres/:id" component={MainPage} />
+      <Route path="/byname/:id" component={MainPage} />
       <Route path="/" component={MainPage} />
     </Switch>
   );
