@@ -12,6 +12,10 @@ static/
 
 docker-compose.yml
 
+log*
+log.txt
+*.log
+
 conf.json
 
 src/magnetCoverter
