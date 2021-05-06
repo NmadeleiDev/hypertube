@@ -1,5 +1,5 @@
 import { Container, Typography } from '@material-ui/core';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { RouteComponentProps } from 'react-router-dom';
@@ -14,21 +14,13 @@ import { RootState } from '../../store/rootReducer';
 import { useAppDispatch } from '../../store/store';
 import { notEmpty } from '../../utils';
 
-interface IMainPageProps {
-  route?: string;
-}
-
 interface TParams {
   id?: string;
 }
 
-const MainPage = ({
-  match,
-  route,
-}: IMainPageProps & RouteComponentProps<TParams>) => {
+const MainPage = ({ match }: RouteComponentProps<TParams>) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
-  const cardsRef = useRef<HTMLDivElement>(null);
   const { movies, search, byName, popular } = useSelector(
     (state: RootState) => state.movies
   );
@@ -58,17 +50,7 @@ const MainPage = ({
       filter,
       route
     );
-    if (route === 'byname' || route === 'genres') {
-      dispatch(loadMovies({ filter }));
-      // .then((res) => {
-      //   console.log('[MainPage] useEffect. res, byName', res, byName);
-      //   setDisplayedMovies(res || []);
-      // });
-    } else {
-      // load popular and search/byName
-      dispatch(loadMovies({ filter }));
-    }
-
+    dispatch(loadMovies({ filter }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match.url]);
 
@@ -84,7 +66,6 @@ const MainPage = ({
       .filter(notEmpty);
     console.log(displayedMovies);
     setDisplayedMovies(displayedMovies);
-    cardsRef.current?.scrollTo();
   }, [byName, search, popular, match.url, movies]);
 
   return (
@@ -93,7 +74,7 @@ const MainPage = ({
       <FilterSortPanel />
       <CardsSlider />
       {displayedMovies.length ? (
-        <Cards ref={cardsRef} movies={displayedMovies} />
+        <Cards movies={displayedMovies} />
       ) : (
         <Typography
           variant="h5"

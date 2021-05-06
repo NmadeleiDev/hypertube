@@ -1,13 +1,13 @@
 import { makeStyles } from '@material-ui/core';
-// import axios from 'axios';
+import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactPlayer from 'react-player';
-import { useHistory, useParams } from 'react-router';
+import { useHistory } from 'react-router';
 import screenfull from 'screenfull';
 import { useToast } from '../../hooks/useToast';
+import { getSearchParam } from '../../utils';
 import PlayerControls from './PlayerControls';
-import vtt from './TheHobbit.vtt';
 
 const useStyles = makeStyles({
   playerWrapper: {
@@ -82,23 +82,26 @@ function Player({ title, id, src }: Props) {
   const history = useHistory();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const params = useParams<{ time?: string }>();
 
   /**
    * set played to the value, defiened in params
+   * could be used if there is an error -
+   * then reload component and set current played position
+   * to the value, set in parameters
    */
   useEffect(() => {
+    const params = getSearchParam();
     console.log(params);
-    if (params.time) {
-      const played = parseInt(params.time);
-      setState({ ...state, played });
+    if (params?.time) {
+      const played = parseFloat(params.time);
+      setState((state) => ({ ...state, played }));
     }
-  }, [state, params]);
+  }, []);
 
   // save internal player
   useEffect(() => {
     if (!playerRef || !playerRef.current) return;
-    console.log('[Player] useEffect');
+    console.log('[Player] <save internal player> useEffect');
     const player = playerRef.current.getInternalPlayer();
     setPlayer(player);
   }, [playerRef, player]);
@@ -106,6 +109,7 @@ function Player({ title, id, src }: Props) {
   // add listners
   useEffect(() => {
     if (!player) return;
+    console.log('[Player] <add listners> useEffect');
     const playListener = player.addEventListener('play', () => {
       console.log('play');
     });
@@ -141,21 +145,21 @@ function Player({ title, id, src }: Props) {
     };
   }, [player]);
 
-  // useEffect(() => {
-  //   const loadSubtitles = async () => {
-  //     try {
-  //       const res = await axios(`/api/storage/load/${id}/srt`);
-  //       console.log(res.data);
-  //       if (!res.data) return;
-  //       const srt = URL.createObjectURL(res.data);
-  //       setState({ ...state, srt });
-  //     } catch (e) {
-  //       console.log(e);
-  //     }
-  //   };
-  //   loadSubtitles();
-  //   return () => URL.revokeObjectURL(srt);
-  // }, []);
+  // load subtitles
+  useEffect(() => {
+    console.log('[Player] <load subtitles> useEffect');
+    const loadSubtitles = async () => {
+      try {
+        const res = await axios(`/api/storage/load/${id}/srt`);
+        if (!res.data) return;
+        const srt = res.data;
+        setState((state) => ({ ...state, srt }));
+      } catch (e) {
+        console.log(e);
+      }
+    };
+    loadSubtitles();
+  }, [id]);
 
   const handleChangeSubtitles = () => {
     if (playerRef === null || playerRef.current === null) return;
@@ -167,7 +171,7 @@ function Player({ title, id, src }: Props) {
     if (!tracks || !tracks.length) return;
     const showing = tracks[0].mode === 'showing';
     tracks[0].mode = showing ? 'disabled' : 'showing';
-    console.log(tracks[0]);
+    // console.log(tracks[0]);
     setState({ ...state, showSubtitles: showing });
   };
 
@@ -295,7 +299,7 @@ function Player({ title, id, src }: Props) {
             tracks: [
               {
                 kind: 'subtitles',
-                src: vtt,
+                src: srt,
                 srcLang: 'en',
                 label: 'en',
                 default: true,

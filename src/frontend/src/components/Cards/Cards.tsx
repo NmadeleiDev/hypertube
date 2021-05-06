@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Grid } from '@material-ui/core';
 import { useSelector } from 'react-redux';
 
@@ -46,7 +46,7 @@ const sortByAvalibility = (movies: ITranslatedMovie[]) => {
   );
 };
 
-const Cards = forwardRef<HTMLDivElement, ICardsProps>(({ movies }) => {
+const Cards = ({ movies }: ICardsProps) => {
   const { sortBy, view } = useSelector((state: RootState) => state.UI);
   const { genres, years, countries } = useSelector(
     (state: RootState) => state.filter
@@ -147,6 +147,6 @@ const Cards = forwardRef<HTMLDivElement, ICardsProps>(({ movies }) => {
       {loading && <CardLoader display={view} />}
     </Grid>
   );
-});
+};
 
 export default Cards;
