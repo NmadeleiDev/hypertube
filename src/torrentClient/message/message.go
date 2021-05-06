@@ -38,7 +38,7 @@ func ParsePiece(index int, buf []byte, msg *Message) (int, error) {
 	}
 	begin := int(binary.BigEndian.Uint32(msg.Payload[4:8]))
 	if begin >= len(buf) {
-		return 0, fmt.Errorf("Begin offset too high. %d >= %d", begin, len(buf))
+		return 0, fmt.Errorf("begin offset too high. %d >= %d", begin, len(buf))
 	}
 	data := msg.Payload[8:]
 	if begin+len(data) > len(buf) {
@@ -64,9 +64,6 @@ func ParseHave(msg *Message) (int, error) {
 // <length prefix><message ID><payload>
 // Interprets `nil` as a keep-alive message
 func (m *Message) Serialize() []byte {
-	if m == nil {
-		return make([]byte, 4)
-	}
 	length := uint32(len(m.Payload) + 1) // +1 for id
 	buf := make([]byte, 4+length)
 	binary.BigEndian.PutUint32(buf[0:4], length)

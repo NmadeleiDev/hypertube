@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -45,7 +46,23 @@ type UdpConnManager struct {
 	Receive chan []byte
 	Send chan []byte
 	ExitChan chan byte
-	IsValid	bool
+
+	mu      sync.Mutex
+	isValid bool
+}
+
+func (u *UdpConnManager) SetValid(val bool) {
+	u.mu.Lock()
+	u.isValid = val
+	u.mu.Unlock()
+}
+
+func (u *UdpConnManager) IsValid() bool {
+	u.mu.Lock()
+	val := u.isValid
+	u.mu.Unlock()
+
+	return val
 }
 
 type bencodeInfoSingleFile struct {

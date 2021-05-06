@@ -10,20 +10,21 @@ import (
 	"torrentClient/client"
 	"torrentClient/db"
 	"torrentClient/fsWriter"
+	"torrentClient/limiter"
 	"torrentClient/message"
 
 	"github.com/sirupsen/logrus"
 )
 
 
-func (piece *pieceProgress) readMessage() error {
+func (piece *pieceProgress) readMessage() (error, error) {
 	msg, err := piece.client.Read() // this call blocks
 	if err != nil {
-		return err
+		return err, nil
 	}
 
 	if msg == nil { // keep-alive
-		return nil
+		return nil, nil
 	}
 
 	switch msg.ID {
@@ -35,18 +36,18 @@ func (piece *pieceProgress) readMessage() error {
 	case message.MsgHave:
 		index, err := message.ParseHave(msg)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		piece.client.Bitfield.SetPiece(index)
 	case message.MsgPiece:
 		piece.backlog--
 		n, err := message.ParsePiece(piece.index, piece.buf, msg)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		piece.downloaded += n
 	}
-	return nil
+	return nil, nil
 }
 
 func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, error) {
@@ -54,11 +55,11 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, erro
 
 	var state pieceProgress
 
-	if pw.progress != nil {
+	if pw.progress != nil && len(pw.progress.buf) > 0 {
 		if pw.progress.index != pw.index {
 			logrus.Errorf("pw.progress.index (%v) != pw.index (%v)", pw.progress.index, pw.index)
 		}
-		state.index = pw.progress.index
+		state.index = pw.index
 		state.buf = pw.progress.buf
 		state.downloaded = pw.progress.downloaded
 		logrus.Debugf("Got stopped piece idx=%v, downloaded=%v/%v, requested=%v", pw.index, state.downloaded, pw.length, state.requested)
@@ -91,17 +92,18 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, erro
 				state.backlog++
 				state.requested += blockSize
 			}
+			c.Choked = false
 		} else {
+			c.Choked = true
 			return &state, fmt.Errorf("choked")
 		}
 
-		err := state.readMessage()
-		if err != nil {
-			//if err == io.EOF {
-			//	logrus.Debugf("Mitigating EOF error from read msg peer %v in idx=%v", c.GetShortInfo(), state.index)
-			//	continue
-			//}
-			return &state, fmt.Errorf("download read msg error: %v, idx=%v, loaded=%v%%", err, pw.index, (state.downloaded * 100) / pw.length)
+		errRead, errParse := state.readMessage()
+		if errRead != nil {
+			return &state, fmt.Errorf("download read msg error: %v, idx=%v, loaded=%v%%", errRead, pw.index, (state.downloaded * 100) / pw.length)
+		}
+		if errParse != nil {
+			logrus.Debugf("errParse != nil (%v). Ignoring parsed, continue download idx=%v", errParse, state.index)
 		}
 	}
 	logrus.Debugf("Done loading piece idx=%v from %v", state.index, state.client.Peer.GetAddr())
@@ -132,7 +134,7 @@ func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client,
 		if r := recover(); r != nil {
 			logrus.Debugf("Recovered in piece load: %v", r)
 		}
-		c.Conn.Close()
+		//c.Conn.Close()
 	}()
 
 	for {
@@ -151,22 +153,36 @@ func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client,
 			}
 
 			// Download the piece
+			if err := t.LoadStats.AddProcessed(pw.index); err != nil {
+				logrus.Errorf("Failed to add piece idx=%v to processed: %v", pw.index, err)
+				continue
+			}
 			loadState, err := attemptDownloadPiece(c, pw)
 			if err != nil {
+				if err1 := t.LoadStats.DeleteProcessed(pw.index); err != nil {
+					logrus.Errorf("%v Failed to delete piece idx=%v from processed: %v", err, pw.index, err1)
+					return err
+				}
 				pw.progress = loadState // сохраняем прогресс по кусочку
 				recyclePiecesChan <- pw
-				c.Peer.IsDead = true
 				return err
 			}
 
 			err = checkIntegrity(pw, loadState.buf)
 			if err != nil {
 				logrus.Errorf("Piece hash check err: %v", err)
+				if err1 := t.LoadStats.DeleteProcessed(pw.index); err != nil {
+					logrus.Errorf("%v Failed to delete piece idx=%v from processed: %v", err, pw.index, err1)
+					return err
+				}
 				pw.progress = nil
 				recyclePiecesChan <- pw
 				continue
 			}
 
+			if err := t.LoadStats.SetDone(pw.index); err != nil {
+				logrus.Errorf("Failed to set piece idx=%v as done: %v", err, pw.index)
+			}
 			c.SendHave(pw.index)
 			results <- &pieceResult{pw.index, loadState.buf}
 		}
@@ -203,7 +219,7 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 		if IntArrayContain(loadedIdxs, index) {
 			if buf, start, size, ok := db.GetFilesManagerDb().GetPartDataByIdx(t.FileId, index); ok {
 				t.ResultsChan <- LoadedPiece{Data: buf, Len: size, StartByte: start}
-				t.LoadStats.IncrDone()
+				t.LoadStats.ForceSetDone(index)
 				continue
 			} else {
 				db.GetFilesManagerDb().DropDataPartByIdx(t.FileId, index)
@@ -227,9 +243,9 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 
 	// Start workers as they arrive from Pool
 	go func() {
-		maxWorkers := 30
-		numWorkers := 0
-		jobs := make(chan struct{}, maxWorkers)
+		maxWorkers := 40
+		limiterObj := limiter.RateLimiter{}
+		limiterObj.Init(maxWorkers)
 
 		for {
 			select {
@@ -242,25 +258,23 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 				}
 				logrus.Infof("Got activated client: %v", activeClient.GetShortInfo())
 
-				jobs <- struct{}{}
-				//workerCtx, workerCancel := context.WithCancel(ctx)
+				limiterObj.Add()
 				go func(workerClient *client.Client) {
-					numWorkers ++
-					logrus.Debugf("Starting worker. Total workers=%d of %v", numWorkers, maxWorkers)
+					logrus.Debugf("Starting worker. Total workers=%d of %v", limiterObj.GetVal(), maxWorkers)
 					t.LoadStats.IncrActivePeers()
 					if err := t.startDownloadWorker(ctx, workerClient, topPriorityPieceChan, results, recyclePiecesChan); err != nil {
 						logrus.Errorf("Throwing dead peer %v cause err: %v", workerClient.GetShortInfo(), err)
 						t.DeadPeersChan <- workerClient
 						t.LoadStats.DecrActivePeers()
-						<- jobs
-						numWorkers --
+						limiterObj.Pop()
 					}
 				}(activeClient)
 			}
 		}
 	}()
 
-	for t.LoadStats.CountDone() < len(t.PieceHashes) {
+	done := 0
+	for done < len(t.PieceHashes) {
 		select {
 		case <- ctx.Done():
 			logrus.Debugf("Got DONE in Download, exiting")
@@ -271,15 +285,16 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 				continue
 			}
 
+			done ++
 			begin, end := t.calculateBoundsForPiece(res.index)
 			t.ResultsChan <- LoadedPiece{Data: res.buf, Len: int64(end-begin), StartByte: int64(begin)}
 			db.GetFilesManagerDb().SaveFilePart(t.FileId, res.buf, int64(begin), int64(end-begin), int64(res.index))
 			//db.GetLoadedStateDb().AnnounceLoadedPart(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
 			//db.GetLoadedStateDb().SaveLoadedPartInfo(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
-			t.LoadStats.IncrDone()
 
 			percent := t.LoadStats.GetLoadedPercent()
-			logrus.Infof("(%d%%) Downloaded piece idx=%d from %v peers\n", percent, res.index, t.LoadStats.GetNumOfActivePeers())
+			activePeers := t.LoadStats.GetNumOfActivePeers()
+			logrus.Infof("(%d%%) Downloaded piece idx=%d from %v peers\n", percent, res.index, activePeers)
 		}
 	}
 	return nil

@@ -8,10 +8,10 @@ import (
 )
 
 
-func StartHandlingSocket(conn *net.UDPConn, utils *UdpConnManager)  {
+func StartHandlingSocket(conn *net.UDPConn, udpManager *UdpConnManager)  {
 	go func() {
 		for {
-			if !utils.IsValid {
+			if !udpManager.IsValid() {
 				return
 			}
 
@@ -22,15 +22,15 @@ func StartHandlingSocket(conn *net.UDPConn, utils *UdpConnManager)  {
 				return
 			} else {
 				logrus.Infof("Read %v bytes", n)
-				utils.Receive <- buffer[:n]
+				udpManager.Receive <- buffer[:n]
 			}
 		}
 	}()
 
 	go func() {
 		for {
-			msg := <- utils.Send
-			if !utils.IsValid {
+			msg := <- udpManager.Send
+			if !udpManager.IsValid() {
 				return
 			}
 			if n, err := conn.Write(msg); err != nil {
@@ -63,12 +63,12 @@ func OpenUdpSocket(tUrl *url.URL) (*UdpConnManager, error) {
 	receive := make(chan []byte, 10)
 	send := make(chan []byte, 10)
 
-	manager := &UdpConnManager{Receive: receive, Send: send, ExitChan: exitChan, IsValid: true}
+	manager := &UdpConnManager{Receive: receive, Send: send, ExitChan: exitChan, isValid: true}
 
 	go func() {
 		<- exitChan
 		logrus.Info("Exiting from udp socket.")
-		manager.IsValid = false
+		manager.SetValid(false)
 		connection.Close()
 		close(receive)
 		close(send)

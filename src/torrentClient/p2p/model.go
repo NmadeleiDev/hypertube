@@ -15,7 +15,7 @@ const MaxBacklog = 5
 type TorrentMeta struct {
 	ActivatedClientsChan     <- chan *client.Client
 	DeadPeersChan            chan <- *client.Client
-	PieceLoadPriorityUpdates <- chan int64
+	PieceLoadPriorityUpdates <- chan int
 	PeerID                   [20]byte
 	InfoHash                 [20]byte
 	PieceHashes              [][20]byte
