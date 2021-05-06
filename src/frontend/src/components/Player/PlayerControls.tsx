@@ -1,5 +1,6 @@
 import {
   Button,
+  CircularProgress,
   Grid,
   IconButton,
   makeStyles,
@@ -149,6 +150,7 @@ interface Props {
   totalDuration: string;
   title: string;
   showSubtitles: boolean;
+  loading: boolean;
 }
 
 const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
@@ -187,31 +189,37 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
 				</Grid> */}
       </Grid>
       <Grid container direction="row" alignItems="center" justify="center">
-        <IconButton
-          onClick={props.onRewind}
-          className={classes.controlIcons}
-          aria-label="reqind"
-        >
-          <FastRewind fontSize="inherit" />
-        </IconButton>
-        <IconButton
-          onClick={props.onPlayPause}
-          className={classes.controlIcons}
-          aria-label="reqind"
-        >
-          {props.playing ? (
-            <Pause fontSize="inherit" />
-          ) : (
-            <PlayArrow fontSize="inherit" />
-          )}
-        </IconButton>
-        <IconButton
-          onClick={props.onFastForward}
-          className={classes.controlIcons}
-          aria-label="reqind"
-        >
-          <FastForward fontSize="inherit" />
-        </IconButton>
+        {props.loading ? (
+          <CircularProgress color="primary" />
+        ) : (
+          <>
+            <IconButton
+              onClick={props.onRewind}
+              className={classes.controlIcons}
+              aria-label="reqind"
+            >
+              <FastRewind fontSize="inherit" />
+            </IconButton>
+            <IconButton
+              onClick={props.onPlayPause}
+              className={classes.controlIcons}
+              aria-label="reqind"
+            >
+              {props.playing ? (
+                <Pause fontSize="inherit" />
+              ) : (
+                <PlayArrow fontSize="inherit" />
+              )}
+            </IconButton>
+            <IconButton
+              onClick={props.onFastForward}
+              className={classes.controlIcons}
+              aria-label="reqind"
+            >
+              <FastForward fontSize="inherit" />
+            </IconButton>
+          </>
+        )}
       </Grid>
       <Grid
         container
@@ -222,6 +230,7 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
       >
         <Grid item xs={12}>
           <PrettoSlider
+            // disabled={props.loading}
             min={0}
             max={100}
             ValueLabelComponent={(props2) => (
@@ -241,6 +250,7 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
             alignItems="center"
           >
             <IconButton
+              disabled={props.loading}
               onClick={props.onPlayPause}
               className={classes.bottomIcons}
             >

@@ -30,10 +30,6 @@ const NativePlayer = ({ src, id }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const movie = useSelector((state: RootState) =>
-    state.movies.movies.find((movie) => movie.en.id === id)
-  );
-  const poster = movie?.en.img;
 
   const url = id ? `/api/storage/load/${id}` : src;
 

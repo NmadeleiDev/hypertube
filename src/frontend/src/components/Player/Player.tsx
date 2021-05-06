@@ -59,6 +59,7 @@ function Player({ title, id, src }: Props) {
     error: false,
     srt: '',
     showSubtitles: true,
+    loading: false,
   });
   const [player, setPlayer] = React.useState<Record<string, any>>();
   const [timeDisplayFormat, setTimeDisplayFormat] = useState('normal');
@@ -73,6 +74,7 @@ function Player({ title, id, src }: Props) {
     error,
     srt,
     showSubtitles,
+    loading,
   } = state;
   const playerRef = useRef<ReactPlayer>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
@@ -171,7 +173,6 @@ function Player({ title, id, src }: Props) {
     if (!tracks || !tracks.length) return;
     const showing = tracks[0].mode === 'showing';
     tracks[0].mode = showing ? 'disabled' : 'showing';
-    // console.log(tracks[0]);
     setState({ ...state, showSubtitles: showing });
   };
 
@@ -223,6 +224,7 @@ function Player({ title, id, src }: Props) {
 
   const handleProgress = ({ played }: { played: number }) => {
     console.log('handleProgress', played);
+    setState({ ...state, loading: false });
     if (!controlsRef || !controlsRef.current) return;
     timeoutId.current = setTimeout(() => {
       if (!controlsRef || !controlsRef.current) return;
@@ -261,6 +263,14 @@ function Player({ title, id, src }: Props) {
     toast({ text: t`movieError` }, 'error');
     // setState((prev) => ({ ...prev, played: prev.played + 0.001 }));
   };
+  const handleBuffer = () => {
+    console.log('onBuffer');
+    setState({ ...state, loading: true });
+  };
+  const handleBufferEnd = () => {
+    console.log('onBufferEnd');
+    setState({ ...state, loading: false });
+  };
 
   const currentTime =
     !playerRef || !playerRef.current ? 0 : playerRef.current.getCurrentTime();
@@ -292,8 +302,9 @@ function Player({ title, id, src }: Props) {
         playbackRate={playbackRate}
         onProgress={handleProgress}
         onError={handleError}
-        onBuffer={() => console.log('onBuffer')}
-        onBufferEnd={() => console.log('onBufferEnd')}
+        onBuffer={handleBuffer}
+        onBufferEnd={handleBufferEnd}
+        onReady={handleBufferEnd}
         config={{
           file: {
             tracks: [
@@ -318,6 +329,7 @@ function Player({ title, id, src }: Props) {
           volume={volume}
           played={played}
           seeking={seeking}
+          loading={loading}
           showSubtitles={showSubtitles}
           onRewind={handleRewind}
           onFastForward={handleFastForward}
