@@ -64,11 +64,12 @@ func (w *FsWriter) WriteDataToFile(fileName string, data []byte, offset int64) e
 	defer file.Close()
 	dataLen := len(data)
 
+	db.GetLoadedStateDb().AddSliceIndexForFile(fileName, offset, offset + int64(dataLen))
+
 	if _, err := file.WriteAt(data, offset); err != nil {
 		logrus.Error("Error writing to file: %v", err)
 	}
 
-	db.GetLoadedStateDb().AddSliceIndexForFile(fileName, offset, offset + int64(len(data)))
 	logrus.Debugf("Wrote %v bytes to file %v starting from %v", dataLen, fileName, offset)
 	return nil
 }

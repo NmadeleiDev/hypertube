@@ -199,7 +199,7 @@ func (l *LoadEntry) DeleteProcessed(idx int) (err error) {
 
 	_, exists := l.ProcessedPieces[idx]
 	if !exists {
-		err = fmt.Errorf("tryied to delete idx=%v from process, but it is not there", idx)
+		err = fmt.Errorf("tryied to delete idx=%v from process, but it is not there: %v", idx, l.ProcessedPieces)
 	} else {
 		delete(l.ProcessedPieces, idx)
 		err = nil
