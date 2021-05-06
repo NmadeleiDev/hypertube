@@ -1,7 +1,7 @@
 import { Express } from 'express';
 import { createSuccessResponse, createErrorResponse } from './utils';
 import log from '../logger/logger';
-import { IComment, IMovie, ITranslatedMovie } from '../model/model';
+import { IComment } from '../model/model';
 import {
   deleteComment,
   insertComment,
@@ -9,15 +9,8 @@ import {
   selectCommentsByMovieID,
   updateComment,
 } from '../db/postgres/comments';
-import {
-  dbToIMovie,
-  getKinopoiskMovieFromDB,
-  getMovieInfo,
-  getMovies,
-  IRating,
-  KinoDBToIMovie,
-  updateMovieRating,
-} from '../db/postgres/movies';
+import { IRating, updateMovieRating } from '../db/postgres/movies';
+import { getMovieInfo, getTranslatedMovies } from './movies';
 
 export function addMoviesHandlers(app: Express) {
   app.get('/movies', async (req, res) => {
@@ -34,15 +27,8 @@ export function addMoviesHandlers(app: Express) {
         else res.json(createErrorResponse(null)).status(404);
         return;
       }
-
-      const ens: IMovie[] = (await getMovies(limit, offset)).map((movie) =>
-        dbToIMovie(movie)
-      );
-      log.info('[addMoviesHandlers] got en movies', ens);
-      const movies: ITranslatedMovie[] = await Promise.all(
-        ens.map((en) => getMovieInfo(en.id))
-      );
-      log.info('[addMoviesHandlers] got translated movies', movies);
+      const movies = await getTranslatedMovies({ limit, offset });
+      log.info('[/movies] got translated movies', movies);
 
       if (movies) res.json(createSuccessResponse(movies)).status(200);
       else res.json(createErrorResponse(null)).status(404);
@@ -51,24 +37,29 @@ export function addMoviesHandlers(app: Express) {
       res.json(createErrorResponse('Error getting movies')).status(500);
     }
   });
-  app.get('/genres', async (req, res) => {
-    log.debug(req);
-    res.json(createErrorResponse(null)).status(404);
+  app.get('/bygenre', async (req, res) => {
+    const genre = (req.query.genre as string) || undefined;
+    const limit = +req.query.limit || 5;
+    const offset = +req.query.offset || 0;
+    log.debug('genre:', genre);
+    try {
+      const movies = await getTranslatedMovies({ limit, offset, genre });
+      log.info('[/bygenre] got translated movies', movies);
+
+      if (movies) res.json(createSuccessResponse(movies)).status(200);
+      else res.json(createErrorResponse(null)).status(404);
+    } catch (e) {
+      log.error(`Error getting movies: ${e}`);
+      res.json(createErrorResponse('Error getting movies')).status(500);
+    }
   });
   app.get('/byname', async (req, res) => {
     const limit = +req.query.limit || 5;
     const offset = +req.query.offset || 0;
     const letter = (req.query.letter as string) || undefined;
-    log.debug('letter:', req.params.letter);
+    log.debug('letter:', letter);
     try {
-      const response = await getMovies(limit, offset, letter);
-      log.debug('[/byname] got getMovies response', response);
-      const ens: IMovie[] = response.map((movie) => dbToIMovie(movie));
-      log.info(`[/byname] en movies for ${letter}`, ens);
-
-      const movies: ITranslatedMovie[] = await Promise.all(
-        ens.map((en) => getMovieInfo(en.id))
-      );
+      const movies = await getTranslatedMovies({ limit, offset, letter });
       log.info('[/byname] got translated movies', movies);
 
       if (movies) res.json(createSuccessResponse(movies)).status(200);

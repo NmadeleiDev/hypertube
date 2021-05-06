@@ -84,7 +84,9 @@ const getPersonsString = (persons: IMDBPerson[]): string => {
   return persons.map((dir) => dir.name).join(', ');
 };
 
-export const searchMovieID = async (query: string) => {
+export const searchMovieID = async (
+  query: string
+): Promise<string | undefined> => {
   try {
     const q = `${
       query.toLocaleLowerCase()[0]
@@ -101,7 +103,14 @@ export const searchMovieID = async (query: string) => {
     );
     log.debug('[searchMovieID]', res.data);
     if (res.data && res.data.d) {
-      return res.data.d[0]?.id;
+      const words = query.split(' ');
+      const year = +words.pop();
+      const title = words.join(' ').toLocaleLowerCase();
+      const movie = res.data.d.find(
+        (el) => el.y === year && el.l.toLocaleLowerCase() === title
+      );
+      console.log('[searchMovieID] found result', movie);
+      return movie?.id;
     }
   } catch (e) {
     log.error(e);
@@ -142,8 +151,11 @@ export const getMovieData = async (imdbId: string): Promise<IMDBMovie> => {
   }
 };
 
-export const serachIMDBMovie = async (query: string): Promise<IMDBMovie> => {
+export const serachIMDBMovie = async (
+  query: string
+): Promise<IMDBMovie | null> => {
   const id = await searchMovieID(query);
+  if (!id) return null;
   const movie = getMovieData(id);
   return movie;
 };
