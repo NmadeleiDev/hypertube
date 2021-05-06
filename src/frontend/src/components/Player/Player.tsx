@@ -1,9 +1,11 @@
 import { makeStyles } from '@material-ui/core';
-import axios from 'axios';
+// import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactPlayer from 'react-player';
+import { useHistory, useParams } from 'react-router';
 import screenfull from 'screenfull';
+import { useToast } from '../../hooks/useToast';
 import PlayerControls from './PlayerControls';
 import vtt from './TheHobbit.vtt';
 
@@ -51,7 +53,7 @@ function Player({ title, id, src }: Props) {
     muted: false,
     volume: 1,
     playbackRate: 1.0,
-    played: 0, //0.10374984039784949
+    played: 0,
     seeking: false,
     controlsVisible: true,
     error: false,
@@ -77,17 +79,32 @@ function Player({ title, id, src }: Props) {
   const controlsRef = useRef<HTMLDivElement>(null);
   const timeoutId = useRef<NodeJS.Timeout>();
   const videoUrl = id ? `/api/storage/load/${id}/video` : src;
+  const history = useHistory();
+  const { toast } = useToast();
   const { t } = useTranslation();
+  const params = useParams<{ time?: string }>();
 
+  /**
+   * set played to the value, defiened in params
+   */
+  useEffect(() => {
+    console.log(params);
+    if (params.time) {
+      const played = parseInt(params.time);
+      setState({ ...state, played });
+    }
+  }, [state, params]);
+
+  // save internal player
   useEffect(() => {
     if (!playerRef || !playerRef.current) return;
-
     console.log('[Player] useEffect');
     const player = playerRef.current.getInternalPlayer();
-    console.dir(player);
-    console.log(playerRef.current);
     setPlayer(player);
+  }, [playerRef, player]);
 
+  // add listners
+  useEffect(() => {
     if (!player) return;
     const playListener = player.addEventListener('play', () => {
       console.log('play');
@@ -122,7 +139,7 @@ function Player({ title, id, src }: Props) {
       player.removeEventListener('suspend', suspendListener);
       player.removeEventListener('waiting', waitingListener);
     };
-  }, [playerRef]);
+  }, [player]);
 
   // useEffect(() => {
   //   const loadSubtitles = async () => {
@@ -236,8 +253,9 @@ function Player({ title, id, src }: Props) {
   };
   const handleError = (e: Error) => {
     console.log('handleError', e);
-
-    setState((prev) => ({ ...prev, played: prev.played + 0.001 }));
+    history.push(`/movies/${id}?time=${played}`);
+    toast({ text: t`movieError` }, 'error');
+    // setState((prev) => ({ ...prev, played: prev.played + 0.001 }));
   };
 
   const currentTime =

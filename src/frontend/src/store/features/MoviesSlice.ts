@@ -42,6 +42,7 @@ export interface IFilter {
   letter?: string;
   search?: string;
   genres?: GenresKeys[];
+  genre?: string;
   years?: [] | number[][];
   countries?: CountriesKeys[];
   id?: string | number;
@@ -186,6 +187,10 @@ const loadMoviesAsync = async (
       res = await movies(`byname`, {
         params,
       });
+    else if (params?.genre)
+      res = await movies(`bygenre`, {
+        params,
+      });
     else
       res = await movies('movies', {
         params,
@@ -221,22 +226,22 @@ export const loadMovies = ({
       !el.ru ? { en: el.en, ru: el.en } : el
     );
     console.log('[loadMovies] removedNulls:', removedNulls);
-    if (filter.letter) dispatch(addMovies({ byName: removedNulls }));
-    else if (filter.search)
+    if (filter.letter) {
+      dispatch(addMovies({ byName: removedNulls }));
+    } else if (filter.search || filter.genre) {
       filter.offset && filter.offset > 0
         ? dispatch(addMovies({ search: removedNulls }))
         : dispatch(setMovies({ search: removedNulls }));
-    else dispatch(addMovies({ popular: removedNulls }));
-    if (callback)
+    } else {
+      dispatch(addMovies({ popular: removedNulls }));
+    }
+    if (callback) {
       callback(movies && movies.data ? movies.data.length < limit : true);
+    }
     return removedNulls;
   } else {
     dispatch(stopLoading());
-    const error = {
-      en: 'Loading error',
-      ru: 'Не удалось загрузить фильмы',
-    };
-    dispatch(setError({ error: movies?.error || 'Loading error' }));
+    dispatch(setError({ error: 'Loading error' }));
     return null;
   }
 };
