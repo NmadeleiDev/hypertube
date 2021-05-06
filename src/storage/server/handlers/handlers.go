@@ -163,9 +163,9 @@ func UploadSrtFileHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Header().Set("Content-Type", GetContentTypeForReqType("srt"))
 			w.WriteHeader(GetResponseStatusForReqType("srt"))
-			if _, err := io.Copy(w, bytes.NewReader(subtitlesFile)); err != nil {
-				logrus.Errorf("Error piping response: %v", err)
-			}
+			//if _, err := io.Copy(w, bytes.NewReader(subtitlesFile)); err != nil {
+			//	logrus.Errorf("Error piping response: %v", err)
+			//}
 			if err := subtitlesManager.GetManager().ConvertSrtToVtt(bytes.NewReader(subtitlesFile), w); err != nil {
 				SendFailResponseWithCode(w, fmt.Sprintf("Failed to convert srt to vtt: %v", err.Error()), http.StatusInternalServerError)
 			}
