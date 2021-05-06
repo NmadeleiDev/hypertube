@@ -160,6 +160,8 @@ func authOauth42(w http.ResponseWriter, r *http.Request) {
 func parseRequestParams42(r *http.Request) (requestParams, *errors.Error) {
 	var params requestParams
 
+	fmt.Printf("request (42)\n%#v\n", r)
+
 	params.Code = r.FormValue("code")
 	params.State = r.FormValue("state")
 	params.Error = r.FormValue("error")
@@ -173,6 +175,7 @@ func parseRequestParams42(r *http.Request) (requestParams, *errors.Error) {
 		return params, errors.AccessDenied.SetHidden("Сервер авторизации 42 прислал невалидные данные. code: " +
 			params.Code + " state" + params.State)
 	}
+	fmt.Printf("parsed request params: %#v\n", params)
 	return params, nil
 }
 
