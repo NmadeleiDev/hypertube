@@ -20,9 +20,9 @@ func (p *LoadPriority) StartPriorityUpdating(ctx context.Context) chan int {
 	go func() {
 		defer close(outputChan)
 
-		nPieces := len(p.torrentFile.PieceHashes)
-		pLen := p.torrentFile.PieceLength
-		boundaries := p.torrentFile.FileBoundariesMapping
+		nPieces := len(p.torrentFile.GetPieceHashes())
+		pLen := p.torrentFile.GetPieceLength()
+		boundaries := p.torrentFile.GetFileBoundariesMapping()
 
 		for {
 			select {

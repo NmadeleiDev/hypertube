@@ -3,23 +3,18 @@ package server
 import (
 	"net/http"
 
-	"hypertube_storage/parser/env"
 	"hypertube_storage/server/handlers"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
-var devMode bool
-
 func Start() {
-	devMode = env.GetParser().IsDevMode()
-
 	router := mux.NewRouter()
 
-	router.HandleFunc("/load/{file_id}", handlers.UploadFilePartHandler)
+	//router.HandleFunc("/load/{file_id}", handlers.UploadFilePartHandler)
 	router.HandleFunc("/load/{file_id}/video", handlers.UploadFilePartHandler)
-	router.HandleFunc("/load/{file_id}/srt", handlers.UploadSrtFileHandler)
+	router.HandleFunc("/load/{file_id}/subtitles/{subtitles_id}", handlers.UploadSubtitlesFileHandler)
 	router.PathPrefix("/").HandlerFunc(handlers.CatchAllHandler)
 
 	logrus.Info("Listening localhost:2222")

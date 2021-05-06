@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"hypertube_storage/db"
 	"hypertube_storage/model"
 	"hypertube_storage/parser/env"
 
@@ -69,28 +68,6 @@ func SetCookieForHour(w http.ResponseWriter, cookieName, value string) {
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(time.Hour.Seconds())}
 	http.SetCookie(w, &c)
-}
-
-func GetFileInfoForReqType(info model.LoadInfo, reqType string) (fileName string, fileLength int64) {
-	if reqType == videoRequest {
-		fileName = info.VideoFile.Name
-		fileLength = info.VideoFile.Length
-	} else {
-		fileName = info.SrtFile.Name
-		fileLength = info.SrtFile.Length
-	}
-
-	return fileName, fileLength
-}
-
-func LoadFileInfoFromDbForReqType(fileId string, reqType string) (fileName string, fileLength int64, err error) {
-	info, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
-	if err != nil {
-		logrus.Errorf("File not found by id '%v', err: %v", fileId, err)
-		return "", 0, err
-	}
-	fileName, fileLength = GetFileInfoForReqType(info, reqType)
-	return fileName, fileLength, nil
 }
 
 func GetContentTypeForReqType(reqType string) string {

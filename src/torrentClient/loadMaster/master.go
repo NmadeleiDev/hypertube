@@ -79,13 +79,17 @@ func (m *LoadsMaster) StopLoad(fileId string) bool {
 }
 
 func (m *LoadsMaster) GetStatsForEntry(fileId string) (result LoadStat, ok bool) {
+	logrus.Debugf("Getting stats for %v", fileId)
 	m.mu.Lock()
 	entry, exists := m.loads[fileId]
 	m.mu.Unlock()
 
 	if exists {
+		logrus.Debugf("fuck1 stats for %v", fileId)
 		totalPieces := entry.TotalPieces()
+		logrus.Debugf("fuck2 stats for %v", fileId)
 		nDone := entry.GetLoadedPieces()
+		logrus.Debugf("fuck3 stats for %v", fileId)
 		inProgress := entry.GetInProgressPieces()
 
 		result, ok = LoadStat{

@@ -83,7 +83,7 @@ func (f *fileReader) IsPartWritten(fileName string, part []byte, start int64) bo
 	return true
 }
 
-func (f *fileReader) WaitForWholeFileWritten(ctx context.Context, fileName string, expectedLen int64) ([]byte, error) {
+func (f *fileReader) WaitForWholeFileWritten(ctx context.Context, fileName string) ([]byte, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		logrus.Errorf("Error init watcher: %v", err)
@@ -113,15 +113,12 @@ func (f *fileReader) WaitForWholeFileWritten(ctx context.Context, fileName strin
 				totalLen := int64(len(buf))
 				if err != nil {
 					logrus.Debugf("File load err in watch, keep watching: %v", err)
-				} else if buf != nil && int64(len(buf)) == expectedLen && f.IsPartWritten(fileName, buf, 0) {
+				} else if buf != nil && f.IsPartWritten(fileName, buf, 0) {
 					logrus.Debugf("Sending read res with len = %v", totalLen)
 					resultsChan <- resultStruct{Data: buf, TotalLen: totalLen, Err: nil}
 					return
 				} else {
-					logrus.Debugf("Read buf not written or nil (%v %v), or incorrect size (%v of %v)", f.IsPartWritten(fileName, buf, 0), buf == nil, totalLen, expectedLen)
-					//if buf != nil {
-					//	logrus.Debugf("Buf: {%v; %v}", buf[:100], buf[len(buf) - 100:])
-					//}
+					logrus.Debugf("Read buf not written or nil (%v %v) size=%v", f.IsPartWritten(fileName, buf, 0), buf == nil, totalLen)
 				}
 
 				logrus.Debugf("event: %v", event)
@@ -186,7 +183,7 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 					resultsChan <- resultStruct{Data: buf, TotalLen: totalLen, Err: nil}
 					return
 				} else {
-					logrus.Debugf("Read buf not written or nil (%v %v)", f.IsPartWritten(fileName, buf, start), buf == nil)
+					logrus.Debugf("Read buf not written or nil (%v %v)", !f.IsPartWritten(fileName, buf, start), buf == nil)
 					if buf != nil {
 						logrus.Debugf("Buf: {%v; %v}", buf[:100], buf[len(buf) - 100:])
 					}

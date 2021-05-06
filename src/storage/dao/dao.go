@@ -21,7 +21,7 @@ type LoadedFilesDbManager interface {
 
 type FileReader interface {
 	WaitForFilePart(ctx context.Context, fileName string, start int64, expectedLen int64) ([]byte, int64, error)
-	WaitForWholeFileWritten(ctx context.Context, fileName string, expectedLen int64) ([]byte, error)
+	WaitForWholeFileWritten(ctx context.Context, fileName string) ([]byte, error)
 	GetFileInRange(fileName string, start int64, expectedLen int64) (result []byte, totalLength int64, err error)
 	ReadWholeFile(fileName string) ([]byte, error)
 	HasNullBytes(src []byte) bool

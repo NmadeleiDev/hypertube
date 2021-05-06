@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"strings"
 
 	"torrentClient/db"
 	"torrentClient/fsWriter"
@@ -22,10 +21,11 @@ func (t *TorrentFile) DownloadToFile() error {
 	downloadCtx, downloadCancel := context.WithCancel(context.Background())
 	defer downloadCancel()
 
-	db.GetFilesManagerDb().SetInProgressStatusForRecord(t.SysInfo.FileId, true)
-	defer db.GetFilesManagerDb().SetInProgressStatusForRecord(t.SysInfo.FileId, false)
+	fileId := t.GetFileId()
+	db.GetFilesManagerDb().SetInProgressStatusForRecord(fileId, true)
+	defer db.GetFilesManagerDb().SetInProgressStatusForRecord(fileId, false)
 
-	loadEntry, ok := loadMaster.GetMaster().AddLoadEntry(t.SysInfo.FileId, downloadCancel, len(t.PieceHashes))
+	loadEntry, ok := loadMaster.GetMaster().AddLoadEntry(fileId, downloadCancel, len(t.PieceHashes))
 	if !ok {
 		logrus.Debugf("Failed to add loading entry (propably, file is already in progress)")
 		return fmt.Errorf("failed to add loading entry")
@@ -52,7 +52,7 @@ func (t *TorrentFile) DownloadToFile() error {
 		PieceLength:              t.PieceLength,
 		Length:                   t.Length,
 		Name:                     t.Name,
-		FileId:                   t.SysInfo.FileId,
+		FileId:                   fileId,
 		ResultsChan:              make(chan p2p.LoadedPiece, 100),
 		LoadStats:                loadEntry,
 	}
@@ -63,27 +63,26 @@ func (t *TorrentFile) DownloadToFile() error {
 	//defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
 	//logrus.Infof("Prepared table for parts, starting download")
 	videoFile := t.getHeaviestFile()
-	db.GetFilesManagerDb().SetFileNameForRecord(t.SysInfo.FileId, videoFile.EncodeFileName())
+	db.GetFilesManagerDb().SetFileNameForRecord(fileId, videoFile.EncodeFileName())
 
 	go t.WaitForDataAndWriteToDisk(downloadCtx, torrent.ResultsChan)
 
 	if err := torrent.Download(downloadCtx); err != nil {
 		return fmt.Errorf("file download error: %v", err)
 	}
-	db.GetFilesManagerDb().SetLoadedStatusForRecord(t.SysInfo.FileId, true)
-	logrus.Infof("Download for %v completed!", t.SysInfo.FileId)
+	db.GetFilesManagerDb().SetLoadedStatusForRecord(fileId, true)
+	logrus.Infof("Download for %v completed!", fileId)
 	return nil
 }
 
 func (t *TorrentFile) PrepareDownload() (string, int64) {
 	videoFile := t.getHeaviestFile()
-	srtFile, ok := t.getSrtFile()
-	if ok {
-		fsWriter.GetWriter().CreateEmptyFile(srtFile.EncodeFileName())
-		db.GetFilesManagerDb().SetSrtFileNameAndLengthForRecord(t.SysInfo.FileId, srtFile.EncodeFileName(), int64(srtFile.Length))
+	subtitlesFiles := t.getSubtitlesFiles()
+	for _, subFile := range subtitlesFiles {
+		fsWriter.GetWriter().CreateEmptyFile(subFile.EncodeFileName())
 	}
 	fsWriter.GetWriter().CreateEmptyFile(videoFile.EncodeFileName())
-	db.GetFilesManagerDb().SetVideoFileNameAndLengthForRecord(t.SysInfo.FileId, videoFile.EncodeFileName(), int64(videoFile.Length))
+	db.GetFilesManagerDb().SetVideoFileNameAndLengthForRecord(t.GetFileId(), videoFile.EncodeFileName(), int64(videoFile.Length))
 	return videoFile.EncodeFileName(), int64(videoFile.Length)
 }
 
@@ -110,13 +109,15 @@ func (t *TorrentFile) InitMyPeerIDAndPort() {
 }
 
 func (t *TorrentFile) getHeaviestFile() bencodeTorrentFile {
-	if len(t.Files) == 1 {
-		return t.Files[0]
+	allFiles := t.GetFiles()
+
+	if len(allFiles) == 1 {
+		return allFiles[0]
 	}
 
-	longest := t.Files[0]
+	longest := allFiles[0]
 
-	for _, file := range t.Files {
+	for _, file := range allFiles {
 		if file.Length > longest.Length {
 			longest = file
 		}
@@ -125,21 +126,21 @@ func (t *TorrentFile) getHeaviestFile() bencodeTorrentFile {
 	return longest
 }
 
-func (t *TorrentFile) getSrtFile() (bencodeTorrentFile, bool) {
-	for _, file := range t.Files {
-		if len(file.Path) < 1 {
-			logrus.Errorf("File path not specified, file %v", file)
-			continue
-		}
-		if strings.HasSuffix(file.Path[len(file.Path) - 1], ".srt") {
-			return file, true
+func (t *TorrentFile) getSubtitlesFiles() []bencodeTorrentFile {
+	allFiles := t.GetFiles()
+	res := make([]bencodeTorrentFile, len(allFiles))
+	for _, file := range allFiles {
+		if file.Extension() == "srt" {
+			res = append(res, file)
 		}
 	}
 
-	return bencodeTorrentFile{}, false
+	return res
 }
 
 func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts chan p2p.LoadedPiece) {
+	fileBoundariesMapping := t.GetFileBoundariesMapping()
+
 	for {
 		select {
 		case <- ctx.Done():
@@ -148,7 +149,7 @@ func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts c
 			return
 		case loaded := <- dataParts:
 			logrus.Debugf("Got loaded part: start=%v, len=%v", loaded.StartByte, loaded.Len)
-			for _, file := range t.FileBoundariesMapping {
+			for _, file := range fileBoundariesMapping {
 				if loaded.StartByte > file.End || loaded.StartByte + loaded.Len < file.Start {
 					//logrus.Debugf("Skipping '%v' write due to (%v, %v); (%v, %v)", file.FileName, loaded.StartByte > file.End, loaded.StartByte + loaded.Len < file.Start, file.Start, file.End)
 					continue
@@ -190,7 +191,7 @@ func (t *TorrentFile) SaveLoadedPiecesToFS() error {
 	loadChan := make(chan []byte, 100)
 	writePartsChan := make(chan p2p.LoadedPiece, 100)
 
-	go db.GetFilesManagerDb().LoadPartsForFile(t.SysInfo.FileId, loadChan)
+	go db.GetFilesManagerDb().LoadPartsForFile(t.GetFileId(), loadChan)
 
 	loadCtx := context.TODO()
 
@@ -213,14 +214,18 @@ func (t *TorrentFile) SaveLoadedPiecesToFS() error {
 }
 
 func (t *TorrentFile) CreateFileBoundariesMapping() {
-	t.FileBoundariesMapping = make([]FileBoundaries, len(t.Files))
+	files := t.GetFiles()
+	t.SetFileBoundariesMapping(make([]FileBoundaries, len(files)))
+
 	fileStart := 0
-	for i, file := range t.Files {
+	for i, file := range files {
+		t.mu.Lock()
 		t.FileBoundariesMapping[i].FileName = file.EncodeFileName()
 		t.FileBoundariesMapping[i].Index = i
 		t.FileBoundariesMapping[i].Start = int64(fileStart)
 		t.FileBoundariesMapping[i].End = int64(fileStart + file.Length)
+		t.mu.Unlock()
 		fileStart += file.Length
 	}
-	logrus.Infof("Calculated files borders: %v", t.FileBoundariesMapping)
+	logrus.Infof("Calculated files borders: %v", t.GetFileBoundariesMapping())
 }

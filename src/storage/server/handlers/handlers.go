@@ -108,9 +108,10 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UploadSrtFileHandler(w http.ResponseWriter, r *http.Request) {
+func UploadSubtitlesFileHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		fileId := mux.Vars(r)["file_id"]
+		subtitlesId := mux.Vars(r)["subtitles_id"]
 
 		info, err := db.GetLoadedFilesManager().GetFileInfoById(fileId)
 		if err != nil {
@@ -122,18 +123,17 @@ func UploadSrtFileHandler(w http.ResponseWriter, r *http.Request) {
 		var subtitlesFile []byte
 
 		if info.IsLoaded {
-			subtitlesFile, err = filesReader.GetManager().ReadWholeFile(info.SrtFile.Name)
+			subtitlesFile, err = filesReader.GetManager().ReadWholeFile(subtitlesId)
 		} else if info.InProgress {
-			subtitlesFile, err = filesReader.GetManager().ReadWholeFile(info.SrtFile.Name)
-			if int64(len(subtitlesFile)) < info.SrtFile.Length ||
-				!filesReader.GetManager().IsPartWritten(info.SrtFile.Name, subtitlesFile, 0) || err != nil {
-				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, info.SrtFile.Name, 0)
+			subtitlesFile, err = filesReader.GetManager().ReadWholeFile(subtitlesId)
+			if !filesReader.GetManager().IsPartWritten(subtitlesId, subtitlesFile, 0) || err != nil {
+				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, subtitlesId, 0)
 
 				readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
 				defer readCancel()
 
-				logrus.Debugf("Got file inProgress=true from db: %v, waiting for data (%v %v %v %v)", info.SrtFile, len(subtitlesFile), filesReader.GetManager().HasNullBytes(subtitlesFile), subtitlesFile == nil, err)
-				subtitlesFile, err = filesReader.GetManager().WaitForWholeFileWritten(readCtx, info.SrtFile.Name, info.SrtFile.Length)
+				logrus.Debugf("Got file inProgress=true from db: %v, waiting for data (%v %v %v %v)", info, len(subtitlesFile), filesReader.GetManager().HasNullBytes(subtitlesFile), subtitlesFile == nil, err)
+				subtitlesFile, err = filesReader.GetManager().WaitForWholeFileWritten(readCtx, subtitlesId)
 				logrus.Debugf("Wait srt success (len=%v) from disk", len(subtitlesFile))
 			} else {
 				logrus.Debugf("Read srt file (len=%v) from disk", len(subtitlesFile))
@@ -152,9 +152,9 @@ func UploadSrtFileHandler(w http.ResponseWriter, r *http.Request) {
 			readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
 			defer readCancel()
 
-			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, info.SrtFile.Name, 0)
+			db.GetLoadedStateDb().PubPriorityByteIdx(fileId, subtitlesId, 0)
 
-			subtitlesFile, err = filesReader.GetManager().WaitForWholeFileWritten(readCtx, info.SrtFile.Name, info.SrtFile.Length)
+			subtitlesFile, err = filesReader.GetManager().WaitForWholeFileWritten(readCtx, subtitlesId)
 		}
 		logrus.Debugf("Writing response, part len=%v", len(subtitlesFile))
 
@@ -163,9 +163,6 @@ func UploadSrtFileHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Header().Set("Content-Type", GetContentTypeForReqType("srt"))
 			w.WriteHeader(GetResponseStatusForReqType("srt"))
-			//if _, err := io.Copy(w, bytes.NewReader(subtitlesFile)); err != nil {
-			//	logrus.Errorf("Error piping response: %v", err)
-			//}
 			if err := subtitlesManager.GetManager().ConvertSrtToVtt(bytes.NewReader(subtitlesFile), w); err != nil {
 				SendFailResponseWithCode(w, fmt.Sprintf("Failed to convert srt to vtt: %v", err.Error()), http.StatusInternalServerError)
 			}

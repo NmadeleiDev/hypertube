@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"torrentClient/db"
 	"torrentClient/loadMaster"
@@ -56,6 +57,39 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 		SendDataResponse(w, response)
+	}
+}
+
+func SubtitlesInfoHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		fileId := mux.Vars(r)["file_id"]
+
+		type SubtitleRecord struct {
+			Language string `json:"language"`
+			Id       string `json:"id"`
+			FileName	string	`json:"fileName"`
+		}
+
+		torrent, err := torrentfile.GetManager().LoadTorrentFileFromDB(fileId)
+		if err != nil {
+			logrus.Errorf("Error loading torrent: %v", err)
+			SendFailResponseWithCode(w, fmt.Sprintf("Error loading torrent from db: %v", err), http.StatusBadRequest)
+			return
+		}
+
+		files := torrent.GetFiles()
+		result := make([]SubtitleRecord, 0, len(files))
+		for _, file := range files {
+			if file.Extension() == "srt" {
+				result = append(result, SubtitleRecord{
+					Id: file.EncodeFileName(),
+					Language: "unknown",
+					FileName: strings.Join(file.Path, "_"),
+				})
+			}
+		}
+
+		SendDataResponse(w, result)
 	}
 }
 

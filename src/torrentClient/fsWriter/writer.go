@@ -3,7 +3,6 @@ package fsWriter
 import (
 	"os"
 	"path"
-	"sync"
 
 	"torrentClient/db"
 	"torrentClient/parser/env"
@@ -12,9 +11,7 @@ import (
 )
 
 type FsWriter struct {
-	mu sync.Mutex
 	DataChan	chan WriteTask
-	//Announcer	WrittenDataAnnouncer
 }
 
 type WriteTask struct {
@@ -40,9 +37,7 @@ func (w *FsWriter) StartWaitingForData() {
 func (w *FsWriter) AddToWriteQue(fileName string, data []byte, offset int64) {
 	task := WriteTask{Data: data, Offset: offset, FileName: fileName}
 
-	w.mu.Lock()
 	w.DataChan <- task
-	w.mu.Unlock()
 }
 
 func (w *FsWriter) CreateEmptyFile(fileName string) bool {

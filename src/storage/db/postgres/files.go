@@ -11,11 +11,10 @@ import (
 
 func (d *manager) GetFileInfoById(id string) (info model.LoadInfo, err error)  {
 	query := `
-SELECT coalesce(file_name, ''), file_length, coalesce(srt_file_name, ''), srt_file_length, in_progress, is_loaded FROM %s WHERE file_id LIKE $1`
+SELECT coalesce(file_name, ''), file_length, in_progress, is_loaded FROM %s WHERE file_id LIKE $1`
 
 	err = d.conn.QueryRow(fmt.Sprintf(query, d.LoadedFilesTablePath()), id).Scan(
-		&info.VideoFile.Name, &info.VideoFile.Length, &info.SrtFile.Name,
-		&info.SrtFile.Length, &info.InProgress, &info.IsLoaded)
+		&info.VideoFile.Name, &info.VideoFile.Length, &info.InProgress, &info.IsLoaded)
 	return info, err
 }
 
