@@ -92,15 +92,20 @@ func LoadingStatsHandler(w http.ResponseWriter, r *http.Request) {
 		fileId := mux.Vars(r)["file_id"]
 
 		stats, ok := loadMaster.GetMaster().GetStatsForEntry(fileId)
+		logrus.Debugf("Got (ok=%v) %v stats: %v", ok, fileId, stats)
 		if !ok {
 			SendFailResponseWithCode(w, "Load not found", http.StatusBadRequest)
 		} else {
 			SendDataResponse(w, struct {
 				ActivePeers	int `json:"activePeers"`
 				LoadedPercent	int `json:"loadedPercent"`
+				DonePieces	[]int `json:"donePieces"`
+				InProgressPieces	[]int `json:"inProgressPieces"`
 			}{
 				ActivePeers: stats.NumOfActivePeers,
-				LoadedPercent: stats.GetLoadedPercent(),
+				LoadedPercent: len(stats.DonePieces) * 100 / stats.TotalPieces,
+				DonePieces: stats.DonePieces,
+				InProgressPieces: stats.InProgressPieces,
 			})
 		}
 	} else {

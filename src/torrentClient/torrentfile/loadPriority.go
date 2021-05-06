@@ -12,29 +12,34 @@ type LoadPriority struct {
 	torrentFile	*TorrentFile
 }
 
-func (p *LoadPriority) StartPriorityUpdating(ctx context.Context) chan int64 {
+func (p *LoadPriority) StartPriorityUpdating(ctx context.Context) chan int {
 	inputChan := db.GetLoadedStateDb().GetLoadPriorityUpdatesChan(ctx, p.torrentFile.SysInfo.FileId)
 
-	outputChan := make(chan int64, 100)
+	outputChan := make(chan int, 100)
 
 	go func() {
 		defer close(outputChan)
+
+		nPieces := len(p.torrentFile.PieceHashes)
+		pLen := p.torrentFile.PieceLength
+		boundaries := p.torrentFile.FileBoundariesMapping
 
 		for {
 			select {
 			case <- ctx.Done():
 				return
-			case update := <-inputChan:
-				for _, file := range p.torrentFile.FileBoundariesMapping {
+			case update := <- inputChan:
+				logrus.Debugf("Got priority update in StartPriorityUpdating: %v", update)
+				for _, file := range boundaries {
 					if file.FileName == update.FileName {
 						if update.ByteIdx > (file.End - file.Start) {
 							logrus.Errorf("Wow! update.ByteIdx (%v) > (file.End - file.Start) (%v)", update.ByteIdx, file.End - file.Start)
 							continue
 						}
 						overAllByteIdx := file.Start + update.ByteIdx
-						pieceIdx := overAllByteIdx / int64(p.torrentFile.PieceLength)
-						if pieceIdx > int64(len(p.torrentFile.PieceHashes)) {
-							logrus.Errorf("Wow! pieceIdx (%v) > int64(len(p.torrentFile.PieceHashes)) (%v)", pieceIdx, len(p.torrentFile.PieceHashes))
+						pieceIdx := int(overAllByteIdx) / pLen
+						if pieceIdx > nPieces{
+							logrus.Errorf("Wow! pieceIdx (%v) > int64(len(p.torrentFile.PieceHashes)) (%v)", pieceIdx, nPieces)
 							continue
 						}
 						outputChan <- pieceIdx

@@ -25,28 +25,56 @@ func TestSorter(t *testing.T) {
 		pieces[i].length = defaultLen
 	}
 	sorter := prioritySorter{Pieces: pieces}
-	topChan := sorter.InitSorter(ctx)
+	topChan, returnPieces := sorter.InitSorter(ctx)
 
-	updates := make(chan int64, 100)
+	updates := make(chan int, 100)
 
 	sorter.PriorityUpdates = updates
 
 	go func() {
-		ticker := time.NewTicker(time.Second * 5)
+		timer := time.NewTimer(time.Second * 5)
 		for {
 			select {
 			case <- ctx.Done():
 				return
-			case <- ticker.C:
-				newTop := int64(rand.Intn(nPiecesToTest))
-				t.Logf("New top=%v", newTop)
+			case <- timer.C:
+				newTop := rand.Intn(nPiecesToTest)
 				updates <- newTop
+				t.Logf("sent new top=%v", newTop)
+				timer.Reset(time.Second * time.Duration(4 + rand.Intn(5)))
 			}
 		}
 	}()
 
+	gotten := make(map[int]bool, nPiecesToTest)
+
 	for piece := range topChan {
-		t.Logf("\tGot piece idx=%v", piece.index)
-		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+		t.Logf("Got piece idx=%v", piece.index)
+
+		if isTrue, exists := gotten[piece.index]; isTrue && exists {
+			t.Fatalf("FUCK: %v\n; %v\n; %v\n", piece.index, gotten, sorter.Pieces)
+		}
+		gotten[piece.index] = true
+		time.Sleep(time.Second * time.Duration(1 + rand.Intn(5)))
+
+		if rand.Intn(10) > 5 {
+			t.Logf("Returning piece idx=%v", piece.index)
+			returnPieces <- piece
+			gotten[piece.index] = false
+		}
+
+		//t.Logf("Gotten: %v", gotten)
+		printTrue(gotten, "here")
+		sorter.PrintPieces()
 	}
+}
+
+func printTrue(src map[int]bool, name string) {
+	fmt.Printf("%v pieces: [", name)
+	for idx, piece := range src {
+		if piece {
+			fmt.Printf("%v, ", idx)
+		}
+	}
+	fmt.Print("]\n")
 }

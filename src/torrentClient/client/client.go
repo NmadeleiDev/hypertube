@@ -115,7 +115,7 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 				return false, err
 			}
 
-			c.SendInterested()
+			//c.SendInterested()
 			if err := c.SendUnchoke(); err != nil {
 				logrus.Errorf("Error sending unchoke: %v", err)
 				c.Peer.IsDead = true
@@ -170,6 +170,14 @@ func (c *Client) SendInterested() error {
 		logrus.Errorf("Error sending interested msg: %v", err)
 	}
 	return err
+}
+
+func (c *Client) SendKeepAlive() error {
+	if _, err := c.Conn.Write(make([]byte, 4)); err != nil {
+		logrus.Errorf("Error sending keep alive: %v", err)
+		return err
+	}
+	return nil
 }
 
 // SendNotInterested sends a NotInterested message to the Peer

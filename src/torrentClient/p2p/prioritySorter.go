@@ -11,21 +11,19 @@ import (
 type prioritySorter struct {
 	mu sync.Mutex
 	Pieces	[]*pieceWork
-	PriorityUpdates	<- chan int64
+	PriorityUpdates	<- chan int
 
 	topPiece *pieceWork
+	topPieceIdx	int
 }
 
 func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, returnedPiecesChan chan *pieceWork) {
 	topPriorityPieceChan = make(chan *pieceWork)
 	returnedPiecesChan = make(chan *pieceWork, 50)
 
-	latestTopIdx := int64(0)
-
-	s.mu.Lock()
-	s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
-	s.mu.Unlock()
-
+	s.UpdateTopPieceIndex(0)
+	s.RecalculateTopPiece()
+	
 	go func() {
 		for {
 			select {
@@ -34,68 +32,22 @@ func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, 
 				close(returnedPiecesChan)
 				return
 			case newTopIdx := <- s.PriorityUpdates:
-				latestTopIdx = newTopIdx
-				if len(s.Pieces) == 0 {
-					s.topPiece = nil
-					continue
-				}
-				s.mu.Lock()
-				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
-				fmt.Printf("Got priority update=%v; Found new top piece idx=%v\n", newTopIdx, s.topPiece.index)
-				s.mu.Unlock()
+				logrus.Debugf("Got priority update in InitSorter: %v", newTopIdx)
+				s.UpdateTopPieceIndex(newTopIdx)
+				s.RecalculateTopPiece()
 			case returnedPiece := <- returnedPiecesChan: // нам вернули часть, которую не получилось скачать
-				s.mu.Lock()
-				if len(s.Pieces) == 0 {
-					s.Pieces = append(s.Pieces, returnedPiece)
-					s.topPiece = returnedPiece
-					s.mu.Unlock()
-					continue
-				} else {
-					for i, piece := range s.Pieces { // важно вставить часть на свое место
-						if piece.index > returnedPiece.index {
-							if i == 0 {
-								s.Pieces = append([]*pieceWork{returnedPiece}, s.Pieces...)
-								break
-							}
-							s.Pieces = append(append(s.Pieces[:i], returnedPiece), s.Pieces[i:]...)
-						}
-					}
-				}
-				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
-				s.mu.Unlock()
+				s.InsertPieceByIdx(returnedPiece)
+				s.RecalculateTopPiece()
 			default:
-				if s.topPiece == nil {
+				topPiece := s.GetTopPiece()
+
+				if topPiece == nil {
 					continue
 				}
-				topPriorityPieceChan <- s.topPiece
-				if len(s.Pieces) == 1 { // значит, мы эту единственную часть только что и отдали, больше не осталось
-					//close(topPriorityPieceChan) все равно закроем после контекста
-					//return
-					logrus.Debugf("All pieces are sent to workers!")
-					s.Pieces = s.Pieces[:0]
-				} else {
-					// удаляю отданную часть
-					pLen := len(s.Pieces)
-					for i, piece := range s.Pieces {
-						if piece.index == s.topPiece.index {
-							if i == pLen {
-								s.Pieces = s.Pieces[:]
-								break
-							}
-							copy(s.Pieces[i:], s.Pieces[i + 1:])
-							s.Pieces = s.Pieces[:len(s.Pieces) - 1]
-							break
-						}
-					}
-					//fmt.Printf("Deleted piece in sorter, new len=%v\n", len(s.Pieces))
-				}
-				if len(s.Pieces) == 0 {
-					s.topPiece = nil
-					continue
-				}
-				s.mu.Lock()
-				s.topPiece, _ = s.findClosestPiece(s.Pieces, latestTopIdx)
-				s.mu.Unlock()
+				topPriorityPieceChan <- topPiece
+				fmt.Printf("Passed top piece idx=%v\n", topPiece.index)
+				s.DeletePieceByIdx(topPiece)
+				s.RecalculateTopPiece()
 			}
 		}
 	}()
@@ -103,22 +55,109 @@ func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, 
 	return topPriorityPieceChan, returnedPiecesChan
 }
 
-func (s *prioritySorter) findClosestPiece(pieces []*pieceWork, ideal int64) (piece *pieceWork, distance int64) {
+
+func (s *prioritySorter) UpdateTopPieceIndex(newTopIdx int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.topPieceIdx = newTopIdx
+}
+
+func (s *prioritySorter) RecalculateTopPiece() {
+	s.mu.Lock()
+	pieces := s.Pieces
+	topIdx := s.topPieceIdx
+	s.mu.Unlock()
+
+	topPiece, _ := s.findClosestPiece(pieces, topIdx)
+
+	s.mu.Lock()
+	s.topPiece = topPiece
+	s.mu.Unlock()
+}
+
+func (s *prioritySorter) GetTopPiece() *pieceWork {
+	piece := &pieceWork{}
+
+	s.mu.Lock()
+	if s.topPiece == nil {
+		piece = nil
+	} else {
+		*piece = *s.topPiece
+	}
+	s.mu.Unlock()
+	return piece
+}
+
+func (s *prioritySorter) InsertPieceByIdx(returnedPiece *pieceWork) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	pLen := len(s.Pieces)
+	if pLen == 0 {
+		s.Pieces = append(s.Pieces, returnedPiece)
+	} else {
+		insertIndex := pLen
+		for i, piece := range s.Pieces { // важно вставить часть на свое место
+			if piece.index > returnedPiece.index {
+				insertIndex = i
+				break
+			}
+		}
+		if insertIndex > pLen - 1 {
+			s.Pieces = append(s.Pieces, returnedPiece)
+		} else {
+			s.Pieces = append(s.Pieces[:insertIndex + 1], s.Pieces[insertIndex:]...)
+			s.Pieces[insertIndex] = returnedPiece
+		}
+		//
+		//concatLeft := append(s.Pieces[:insertIndex], returnedPiece)
+		//s.Pieces = append(concatLeft, s.Pieces[insertIndex:]...)
+	}
+}
+
+func (s *prioritySorter) DeletePieceByIdx(pieceToDelete *pieceWork) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	pLen := len(s.Pieces)
+	pieceIndex := -1
+	for i, piece := range s.Pieces {
+		if piece.index == pieceToDelete.index {
+			pieceIndex = i
+			break
+		}
+	}
+	if pieceIndex < 0 {
+		logrus.Errorf("Piece to delete (%v) not found in pieces: %v", pieceToDelete.index, s.Pieces)
+		return
+	}
+	if pieceIndex == pLen - 1 {
+		s.Pieces = s.Pieces[:pieceIndex]
+	} else {
+		s.Pieces = append(s.Pieces[:pieceIndex], s.Pieces[pieceIndex + 1:]...)
+	}
+}
+
+func (s *prioritySorter) findClosestPiece(pieces []*pieceWork, ideal int) (piece *pieceWork, distance int) {
 	numPieces := len(pieces)
+	if numPieces == 0 {
+		return nil, 0
+	}
 	if numPieces == 1 {
-		return pieces[0], int64(pieces[0].index) - ideal
+		return pieces[0], int(pieces[0].index) - ideal
 	}
 
 	center := numPieces / 2
 	hereFoundPiece := pieces[center]
-	hereFoundDistance := int64(hereFoundPiece.index) - ideal
+	hereFoundDistance := int(hereFoundPiece.index) - ideal
 
 	var thereFoundPiece *pieceWork
-	var thereFoundDistance int64
+	var thereFoundDistance int
 
-	if int64(hereFoundPiece.index) == ideal {
+	if int(hereFoundPiece.index) == ideal {
 		return hereFoundPiece, 0
-	} else if int64(hereFoundPiece.index) > ideal || center + 1 >= numPieces {
+	} else if int(hereFoundPiece.index) > ideal || center + 1 >= numPieces {
 		thereFoundPiece, thereFoundDistance = s.findClosestPiece(pieces[:center], ideal)
 	} else {
 		thereFoundPiece, thereFoundDistance = s.findClosestPiece(pieces[center + 1:], ideal)
@@ -139,4 +178,14 @@ func (s *prioritySorter) findClosestPiece(pieces []*pieceWork, ideal int64) (pie
 			return hereFoundPiece, hereFoundDistance
 		}
 	}
+}
+
+func (s *prioritySorter) PrintPieces() {
+	fmt.Print("sorter pieces: [")
+	s.mu.Lock()
+	for _, piece := range s.Pieces {
+		fmt.Printf("%v, ", piece.index)
+	}
+	s.mu.Unlock()
+	fmt.Print("]\n")
 }

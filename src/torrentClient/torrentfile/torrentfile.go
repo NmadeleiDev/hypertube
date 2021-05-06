@@ -25,12 +25,8 @@ func (t *TorrentFile) DownloadToFile() error {
 	db.GetFilesManagerDb().SetInProgressStatusForRecord(t.SysInfo.FileId, true)
 	defer db.GetFilesManagerDb().SetInProgressStatusForRecord(t.SysInfo.FileId, false)
 
-	loadEntry := &loadMaster.LoadEntry{
-		ExecutionCtxCancel: downloadCancel,
-		DonePieces: 0,
-		TotalPieces: len(t.PieceHashes)}
-
-	if !loadMaster.GetMaster().AddLoadEntry(t.SysInfo.FileId, loadEntry) {
+	loadEntry, ok := loadMaster.GetMaster().AddLoadEntry(t.SysInfo.FileId, downloadCancel, len(t.PieceHashes))
+	if !ok {
 		logrus.Debugf("Failed to add loading entry (propably, file is already in progress)")
 		return fmt.Errorf("failed to add loading entry")
 	}
@@ -38,9 +34,8 @@ func (t *TorrentFile) DownloadToFile() error {
 	t.InitMyPeerIDAndPort()
 
 	peersPoolObj := PeersPool{}
-	peersPoolObj.Init()
+	peersPoolObj.Init(t)
 	defer peersPoolObj.DestroyPool()
-	peersPoolObj.SetTorrent(t)
 	poolCtx, poolCancel := context.WithCancel(downloadCtx)
 	defer poolCancel()
 	go peersPoolObj.StartRefreshing(poolCtx)
@@ -180,9 +175,10 @@ func (t *TorrentFile) WaitForDataAndWriteToDisk(ctx context.Context, dataParts c
 					offset = 0
 				}
 
-				writeTask := fsWriter.WriteTask{Data: loaded.Data[sliceStart:sliceEnd], Offset: offset, FileName: file.FileName}
-				logrus.Debugf("Write task: name=%v, offset=%v, slice=(%v:%v)", writeTask.FileName, writeTask.Offset, sliceStart, sliceEnd)
-				fsWriter.GetWriter().DataChan <- writeTask
+				//writeTask := fsWriter.WriteTask{Data: loaded.Data[sliceStart:sliceEnd], Offset: offset, FileName: file.FileName}
+				//logrus.Debugf("Write task: name=%v, offset=%v, slice=(%v:%v)", writeTask.FileName, writeTask.Offset, sliceStart, sliceEnd)
+				data := loaded.Data[sliceStart:sliceEnd]
+				fsWriter.GetWriter().AddToWriteQue(file.FileName, data, offset)
 			}
 		}
 	}
