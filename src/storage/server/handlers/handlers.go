@@ -58,7 +58,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			if !filesReader.GetManager().IsPartWritten(info.VideoFile.Name, filePart, fileRange.Start) || err != nil {
 				db.GetLoadedStateDb().PubPriorityByteIdx(fileId, info.VideoFile.Name, fileRange.Start)
 
-				readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 600)
+				readCtx, readCancel := context.WithTimeout(context.TODO(), time.Second * 1800)
 				defer readCancel()
 
 				logrus.Debugf("Got file inProgress=true from db: %v, waiting for data (%v %v %v)", info.VideoFile.Name, filesReader.GetManager().HasNullBytes(filePart), filePart == nil, err)
