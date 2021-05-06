@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"fmt"
 )
 
 type requestParams struct {
@@ -185,6 +186,7 @@ func getTokenFrom42(params requestParams) (token42, *errors.Error) {
 	if Err != nil {
 		return result, Err
 	}
+	fmt.Printf("request for token 42\n")
 	portString := strconv.FormatUint(uint64(conf.ServerPort), 10)
 
 	formData := url.Values{
@@ -204,6 +206,9 @@ func getTokenFrom42(params requestParams) (token42, *errors.Error) {
 	if err != nil {
 		return result, errors.AccessDenied.SetHidden("Декодирование json дало ошибку").SetOrigin(err)
 	}
+
+	fmt.Printf("response: %#v\n", result)
+
 	if result.ExpiresIn < 4 {
 		result, Err := refreshTokenFrom42(result.RefreshToken)
 		return result, Err
@@ -269,6 +274,8 @@ func getUserProfile42(accessToken string) (profile42, *errors.Error) {
 		Timeout:   time.Second * 10,
 		Transport: transport,
 	}
+
+	fmt.Printf("request for user profile 42\n")
 	url := "https://api.intra.42.fr/v2/me"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -284,6 +291,9 @@ func getUserProfile42(accessToken string) (profile42, *errors.Error) {
 	if err != nil {
 		return profile, errors.AccessDenied.SetHidden("Чтение данных пользователя 42 провалено").SetOrigin(err)
 	}
+
+	fmt.Printf("response: %#v\n", string(respBody))
+
 	if err = json.Unmarshal(respBody, &profile); err != nil {
 		return profile, errors.AccessDenied.SetHidden("Декодирование данных пользователя из json дало ошибку").SetOrigin(err)
 	}
