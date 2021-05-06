@@ -160,7 +160,7 @@ func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client,
 			loadState, err := attemptDownloadPiece(c, pw)
 			if err != nil {
 				if err1 := t.LoadStats.DeleteProcessed(pw.index); err != nil {
-					logrus.Errorf("%v Failed to delete piece idx=%v from processed: %v", err, pw.index, err1)
+					logrus.Errorf("%v Failed to delete piece idx=%v from processed: %v", err, pw.index, err1.Error())
 					return err
 				}
 				pw.progress = loadState // сохраняем прогресс по кусочку
@@ -172,7 +172,7 @@ func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client,
 			if err != nil {
 				logrus.Errorf("Piece hash check err: %v", err)
 				if err1 := t.LoadStats.DeleteProcessed(pw.index); err != nil {
-					logrus.Errorf("%v Failed to delete piece idx=%v from processed: %v", err, pw.index, err1)
+					logrus.Errorf("%v Failed to delete piece idx=%v from processed: %v", err, pw.index, err1.Error())
 					return err
 				}
 				pw.progress = nil
