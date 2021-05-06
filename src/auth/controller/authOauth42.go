@@ -200,6 +200,7 @@ func getTokenFrom42(params requestParams) (token42, *errors.Error) {
 		"redirect_uri":  {"http://" + conf.ServerIp + ":" + portString + "/api/auth/oauth42"},
 		"grant_type":    {"authorization_code"},
 	}
+	fmt.Printf("\nformData %#v\n\n", formData)
 	resp, err := http.PostForm("https://api.intra.42.fr/oauth/token", formData)
 	if err != nil {
 		return result, errors.AccessDenied.SetHidden("Запрос токена из 42 провален").SetOrigin(err)
