@@ -202,6 +202,7 @@ func (l *LoadEntry) DeleteProcessed(idx int) (err error) {
 		err = fmt.Errorf("tryied to delete idx=%v from process, but it is not there: %v", idx, l.ProcessedPieces)
 	} else {
 		delete(l.ProcessedPieces, idx)
+		logrus.Debugf("Deleted processed piece idx=%v", idx)
 		err = nil
 	}
 	return err
