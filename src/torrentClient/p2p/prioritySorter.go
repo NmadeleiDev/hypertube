@@ -35,9 +35,13 @@ func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, 
 				logrus.Debugf("Got priority update in InitSorter: %v", newTopIdx)
 				s.UpdateTopPieceIndex(newTopIdx)
 				s.RecalculateTopPiece()
+				logrus.Infof("Priority que after priority update new=%v:", newTopIdx)
+				s.PrintPieces()
 			case returnedPiece := <- returnedPiecesChan: // нам вернули часть, которую не получилось скачать
 				s.InsertPieceByIdx(returnedPiece)
 				s.RecalculateTopPiece()
+				logrus.Infof("Priority que after recieving returned piece idx=%v:", returnedPiece.index)
+				s.PrintPieces()
 			default:
 				topPiece := s.GetTopPiece()
 
@@ -48,6 +52,8 @@ func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, 
 				fmt.Printf("Passed top piece idx=%v\n", topPiece.index)
 				s.DeletePieceByIdx(topPiece)
 				s.RecalculateTopPiece()
+				logrus.Infof("Priority que after giving piece idx=%v:", topPiece.index)
+				s.PrintPieces()
 			}
 		}
 	}()

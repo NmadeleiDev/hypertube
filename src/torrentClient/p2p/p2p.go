@@ -292,9 +292,11 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 			//db.GetLoadedStateDb().AnnounceLoadedPart(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
 			//db.GetLoadedStateDb().SaveLoadedPartInfo(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
 
+			done := t.LoadStats.CountDone()
+			total := t.LoadStats.TotalPieces()
 			percent := t.LoadStats.GetLoadedPercent()
 			activePeers := t.LoadStats.GetNumOfActivePeers()
-			logrus.Infof("(%d%%) Downloaded piece idx=%d from %v peers\n", percent, res.index, activePeers)
+			logrus.Infof("(%v of %v = %d%%) Downloaded piece idx=%d from %v peers", done, total, percent, res.index, activePeers)
 		}
 	}
 	return nil

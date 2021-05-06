@@ -1,0 +1,48 @@
+Считываю конфигурационный файл		- [32mуспешно[m
+Настраиваю пакет logger			- [32mуспешно[m
+Настраиваю пакет postgres		- [32mуспешно[m
+Инициализирую пакет postgres		- [31mошибка[m
+[31mБаза данных вернула ошибку Ping к БД вернул ошибку : dial tcp 172.24.0.2:5432: connect: connection refused[m
+Считываю конфигурационный файл		- [32mуспешно[m
+Настраиваю пакет logger			- [32mуспешно[m
+Настраиваю пакет postgres		- [32mуспешно[m
+Инициализирую пакет postgres		- [31mошибка[m
+[31mБаза данных вернула ошибку Ping к БД вернул ошибку : dial tcp 172.24.0.2:5432: connect: connection refused[m
+Считываю конфигурационный файл		- [32mуспешно[m
+Настраиваю пакет logger			- [32mуспешно[m
+Настраиваю пакет postgres		- [32mуспешно[m
+Инициализирую пакет postgres		- [31mошибка[m
+[31mБаза данных вернула ошибку Ping к БД вернул ошибку : dial tcp 172.24.0.2:5432: connect: connection refused[m
+Считываю конфигурационный файл		- [32mуспешно[m
+Настраиваю пакет logger			- [32mуспешно[m
+Настраиваю пакет postgres		- [32mуспешно[m
+Инициализирую пакет postgres		- [32mуспешно[m
+Настраиваю пакет hash			- [32mуспешно[m
+Настраиваю пакет mailer			- [32mуспешно[m
+Настраиваю пакет controller		- [32mуспешно[m
+Сбрасываю все таблицы			- [32mуспешно[m
+Создаю таблицу базовых пользователей	- [32mуспешно[m
+Создаю таблицу пользователей школы 42	- [32mуспешно[m
+Создаю таблицу пользователей vk.com	- [32mуспешно[m
+Создаю таблицу пользователей facebook	- [32mуспешно[m
+Настраиваю роутер			- [32mуспешно[m
+стартую сервер аутентификации на :4000	- [32mуспешно[m
+2021/05/06 21:51:41 172.24.0.11:35092     GET     /api/profile/get Пользователь #1 ищет свой профиль
+2021/05/06 21:51:41 172.24.0.11:35092     GET     /api/profile/get [43;30mWARNING: [mПользователь не существует  
+2021/05/06 21:51:41 172.24.0.11:35092     GET     /api/profile/get time : [42;30m1[m
+request (42)
+&http.Request{Method:"GET", URL:(*url.URL)(0xc000236360), Proto:"HTTP/1.1", ProtoMajor:1, ProtoMinor:1, Header:http.Header{"Accept":[]string{"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"}, "Accept-Encoding":[]string{"gzip, deflate, br"}, "Accept-Language":[]string{"ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"}, "Cache-Control":[]string{"no-cache"}, "Connection":[]string{"keep-alive"}, "Cookie":[]string{"accessToken=ZXlKMWMyVnlTV1FpT2pGOS41NDkyZjNp; username-localhost-8888=\"2|1:0|10:1620333815|23:username-localhost-8888|44:ZTU1YzZiNjYwZWRmNDBmZjk1ZGYyNDMzNjk1NWE1ZDM=|c496abed1209c29b4f9f672b0398a684f71152fd3931b516c737692c39ccdfe4\"; _xsrf=2|7bcf5d74|c2670ac9032d9920f7f8df569de73f3d|1620333815"}, "Pragma":[]string{"no-cache"}, "Sec-Ch-Ua":[]string{"\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"90\", \"Google Chrome\";v=\"90\""}, "Sec-Ch-Ua-Mobile":[]string{"?0"}, "Sec-Fetch-Dest":[]string{"document"}, "Sec-Fetch-Mode":[]string{"navigate"}, "Sec-Fetch-Site":[]string{"cross-site"}, "Sec-Fetch-User":[]string{"?1"}, "Upgrade-Insecure-Requests":[]string{"1"}, "User-Agent":[]string{"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36"}}, Body:http.noBody{}, GetBody:(func() (io.ReadCloser, error))(nil), ContentLength:0, TransferEncoding:[]string(nil), Close:false, Host:"localhost:4000", Form:url.Values(nil), PostForm:url.Values(nil), MultipartForm:(*multipart.Form)(nil), Trailer:http.Header(nil), RemoteAddr:"172.24.0.1:46356", RequestURI:"/api/auth/oauth42?code=4b9fb9070f00014c4a88d18552ee97cc98fa7b13662942252c197c4bcb709f2d&state=bdcbe28874ab05962b50430b1466a8ebcbda45ba8c3c1beee600699478ad2a4d", TLS:(*tls.ConnectionState)(nil), Cancel:(<-chan struct {})(nil), Response:(*http.Response)(nil), ctx:(*context.cancelCtx)(0xc000220240)}
+parsed request params: controller.requestParams{Code:"4b9fb9070f00014c4a88d18552ee97cc98fa7b13662942252c197c4bcb709f2d", State:"bdcbe28874ab05962b50430b1466a8ebcbda45ba8c3c1beee600699478ad2a4d", Error:"", ErrorDescription:""}
+request for token 42
+response: controller.token42{AccessToken:"", RefreshToken:"", Scope:"", TokenType:"", ExpiresIn:0x0, ExpiresAt:time.Time{wall:0x0, ext:0, loc:(*time.Location)(nil)}}
+request for user profile 42
+response: "{\"error\":\"Access Denied\",\"message\":\"You are not authorized to access this page.\"}"
+2021/05/06 21:51:49 172.24.0.1:46356     GET    /api/auth/oauth42 User42 with user42Id 0 not found in database. Creating new one
+2021/05/06 21:51:49 172.24.0.1:46356     GET    /api/auth/oauth42 [42;30mSUCCESS: [muser #1 was authenticated
+2021/05/06 21:51:49 172.24.0.1:46356     GET    /api/auth/oauth42 time : [41;30m1510[m
+2021/05/06 21:51:49 172.24.0.11:35192     GET     /api/profile/get Пользователь #1 ищет свой профиль
+2021/05/06 21:51:49 172.24.0.11:35192     GET     /api/profile/get [42;30mSUCCESS: [mProfile of user #1 provided
+2021/05/06 21:51:49 172.24.0.11:35192     GET     /api/profile/get time : [42;30m0[m
+2021/05/06 21:51:49 172.24.0.11:35194     GET     /api/profile/get Пользователь #1 ищет свой профиль
+2021/05/06 21:51:49 172.24.0.11:35194     GET     /api/profile/get [42;30mSUCCESS: [mProfile of user #1 provided
+2021/05/06 21:51:49 172.24.0.11:35194     GET     /api/profile/get time : [42;30m2[m
