@@ -8,7 +8,11 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store/rootReducer';
 import Comments from '../Comments/Comments';
 import { useAppDispatch } from '../../store/store';
-import { loadMovie, resetError } from '../../store/features/MoviesSlice';
+import {
+  loadMovie,
+  resetError,
+  updateViews,
+} from '../../store/features/MoviesSlice';
 import { useTranslation } from 'react-i18next';
 import { primaryColor } from '../../theme';
 import Player from '../Player/Player';
@@ -79,6 +83,13 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
   const { movies, error } = useSelector((state: RootState) => state.movies);
   const movie = movies.find((movie) => movie.en.id === match.params.id);
   const headerRef = React.useRef<HTMLHeadingElement | null>(null);
+
+  console.log('[MovieFullInfo] movie');
+  // update movies views
+  useEffect(() => {
+    dispatch(updateViews(match.params.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // if no movies in redux - load some, we've landed on movie's page
   useEffect(() => {
@@ -217,7 +228,13 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
             tracksProps={tracks}
             title={movie[i18n.language as 'en' | 'ru'].title}
           />
-        ) : null}
+        ) : (
+          <Player
+            id={movie.en.id}
+            // tracksProps={[]}
+            title={movie[i18n.language as 'en' | 'ru'].title}
+          />
+        )}
       </Grid>
       <Grid container direction="column" className={classes.AdditionalInfo}>
         <CategoryHeader text={t`About movie`} />

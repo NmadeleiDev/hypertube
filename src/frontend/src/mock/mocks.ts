@@ -31,7 +31,7 @@ export const cards: IMovie[] = [
       maxComments: 2,
       comments: [
         {
-          commentid: 1,
+          id: 1,
           movieid: '0',
           time: 0,
           text: 'hello',
@@ -39,7 +39,7 @@ export const cards: IMovie[] = [
           avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
         },
         {
-          commentid: 2,
+          id: 2,
           movieid: '0',
           time: 0,
           text: 'nice movie',

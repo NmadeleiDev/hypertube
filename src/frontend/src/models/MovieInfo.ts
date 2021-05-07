@@ -36,7 +36,7 @@ export interface IMovieInfo {
   keywords?: string[];
 }
 export interface IComment {
-  commentid: number;
+  id: number;
   username: string;
   avatar?: string;
   movieid: string;

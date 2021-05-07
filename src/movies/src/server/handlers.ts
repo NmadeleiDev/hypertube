@@ -9,7 +9,11 @@ import {
   selectCommentsByMovieID,
   updateComment,
 } from '../db/postgres/comments';
-import { IRating, updateMovieRating } from '../db/postgres/movies';
+import {
+  IRating,
+  updateMovieRating,
+  updateMovieViews,
+} from '../db/postgres/movies';
 import { getMovieInfo, getTranslatedMovies } from './movies';
 
 export function addMoviesHandlers(app: Express) {
@@ -23,18 +27,18 @@ export function addMoviesHandlers(app: Express) {
       if (id) {
         const movie = await getMovieInfo(id);
         log.debug('[GET /movies] movieById:', movie);
-        if (movie) res.json(createSuccessResponse([movie])).status(200);
-        else res.json(createErrorResponse(null)).status(404);
+        if (movie) res.status(200).json(createSuccessResponse([movie]));
+        else res.status(404).json(createErrorResponse(null));
         return;
       }
       const movies = await getTranslatedMovies({ limit, offset });
       log.info('[/movies] got translated movies', movies);
 
-      if (movies) res.json(createSuccessResponse(movies)).status(200);
-      else res.json(createErrorResponse(null)).status(404);
+      if (movies) res.status(200).json(createSuccessResponse(movies));
+      else res.status(404).json(createErrorResponse(null));
     } catch (e) {
       log.error(`Error getting movies: ${e}`);
-      res.json(createErrorResponse('Error getting movies')).status(500);
+      res.status(500).json(createErrorResponse('Error getting movies'));
     }
   });
   app.get('/bygenre', async (req, res) => {
@@ -46,11 +50,11 @@ export function addMoviesHandlers(app: Express) {
       const movies = await getTranslatedMovies({ limit, offset, genre });
       log.info('[/bygenre] got translated movies', movies);
 
-      if (movies) res.json(createSuccessResponse(movies)).status(200);
-      else res.json(createErrorResponse(null)).status(404);
+      if (movies) res.status(200).json(createSuccessResponse(movies));
+      else res.status(404).json(createErrorResponse(null));
     } catch (e) {
       log.error(`Error getting movies: ${e}`);
-      res.json(createErrorResponse('Error getting movies')).status(500);
+      res.status(500).json(createErrorResponse('Error getting movies'));
     }
   });
   app.get('/byname', async (req, res) => {
@@ -62,11 +66,11 @@ export function addMoviesHandlers(app: Express) {
       const movies = await getTranslatedMovies({ limit, offset, letter });
       log.info('[/byname] got translated movies', movies);
 
-      if (movies) res.json(createSuccessResponse(movies)).status(200);
-      else res.json(createErrorResponse(null)).status(404);
+      if (movies) res.status(200).json(createSuccessResponse(movies));
+      else res.status(404).json(createErrorResponse(null));
     } catch (e) {
       log.error(`Error getting movies: ${e}`);
-      res.json(createErrorResponse('Error getting movies')).status(500);
+      res.status(500).json(createErrorResponse('Error getting movies'));
     }
   });
 }
@@ -80,19 +84,37 @@ export function addRatingHandlers(app: Express) {
     try {
       const rating = (+req.body?.rating as IRating) || null;
       const movieid = (req.body?.movieId as string) || null;
-      const token = (req.headers.accesstoken as string) || '';
+      const token = (headers.accesstoken as string) || '';
       log.debug(`rating: ${rating}, movieid: ${movieid}, token: ${token}`);
 
       if (rating === null || !movieid || !token)
         return res
-          .json(createErrorResponse('accessToken, ID and RATING are required'))
-          .status(400);
+          .status(400)
+          .json(createErrorResponse('accessToken, ID and RATING are required'));
 
       const newRating = await updateMovieRating(movieid, rating, token);
-      res.json(createSuccessResponse(newRating)).status(200);
+      res.status(200).json(createSuccessResponse(newRating));
     } catch (e) {
       log.error(`Error getting movies: ${e}`);
-      res.json(createErrorResponse('Error getting movies')).status(500);
+      res.status(500).json(createErrorResponse('Error getting movies'));
+    }
+  });
+  app.patch('/views', async (req, res) => {
+    log.debug(req.body);
+    try {
+      const movieid = (req.body?.movieId as string) || null;
+      log.debug(`movieid: ${movieid}`);
+      if (!movieid)
+        return res.status(400).json(createErrorResponse('movieId is required'));
+
+      const newViews: {
+        imdbId: string;
+        views: string;
+      }[] = await updateMovieViews(movieid);
+      res.status(200).json(createSuccessResponse(newViews));
+    } catch (e) {
+      log.error(`Error getting movies: ${e}`);
+      res.status(500).json(createErrorResponse('Error getting movies'));
     }
   });
 }
@@ -105,10 +127,10 @@ export function addCommentsHandlers(app: Express) {
     const movieId = req.query.movieId as string;
     try {
       const comments = await selectCommentsByMovieID(movieId, limit, offset);
-      res.json(createSuccessResponse(comments)).status(200);
+      res.status(200).json(createSuccessResponse(comments));
     } catch (e) {
       log.error(`Error getting comments: ${e}`);
-      res.json(createErrorResponse('Error getting comments')).status(500);
+      res.status(500).json(createErrorResponse('Error getting comments'));
     }
   });
   app.post('/comment', async (req, res) => {
@@ -118,14 +140,14 @@ export function addCommentsHandlers(app: Express) {
       const newComment = (await insertComment(comment)).rows[0] as IComment;
       if (!newComment)
         return res
-          .json(createErrorResponse('Error posting comment'))
-          .status(500);
+          .status(500)
+          .json(createErrorResponse('Error posting comment'));
       const result = await selectCommentById(newComment.id);
       log.debug(result);
-      res.json(createSuccessResponse(result)).status(200);
+      res.status(200).json(createSuccessResponse(result));
     } catch (e) {
       log.error(`Error posting comment: ${e}`);
-      res.json(createErrorResponse('Error posting comment')).status(500);
+      res.status(500).json(createErrorResponse('Error posting comment'));
     }
   });
   app.patch('/comment', async (req, res) => {
@@ -133,11 +155,11 @@ export function addCommentsHandlers(app: Express) {
     try {
       const comment = req.body as IComment;
       const result = await updateComment(comment);
-      if (result) res.json(createSuccessResponse(result.rows[0])).status(200);
-      else res.json(createErrorResponse('Comment not found')).status(404);
+      if (result) res.status(200).json(createSuccessResponse(result.rows[0]));
+      else res.status(404).json(createErrorResponse('Comment not found'));
     } catch (e) {
       log.error(`Error posting comment: ${e}`);
-      res.json(createErrorResponse('Error posting comment')).status(500);
+      res.status(500).json(createErrorResponse('Error posting comment'));
     }
   });
   app.delete('/comment', async (req, res) => {
@@ -147,12 +169,12 @@ export function addCommentsHandlers(app: Express) {
       if (typeof id === 'string') {
         const result = await deleteComment(parseInt(id));
         if (result.rowCount)
-          res.json(createSuccessResponse(result.rows[0])).status(200);
-        else res.json(createErrorResponse('Comment not found')).status(404);
+          res.status(200).json(createSuccessResponse(result.rows[0]));
+        else res.status(404).json(createErrorResponse('Comment not found'));
       }
     } catch (e) {
       log.error(`Error posting comment: ${e}`);
-      res.json(createErrorResponse('Error posting comment')).status(500);
+      res.status(500).json(createErrorResponse('Error posting comment'));
     }
   });
 }

@@ -73,9 +73,10 @@ const Comments: React.FC<CommentsProps> = ({ movie }) => {
   ]);
 
   if (!movie) return null;
+  console.log('[Comments]', movie.info.comments);
   const content = movie.info.comments?.length ? (
     movie.info.comments.map((comment) => (
-      <Comment {...comment} key={comment.commentid} />
+      <Comment {...comment} key={comment.id} />
     ))
   ) : (
     <Typography variant="body1" style={{ fontSize: '1.3rem' }}>

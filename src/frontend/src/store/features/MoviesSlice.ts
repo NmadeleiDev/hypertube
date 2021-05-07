@@ -20,6 +20,11 @@ export interface ErrorItem {
   error: string;
 }
 
+export interface UpdateMoviesItem {
+  id: string;
+  views: number;
+}
+
 export interface MoviesState {
   loading: boolean;
   error: string | null;
@@ -128,6 +133,13 @@ const MoviesSlice = createSlice({
         throw new Error('[movies:setMovies] no movies in payload');
       }
     },
+    updateMovie(state, { payload }: PayloadAction<UpdateMoviesItem>) {
+      const { id, views } = payload;
+      const movie = state.movies.find(
+        (movie: ITranslatedMovie) => movie.en.id === id
+      );
+      if (movie) movie.en.info.views = views;
+    },
     updateComments(state, { payload }: PayloadAction<CommentsItems>) {
       state.loading = false;
       if (!payload.id)
@@ -138,9 +150,7 @@ const MoviesSlice = createSlice({
       if (!movie) throw new Error('[movies:updateComments] no movie found');
       const newComments = payload.comments.filter((comment) =>
         movie.en.info.comments
-          ? !movie.en.info.comments.find(
-              (el) => el.commentid === comment.commentid
-            )
+          ? !movie.en.info.comments.find((el) => el.id === comment.id)
           : !!comment
       );
       movie.en.info.comments = movie.en.info.comments
@@ -197,7 +207,9 @@ const loadMoviesAsync = async (
       });
 
     // console.log(res.data);
-    return res.data;
+    if (res.status === 404) return { data: [], status: false };
+    else if (res.status >= 400) return null;
+    else return res.data;
   } catch (e) {
     console.log(e);
     return null;
@@ -220,7 +232,13 @@ export const loadMovies = ({
   const movies = await loadMoviesAsync(filter);
   console.log('[loadMovies] res', movies);
 
-  if (movies?.status && movies.data) {
+  if (movies && !movies.status && movies.data?.length === 0) {
+    // 404
+    dispatch(stopLoading());
+    dispatch(setError({ error: `Cannot find movies` }));
+    return null;
+  } else if (movies?.status && movies.data) {
+    // any succedeed respose
     if (movies.data.length < limit) dispatch(setEndOfMovies());
     const removedNulls = movies.data?.map((el) =>
       !el.ru ? { en: el.en, ru: el.en } : el
@@ -240,6 +258,7 @@ export const loadMovies = ({
     }
     return removedNulls;
   } else {
+    // all failed responses
     dispatch(stopLoading());
     dispatch(setError({ error: 'Loading error' }));
     return null;
@@ -265,9 +284,25 @@ export const loadMovie = (id: string) => async (dispatch: AppDispatch) => {
   dispatch(startLoading());
   const movie = await loadMoviesAsync({ id });
   console.log('loadMovie', movie);
-  if (movie?.status && movie.data) dispatch(addMovies({ search: movie.data }));
-  else {
+  if (movie && !movie.status && movie.data?.length === 0) {
+    // 404
+    dispatch(setError({ error: `Cannot load movie` }));
+  } else if (movie?.status && movie.data) {
+    // any succedeed respose
+    dispatch(addMovies({ search: movie.data }));
+  } else {
+    // all failed responses
     dispatch(setError({ error: 'Loading error' }));
+  }
+};
+
+export const updateViews = (movieId: string) => async (
+  dispatch: AppDispatch
+) => {
+  const res = await axios.patch('/api/movies/views', { movieId });
+  console.log(res.data);
+  if (res.data.status) {
+    dispatch(updateMovie({ id: movieId, views: +res.data.data[0].views }));
   }
 };
 
@@ -306,6 +341,7 @@ export const loadComments = (
 export const {
   addMovies,
   setMovies,
+  updateMovie,
   updateComments,
   setEndOfMovies,
   resetEndOfMovies,

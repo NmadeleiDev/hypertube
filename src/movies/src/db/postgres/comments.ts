@@ -2,6 +2,8 @@ import log from '../../logger/logger';
 import { IComment, IFrontComment } from '../../model/model';
 import { query } from './postgres';
 const POSTGRES_SCHEME = process.env.POSTGRES_SCHEME || 'hypertube';
+const POSTGRES_USERS_SCHEME =
+  process.env.POSPOSTGRES_USERS_SCHEMETGRES_SCHEME || 'public';
 
 export const selectCommentById = async (id: number): Promise<IFrontComment> => {
   log.debug('[selectCommentById]', id);
@@ -17,7 +19,7 @@ export const selectCommentById = async (id: number): Promise<IFrontComment> => {
       u.username AS username
     FROM
     ${POSTGRES_SCHEME}.comments c
-    JOIN ${POSTGRES_SCHEME}.users u ON
+    JOIN ${POSTGRES_USERS_SCHEME}.users u ON
       u.user_id = c.userid
       OR u.user_42_id = c.userid
     WHERE
@@ -48,7 +50,7 @@ export const selectCommentsByMovieID = async (
         u.username AS username
       FROM
       ${POSTGRES_SCHEME}.comments c
-      JOIN ${POSTGRES_SCHEME}.users u ON
+      JOIN ${POSTGRES_USERS_SCHEME}.users u ON
         u.user_id = c.userid
         OR u.user_42_id = c.userid
       WHERE
