@@ -4,13 +4,15 @@ import {
   Grid,
   IconButton,
   makeStyles,
+  Menu,
+  MenuItem,
   Popover,
   Slider,
   Tooltip,
   Typography,
   withStyles,
 } from '@material-ui/core';
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState } from 'react';
 import {
   FastForward,
   FastRewind,
@@ -20,8 +22,9 @@ import {
   VolumeOff,
   VolumeUp,
   Subtitles,
-  SubtitlesOutlined,
+  Settings,
 } from '@material-ui/icons';
+import { TrackProps } from 'react-player/file';
 
 const useStyles = makeStyles({
   controlsWrapper: {
@@ -53,9 +56,11 @@ const useStyles = makeStyles({
       color: 'white',
     },
   },
-
   volumeSlider: {
     width: 100,
+  },
+  Subtitles: {
+    fontSize: '1.5rem',
   },
 });
 
@@ -140,6 +145,7 @@ interface Props {
   onSeekMouseUp: () => void;
   onChangeDisplayFormat: () => void;
   onChangeSubtitles: () => void;
+  onSwitchSubtitles: (n: number) => void;
   elapsedTime: string;
   seeking: boolean;
   playing: boolean;
@@ -151,11 +157,29 @@ interface Props {
   title: string;
   showSubtitles: boolean;
   loading: boolean;
+  tracks?: TrackProps[];
 }
 
 const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
   const classes = useStyles();
-  const [anchorEl, setAnchorEl] = React.useState<Element | null>(null);
+  const [anchorEl, setAnchorEl] = useState<Element | null>(null);
+  const [
+    subtitlesAnchorEl,
+    setSubtitlesAnchorEl,
+  ] = useState<HTMLElement | null>(null);
+
+  const handleSubtitlesMenuClose = () => {
+    setSubtitlesAnchorEl(null);
+  };
+
+  const handleSubtitlesMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    setSubtitlesAnchorEl(e.currentTarget);
+  };
+
+  const handleChooseSubtitle = (index: number) => {
+    props.onSwitchSubtitles(index);
+    handleSubtitlesMenuClose();
+  };
 
   const handlePopover = (e: React.MouseEvent) => {
     setAnchorEl(e.currentTarget);
@@ -167,7 +191,6 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
 
   const open = Boolean(anchorEl);
   const id = open ? 'playbackrate-popover' : undefined;
-  // debugger
   return (
     <div className={classes.controlsWrapper} ref={ref}>
       <Grid
@@ -330,12 +353,37 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
             onClick={props.onChangeSubtitles}
             className={classes.bottomIcons}
           >
-            {props.showSubtitles ? (
-              <Subtitles fontSize="large" />
-            ) : (
-              <SubtitlesOutlined fontSize="large" />
-            )}
+            <Subtitles
+              style={{ color: props.showSubtitles ? '#999' : '#99999955' }}
+              fontSize="large"
+            />
           </IconButton>
+
+          <IconButton
+            onClick={handleSubtitlesMenuClick}
+            className={classes.bottomIcons}
+          >
+            <Settings aria-label="player-settings" />
+          </IconButton>
+
+          <Menu
+            id="subtitle-menu"
+            anchorEl={subtitlesAnchorEl}
+            keepMounted
+            open={Boolean(subtitlesAnchorEl)}
+            onClose={handleSubtitlesMenuClose}
+          >
+            {props.tracks?.map((el: TrackProps, index: number) => (
+              <MenuItem
+                key={el.label}
+                className={classes.Subtitles}
+                onClick={() => handleChooseSubtitle(index)}
+              >
+                {el.label}
+              </MenuItem>
+            ))}
+          </Menu>
+
           <IconButton
             onClick={props.onToggleFullScreen}
             className={classes.bottomIcons}
