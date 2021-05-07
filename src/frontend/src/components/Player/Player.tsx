@@ -30,6 +30,7 @@ interface Props {
   title: string;
   id?: string | number;
   src?: string;
+  srt: string;
 }
 
 const format = (seconds: number) => {
@@ -46,7 +47,7 @@ const format = (seconds: number) => {
   return `${mm}:${ss}`;
 };
 
-function Player({ title, id, src }: Props) {
+function Player({ title, id, src, srt }: Props) {
   const classes = useStyles();
   const [state, setState] = useState({
     playing: false,
@@ -57,7 +58,6 @@ function Player({ title, id, src }: Props) {
     seeking: false,
     controlsVisible: true,
     error: false,
-    srt: '',
     showSubtitles: true,
     loading: false,
   });
@@ -72,7 +72,6 @@ function Player({ title, id, src }: Props) {
     seeking,
     controlsVisible,
     error,
-    srt,
     showSubtitles,
     loading,
   } = state;
@@ -81,7 +80,6 @@ function Player({ title, id, src }: Props) {
   const controlsRef = useRef<HTMLDivElement>(null);
   const timeoutId = useRef<NodeJS.Timeout>();
   const videoUrl = id ? `/api/storage/load/${id}/video` : src;
-  const history = useHistory();
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -146,22 +144,6 @@ function Player({ title, id, src }: Props) {
       player.removeEventListener('waiting', waitingListener);
     };
   }, [player]);
-
-  // load subtitles
-  useEffect(() => {
-    console.log('[Player] <load subtitles> useEffect');
-    const loadSubtitles = async () => {
-      try {
-        const res = await axios(`/api/storage/load/${id}/srt`);
-        if (!res.data) return;
-        const srt = res.data;
-        setState((state) => ({ ...state, srt }));
-      } catch (e) {
-        console.log(e);
-      }
-    };
-    loadSubtitles();
-  }, [id]);
 
   const handleChangeSubtitles = () => {
     if (playerRef === null || playerRef.current === null) return;
@@ -259,7 +241,7 @@ function Player({ title, id, src }: Props) {
   };
   const handleError = (e: Error) => {
     console.log('handleError', e);
-    history.push(`/movies/${id}?time=${played}`);
+    // history.push(`/movies/${id}?time=${played}`);
     toast({ text: t`movieError` }, 'error');
     // setState((prev) => ({ ...prev, played: prev.played + 0.001 }));
   };

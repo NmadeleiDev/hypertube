@@ -1,5 +1,5 @@
 import { Divider, Grid, makeStyles, Typography } from '@material-ui/core';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 import { IUser } from '../../models/MovieInfo';
 import HorizontalGrid from '../HorizontalGrid/HorizontalGrid';
@@ -13,8 +13,9 @@ import { useTranslation } from 'react-i18next';
 import { primaryColor } from '../../theme';
 import Player from '../Player/Player';
 import { useToast } from '../../hooks/useToast';
-import NativePlayer from '../Player/NativePlayer';
+// import NativePlayer from '../Player/NativePlayer';
 import ActivePeers from '../Player/ActivePeers';
+import axios from 'axios';
 
 interface TParams {
   id: string;
@@ -73,6 +74,7 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
   const { t, i18n } = useTranslation();
   const history = useHistory();
   const { toast } = useToast();
+  const [srt, setSrt] = useState('');
   const { isAuth } = useSelector((state: RootState) => state.user);
   const { movies, error } = useSelector((state: RootState) => state.movies);
   const movie = movies.find((movie) => movie.en.id === match.params.id);
@@ -96,6 +98,26 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
     if (!headerRef || !headerRef.current) return;
     headerRef.current.scrollIntoView(true);
   }, []);
+
+  // load subtitles
+  useEffect(() => {
+    console.log('[Player] <load subtitles> useEffect');
+    const loadSubtitles = async () => {
+      if (!movie) return;
+      const id = movie.en.id;
+      try {
+        const res = await axios(`/api/loader/subtitles/${id}`);
+        console.log(res.data);
+        if (!res.data.data.length) return;
+        const srtId = res.data.data[0].id;
+        const srt = `/api/storage/load/${id}/subtitles/${srtId}`;
+        setSrt(srt);
+      } catch (e) {
+        console.log(e);
+      }
+    };
+    loadSubtitles();
+  }, [movie]);
 
   const mapItemsToLinks = (
     items: (string | IUser)[] | undefined,
@@ -180,6 +202,7 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
 
         <Player
           id={movie.en.id}
+          srt={srt}
           title={movie[i18n.language as 'en' | 'ru'].title}
         />
       </Grid>
