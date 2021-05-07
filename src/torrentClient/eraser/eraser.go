@@ -32,11 +32,11 @@ func (e *EraseManager) StartCheckingForRecords()  {
 		unwatchedIds := db.GetFilesManagerDb().GetFileIdsWithWatchedUnder(time.Now().AddDate(0, -1, 0))
 
 		for _, id := range unwatchedIds {
+			logrus.Debugf("Deleting files for %v", id)
+			torrent, err := torrentfile.GetManager().LoadTorrentFileFromDB(id)
 			if err := db.GetFilesManagerDb().DeleteLoadedFileInfo(id); err != nil {
 				continue
 			}
-
-			torrent, err := torrentfile.GetManager().LoadTorrentFileFromDB(id)
 			if err != nil || torrent == nil {
 				logrus.Errorf("Error loading torrent: %v", err)
 				return
@@ -44,6 +44,7 @@ func (e *EraseManager) StartCheckingForRecords()  {
 
 			files := torrent.GetFiles()
 			for _, file := range files {
+				logrus.Debugf("Removing file %v", file.EncodeFileName())
 				fsWriter.GetWriter().RemoveFile(file.EncodeFileName())
 			}
 		}
