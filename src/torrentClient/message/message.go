@@ -8,7 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// FormatRequest creates a REQUEST message
 func FormatRequest(index, begin, length int) *Message {
 	payload := make([]byte, 12)
 	binary.BigEndian.PutUint32(payload[0:4], uint32(index))
@@ -17,14 +16,12 @@ func FormatRequest(index, begin, length int) *Message {
 	return &Message{ID: MsgRequest, Payload: payload}
 }
 
-// FormatHave creates a HAVE message
 func FormatHave(index int) *Message {
 	payload := make([]byte, 4)
 	binary.BigEndian.PutUint32(payload, uint32(index))
 	return &Message{ID: MsgHave, Payload: payload}
 }
 
-// ParsePiece parses a PIECE message and copies its payload into a buffer
 func ParsePiece(index int, buf []byte, msg *Message) (int, error) {
 	if msg.ID != MsgPiece {
 		return 0, fmt.Errorf("expected PIECE (ID %d), got ID %d", MsgPiece, msg.ID)
@@ -48,7 +45,6 @@ func ParsePiece(index int, buf []byte, msg *Message) (int, error) {
 	return len(data), nil
 }
 
-// ParseHave parses a HAVE message
 func ParseHave(msg *Message) (int, error) {
 	if msg.ID != MsgHave {
 		return 0, fmt.Errorf("expected HAVE (ID %d), got ID %d", MsgHave, msg.ID)
@@ -60,9 +56,6 @@ func ParseHave(msg *Message) (int, error) {
 	return index, nil
 }
 
-// Serialize serializes a message into a buffer of the form
-// <length prefix><message ID><payload>
-// Interprets `nil` as a keep-alive message
 func (m *Message) Serialize() []byte {
 	length := uint32(len(m.Payload) + 1) // +1 for id
 	buf := make([]byte, 4+length)
@@ -72,7 +65,6 @@ func (m *Message) Serialize() []byte {
 	return buf
 }
 
-// Read parses a message from a stream. Returns `nil` on keep-alive message
 func Read(r io.Reader) (*Message, error) {
 	lengthBuf := make([]byte, 4)
 	_, err := io.ReadFull(r, lengthBuf)
@@ -82,7 +74,7 @@ func Read(r io.Reader) (*Message, error) {
 	}
 	length := binary.BigEndian.Uint32(lengthBuf)
 
-	// keep-alive message
+	// keep-alive
 	if length == 0 {
 		return nil, nil
 	}
