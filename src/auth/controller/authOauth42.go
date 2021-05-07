@@ -160,8 +160,6 @@ func authOauth42(w http.ResponseWriter, r *http.Request) {
 func parseRequestParams42(r *http.Request) (requestParams, *errors.Error) {
 	var params requestParams
 
-	fmt.Printf("request (42)\n%#v\n", r)
-
 	params.Code = r.FormValue("code")
 	params.State = r.FormValue("state")
 	params.Error = r.FormValue("error")
@@ -175,7 +173,6 @@ func parseRequestParams42(r *http.Request) (requestParams, *errors.Error) {
 		return params, errors.AccessDenied.SetHidden("Сервер авторизации 42 прислал невалидные данные. code: " +
 			params.Code + " state" + params.State)
 	}
-	fmt.Printf("parsed request params: %#v\n", params)
 	return params, nil
 }
 
@@ -189,7 +186,6 @@ func getTokenFrom42(params requestParams) (token42, *errors.Error) {
 	if Err != nil {
 		return result, Err
 	}
-	fmt.Printf("request for token 42\n")
 	portString := strconv.FormatUint(uint64(conf.ServerPort), 10)
 
 	formData := url.Values{
@@ -200,7 +196,6 @@ func getTokenFrom42(params requestParams) (token42, *errors.Error) {
 		"redirect_uri":  {"http://" + conf.ServerIp + ":" + portString + "/api/auth/oauth42"},
 		"grant_type":    {"authorization_code"},
 	}
-	fmt.Printf("\nformData %#v\n\n", formData)
 	resp, err := http.PostForm("https://api.intra.42.fr/oauth/token", formData)
 	if err != nil {
 		return result, errors.AccessDenied.SetHidden("Запрос токена из 42 провален").SetOrigin(err)
@@ -210,8 +205,6 @@ func getTokenFrom42(params requestParams) (token42, *errors.Error) {
 	if err != nil {
 		return result, errors.AccessDenied.SetHidden("Декодирование json дало ошибку").SetOrigin(err)
 	}
-
-	fmt.Printf("response: %#v\n", result)
 
 	if result.ExpiresIn < 4 {
 		result, Err := refreshTokenFrom42(result.RefreshToken)
@@ -279,7 +272,6 @@ func getUserProfile42(accessToken string) (profile42, *errors.Error) {
 		Transport: transport,
 	}
 
-	fmt.Printf("request for user profile 42\n")
 	url := "https://api.intra.42.fr/v2/me"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -295,8 +287,6 @@ func getUserProfile42(accessToken string) (profile42, *errors.Error) {
 	if err != nil {
 		return profile, errors.AccessDenied.SetHidden("Чтение данных пользователя 42 провалено").SetOrigin(err)
 	}
-
-	fmt.Printf("response: %#v\n", string(respBody))
 
 	if err = json.Unmarshal(respBody, &profile); err != nil {
 		return profile, errors.AccessDenied.SetHidden("Декодирование данных пользователя из json дало ошибку").SetOrigin(err)
