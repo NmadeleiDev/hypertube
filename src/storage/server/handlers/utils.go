@@ -74,8 +74,8 @@ func GetContentTypeForReqType(reqType string) string {
 	switch reqType {
 	case videoRequest:
 		return "video/mp4"
-	case srtRequest:
-		return "application/octet-stream"
+	case subtitlesRequest:
+		return "plain/text"
 	default:
 		return "plain/text"
 	}
@@ -85,7 +85,7 @@ func GetResponseStatusForReqType(reqType string) int {
 	switch reqType {
 	case videoRequest:
 		return http.StatusPartialContent
-	case srtRequest:
+	case subtitlesRequest:
 		return http.StatusOK
 	default:
 		return http.StatusOK

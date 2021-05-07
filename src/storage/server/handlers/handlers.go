@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	videoRequest = "video"
-	srtRequest = "srt"
+	videoRequest     = "video"
+	subtitlesRequest = "srt"
 )
 
 func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
