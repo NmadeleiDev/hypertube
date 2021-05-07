@@ -58,8 +58,6 @@ func recvBitfield(conn net.Conn) (bitfield.Bitfield, error) {
 	return msg.Payload, nil
 }
 
-// New connects with a Peer, completes a handshake, and receives a handshake
-// returns an err if any of those fail.
 func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	conn, err := net.DialTimeout("tcp", peer.GetAddr(), 10 * time.Second)
 	if err != nil {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"torrentClient/db"
+	"torrentClient/eraser"
 	"torrentClient/fsWriter"
 	"torrentClient/loadMaster"
 	"torrentClient/parser/env"
@@ -31,6 +32,8 @@ func main() {
 	loadMaster.GetMaster().Init()
 
 	go fsWriter.GetWriter().StartWaitingForData()
+
+	go eraser.GetEraser().StartCheckingForRecords()
 
 	server.Start()
 }

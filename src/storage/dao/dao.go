@@ -2,7 +2,6 @@ package dao
 
 import (
 	"context"
-	"time"
 
 	"hypertube_storage/model"
 )
@@ -14,9 +13,7 @@ type LoadedFilesDbManager interface {
 
 	GetFileInfoById(id string) (info model.LoadInfo, err error)
 	GetInProgressFileIds() (result []string)
-	GetFileIdsWithWatchedUnder(under time.Time) (ids []string, names []string)
 	UpdateLastWatchedDate(fileId string)
-	DeleteLoadedFileInfo(id string) error
 }
 
 type FileReader interface {
@@ -28,10 +25,6 @@ type FileReader interface {
 	HasNotNullBytes(src []byte) bool
 	IsPartWritten(fileName string, part []byte, start int64) bool
 	RemoveFile(fileName string) bool
-}
-
-type RecordsEraseManager interface {
-	StartCheckingForRecords()
 }
 
 type LoaderStateDbManager interface {

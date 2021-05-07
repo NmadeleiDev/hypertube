@@ -73,3 +73,11 @@ func (w *FsWriter) WriteDataToFile(fileName string, data []byte, offset int64) e
 	logrus.Debugf("Wrote %v bytes to file %v starting from %v", dataLen, fileName, offset)
 	return nil
 }
+
+func (w *FsWriter) RemoveFile(fileName string) bool {
+	if err := os.Remove(path.Join(env.GetParser().GetFilesDir(), fileName)); err != nil {
+		logrus.Errorf("Error deleting file %v: %v", fileName, err)
+		return false
+	}
+	return true
+}

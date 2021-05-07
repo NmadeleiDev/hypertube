@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"os"
+	"time"
 
 	"torrentClient/db/postgres"
 	"torrentClient/db/redis"
@@ -36,6 +37,8 @@ type FilesDbManager interface {
 	GetInProgressFileIds() (fileIds []string, ok bool)
 
 	GetLoadedIndexesForFile(fileId string) []int
+	GetFileIdsWithWatchedUnder(under time.Time) (ids []string)
+	DeleteLoadedFileInfo(id string) error
 	GetPartDataByIdx(fileId string, idx int) ([]byte, int64, int64, bool)
 	SaveFilePartsToFile(dest *os.File, fileId string, start int, length int) error
 	DropDataPartByIdx(fileId string, idx int) bool

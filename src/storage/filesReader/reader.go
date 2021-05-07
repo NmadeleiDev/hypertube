@@ -172,7 +172,7 @@ func (f *fileReader) WaitForFilePart(ctx context.Context, fileName string, start
 				return
 			case event, ok := <-watcher.Events:
 				if !ok {
-					resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("ok is false during watching event")}
+					logrus.Errorf("ok is false during watching event")
 				}
 
 				buf, totalLen, err := f.GetFileInRange(fileName, start, expectedLen)

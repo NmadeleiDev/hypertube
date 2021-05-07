@@ -39,9 +39,8 @@ type LoadStat struct {
 
 func (m *LoadsMaster) Init() {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	m.loads = make(map[string]*LoadEntry, 100)
+	m.mu.Unlock()
 }
 
 func (m *LoadsMaster) AddLoadEntry(fileId string, ctxCancel context.CancelFunc, totalPieces int) (*LoadEntry, bool) {

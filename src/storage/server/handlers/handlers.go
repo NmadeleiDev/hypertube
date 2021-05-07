@@ -25,7 +25,6 @@ const (
 func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		fileId := mux.Vars(r)["file_id"]
-
 		fileRange := model.FileRangeDescription{}
 		if err := fileRange.ParseHeader(r.Header.Get("range")); err != nil {
 			SendFailResponseWithCode(w, err.Error(), http.StatusBadRequest)
@@ -38,7 +37,7 @@ func UploadFilePartHandler(w http.ResponseWriter, r *http.Request) {
 			SendFailResponseWithCode(w,fmt.Sprintf("File %s not found by id: %s", fileId, err.Error()), http.StatusNotFound)
 			return
 		}
-		logrus.Debugf("Got request with start = %v. Info: %v",
+		logrus.Debugf("Got request with start=%v. Info: %v",
 			fileRange.Start, info)
 
 		if (info.IsLoaded || info.InProgress) && fileRange.Start >= info.VideoFile.Length {

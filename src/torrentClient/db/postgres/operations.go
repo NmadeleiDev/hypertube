@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -28,6 +29,41 @@ WHERE file_id LIKE $1 AND (torrent_file is not null OR magnet_link is not null)`
 	}
 
 	return torrentFile, magnetLink, true
+}
+
+func (d *manager) GetFileIdsWithWatchedUnder(under time.Time) (ids []string) {
+	query := `
+SELECT file_id FROM %s WHERE last_watched < $1`
+
+	rows, err := d.conn.Query(fmt.Sprintf(query, d.LoadedFilesTablePath()), under)
+	if err != nil {
+		logrus.Errorf("Error getting in progress files: %v", err)
+		return nil
+	}
+
+	ids = make([]string, 0, 10)
+
+	for rows.Next() {
+		var dest1 string
+		if err := rows.Scan(&dest1); err != nil {
+			logrus.Errorf("Scan error: %v", err)
+			continue
+		}
+		ids = append(ids, dest1)
+	}
+
+	return ids
+}
+
+func (d *manager) DeleteLoadedFileInfo(id string) error  {
+	query := `
+DELETE FROM %s WHERE file_id LIKE $1`
+
+	if _, err := d.conn.Exec(fmt.Sprintf(query, d.LoadedFilesTablePath()), id); err != nil {
+		logrus.Errorf("Error deleteing loaded file record: %v", err)
+		return err
+	}
+	return nil
 }
 
 func (d *manager) PreparePlaceForFile(fileId string) {
