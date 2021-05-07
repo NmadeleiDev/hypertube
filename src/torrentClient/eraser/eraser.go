@@ -37,7 +37,7 @@ func (e *EraseManager) StartCheckingForRecords()  {
 			}
 
 			torrent, err := torrentfile.GetManager().LoadTorrentFileFromDB(id)
-			if err != nil {
+			if err != nil || torrent == nil {
 				logrus.Errorf("Error loading torrent: %v", err)
 				return
 			}

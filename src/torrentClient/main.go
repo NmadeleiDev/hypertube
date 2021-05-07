@@ -46,7 +46,7 @@ func restartInProgressLoads()  {
 
 	for _, fileId := range fileIds {
 		torrent, err := torrentfile.GetManager().LoadTorrentFileFromDB(fileId)
-		if err != nil {
+		if err != nil || torrent == nil {
 			logrus.Errorf("Error loading torrent: %v", err)
 			return
 		}

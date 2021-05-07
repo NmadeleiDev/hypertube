@@ -19,29 +19,29 @@ func GetManager() TorrentFilesManager {
 }
 
 type TorrentFilesManager interface {
-	ReadTorrentFileFromFS(path string) (TorrentFile, error)
-	ReadTorrentFileFromBytes(body io.Reader) (TorrentFile, error)
-	LoadTorrentFileFromDB(fileId string) (TorrentFile, error)
+	ReadTorrentFileFromFS(path string) (*TorrentFile, error)
+	ReadTorrentFileFromBytes(body io.Reader) (*TorrentFile, error)
+	LoadTorrentFileFromDB(fileId string) (*TorrentFile, error)
 }
 
-func (t *torrentsManager) ReadTorrentFileFromFS(path string) (TorrentFile, error) {
+func (t *torrentsManager) ReadTorrentFileFromFS(path string) (*TorrentFile, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return TorrentFile{}, err
+		return nil, err
 	}
 	defer file.Close()
 
 	return t.ParseReaderToTorrent(file)
 }
 
-func (t *torrentsManager) ReadTorrentFileFromBytes(body io.Reader) (TorrentFile, error) {
+func (t *torrentsManager) ReadTorrentFileFromBytes(body io.Reader) (*TorrentFile, error) {
 	return t.ParseReaderToTorrent(body)
 }
 
-func (t *torrentsManager) LoadTorrentFileFromDB(fileId string) (TorrentFile, error)  {
+func (t *torrentsManager) LoadTorrentFileFromDB(fileId string) (*TorrentFile, error)  {
 	torrentBytes, magnetLink, ok := db.GetFilesManagerDb().GetTorrentOrMagnetForByFileId(fileId)
 	if !ok {
-		return TorrentFile{}, fmt.Errorf("record not found")
+		return nil, fmt.Errorf("record not found")
 	}
 
 	doChangeAnnounce := false
@@ -52,8 +52,8 @@ func (t *torrentsManager) LoadTorrentFileFromDB(fileId string) (TorrentFile, err
 	}
 
 	torrent, err := t.ReadTorrentFileFromBytes(bytes.NewBuffer(torrentBytes))
-	if err != nil {
-		return TorrentFile{}, fmt.Errorf("error reading torrent file: %v", err)
+	if err != nil || torrent == nil {
+		return nil, fmt.Errorf("error reading torrent file: %v", err)
 	}
 	torrent.SysInfo.FileId = fileId
 

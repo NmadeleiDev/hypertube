@@ -8,35 +8,38 @@ import (
 	"github.com/jackpal/bencode-go"
 )
 
-func (bto *bencodeTorrentSingleFile) toTorrentFile() (TorrentFile, error) {
+func (bto *bencodeTorrentSingleFile) toTorrentFile() (*TorrentFile, error) {
 	infoHash, err := bto.Info.hash()
 	if err != nil {
-		return TorrentFile{}, err
+		return nil, err
 	}
 	pieceHashes, err := bto.Info.splitPieceHashes()
 	if err != nil {
-		return TorrentFile{}, err
+		return nil, err
 	}
 	t := TorrentFile{
 		Announce:    bto.Announce,
 		AnnounceList: UnfoldArray(bto.AnnounceList),
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,
+		Files: 		[]bencodeTorrentFile{{Path: []string{bto.Info.Name}, Length: bto.Info.Length}},
 		PieceLength: bto.Info.PieceLength,
 		Length:      bto.Info.Length,
 		Name:        bto.Info.Name,
+		SysInfo:      SystemInfo{},
+		Download:     DownloadUtils{},
 	}
-	return t, nil
+	return &t, nil
 }
 
-func (bto *bencodeTorrentMultiFiles) toTorrentFile() (TorrentFile, error) {
+func (bto *bencodeTorrentMultiFiles) toTorrentFile() (*TorrentFile, error) {
 	infoHash, err := bto.Info.hash()
 	if err != nil {
-		return TorrentFile{}, err
+		return nil, err
 	}
 	pieceHashes, err := bto.Info.splitPieceHashes()
 	if err != nil {
-		return TorrentFile{}, err
+		return nil, err
 	}
 	t := TorrentFile{
 		Announce:     bto.Announce,
@@ -50,7 +53,7 @@ func (bto *bencodeTorrentMultiFiles) toTorrentFile() (TorrentFile, error) {
 		SysInfo:      SystemInfo{},
 		Download:     DownloadUtils{},
 	}
-	return t, nil
+	return &t, nil
 }
 
 func (i *bencodeInfoSingleFile) hash() ([20]byte, error) {

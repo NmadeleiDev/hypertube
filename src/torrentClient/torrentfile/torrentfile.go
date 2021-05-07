@@ -111,6 +111,11 @@ func (t *TorrentFile) InitMyPeerIDAndPort() {
 func (t *TorrentFile) getHeaviestFile() bencodeTorrentFile {
 	allFiles := t.GetFiles()
 
+	if len(allFiles) == 0 {
+		logrus.Debugf("WTF! No files parsed in %v", t.GetFileId())
+		return bencodeTorrentFile{}
+	}
+
 	if len(allFiles) == 1 {
 		return allFiles[0]
 	}

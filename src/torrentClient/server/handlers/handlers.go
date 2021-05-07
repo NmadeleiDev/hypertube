@@ -32,7 +32,7 @@ func DownloadRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		torrent, err := torrentfile.GetManager().LoadTorrentFileFromDB(fileId)
-		if err != nil {
+		if err != nil || torrent == nil {
 			logrus.Errorf("Error loading torrent: %v", err)
 			SendFailResponseWithCode(w, fmt.Sprintf("Error loading torrent from db: %v", err), http.StatusBadRequest)
 			return
@@ -71,7 +71,7 @@ func SubtitlesInfoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		torrent, err := torrentfile.GetManager().LoadTorrentFileFromDB(fileId)
-		if err != nil {
+		if err != nil || torrent == nil {
 			logrus.Errorf("Error loading torrent: %v", err)
 			SendFailResponseWithCode(w, fmt.Sprintf("Error loading torrent from db: %v", err), http.StatusBadRequest)
 			return
@@ -109,7 +109,7 @@ func WriteLoadedPartsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		torrent, err := torrentfile.GetManager().ReadTorrentFileFromBytes(bytes.NewBuffer(torrentBytes))
-		if err != nil {
+		if err != nil || torrent == nil {
 			logrus.Errorf("Error reading torrent file: %v", err)
 			SendFailResponseWithCode(w, fmt.Sprintf("Error reading body: %s; body: %s", err.Error(), string(torrentBytes)), http.StatusInternalServerError)
 			return
