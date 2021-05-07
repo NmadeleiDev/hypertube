@@ -4,7 +4,6 @@ import (
 	"hypertube_storage/db"
 	"hypertube_storage/parser/env"
 	"hypertube_storage/server"
-	"torrentClient/eraser"
 )
 
 func main() {
@@ -18,8 +17,6 @@ func main() {
 		db.GetLoadedFilesManager().CloseConnection()
 		db.GetLoadedStateDb().CloseConnection()
 	}()
-
-	go eraser.GetEraser().StartCheckingForRecords()
 
 	server.Start()
 }
