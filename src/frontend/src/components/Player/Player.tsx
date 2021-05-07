@@ -1,9 +1,8 @@
 import { makeStyles } from '@material-ui/core';
-import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactPlayer from 'react-player';
-import { useHistory } from 'react-router';
+import { TrackProps } from 'react-player/file';
 import screenfull from 'screenfull';
 import { useToast } from '../../hooks/useToast';
 import { getSearchParam } from '../../utils';
@@ -28,8 +27,8 @@ const useStyles = makeStyles({
 
 interface Props {
   title: string;
-  id?: string | number;
-  src?: string;
+  id: string | number;
+  tracksProps: TrackProps[];
 }
 
 const format = (seconds: number) => {
@@ -46,7 +45,7 @@ const format = (seconds: number) => {
   return `${mm}:${ss}`;
 };
 
-function Player({ title, id, src }: Props) {
+function Player({ title, id, tracksProps }: Props) {
   const classes = useStyles();
   const [state, setState] = useState({
     playing: false,
@@ -57,10 +56,10 @@ function Player({ title, id, src }: Props) {
     seeking: false,
     controlsVisible: true,
     error: false,
-    srt: '',
     showSubtitles: true,
     loading: false,
   });
+  const [track, setTrack] = useState<number>(0);
   const [player, setPlayer] = React.useState<Record<string, any>>();
   const [timeDisplayFormat, setTimeDisplayFormat] = useState('normal');
   const {
@@ -72,7 +71,6 @@ function Player({ title, id, src }: Props) {
     seeking,
     controlsVisible,
     error,
-    srt,
     showSubtitles,
     loading,
   } = state;
@@ -80,13 +78,12 @@ function Player({ title, id, src }: Props) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const timeoutId = useRef<NodeJS.Timeout>();
-  const videoUrl = id ? `/api/storage/load/${id}/video` : src;
-  const history = useHistory();
+  const videoUrl = `/api/storage/load/${id}/video`;
   const { toast } = useToast();
   const { t } = useTranslation();
 
   /**
-   * set played to the value, defiened in params
+   * set played to the value, defined in params
    * could be used if there is an error -
    * then reload component and set current played position
    * to the value, set in parameters
@@ -106,7 +103,8 @@ function Player({ title, id, src }: Props) {
     console.log('[Player] <save internal player> useEffect');
     const player = playerRef.current.getInternalPlayer();
     setPlayer(player);
-  }, [playerRef, player]);
+    console.log('[Player] <save internal player> player', player);
+  }, [playerRef]);
 
   // add listners
   useEffect(() => {
@@ -147,21 +145,9 @@ function Player({ title, id, src }: Props) {
     };
   }, [player]);
 
-  // load subtitles
-  useEffect(() => {
-    console.log('[Player] <load subtitles> useEffect');
-    const loadSubtitles = async () => {
-      try {
-        const res = await axios(`/api/storage/load/${id}/srt`);
-        if (!res.data) return;
-        const srt = res.data;
-        setState((state) => ({ ...state, srt }));
-      } catch (e) {
-        console.log(e);
-      }
-    };
-    loadSubtitles();
-  }, [id]);
+  const handleSwitchSubtitles = (index: number) => {
+    setTrack(index);
+  };
 
   const handleChangeSubtitles = () => {
     if (playerRef === null || playerRef.current === null) return;
@@ -169,11 +155,19 @@ function Player({ title, id, src }: Props) {
       const player = playerRef.current.getInternalPlayer();
       setPlayer(() => player);
     }
+    console.log('[Player] <handleChangeSubtitles> player', player);
     const tracks = player?.textTracks;
+    console.log('[Player] <handleChangeSubtitles> tracks', tracks);
     if (!tracks || !tracks.length) return;
-    const showing = tracks[0].mode === 'showing';
-    tracks[0].mode = showing ? 'disabled' : 'showing';
-    setState({ ...state, showSubtitles: showing });
+    const showing = tracks[track].mode === 'showing';
+    console.log(
+      '[Player] <handleChangeSubtitles> track, showing, showSubtitles',
+      track,
+      showing,
+      showSubtitles
+    );
+    tracks[track].mode = showing ? 'disabled' : 'showing';
+    setState({ ...state, showSubtitles: !showing });
   };
 
   const handlePlayPause = () => {
@@ -259,9 +253,7 @@ function Player({ title, id, src }: Props) {
   };
   const handleError = (e: Error) => {
     console.log('handleError', e);
-    history.push(`/movies/${id}?time=${played}`);
-    toast({ text: t`movieError` }, 'error');
-    // setState((prev) => ({ ...prev, played: prev.played + 0.001 }));
+    toast({ text: t`movieError` }, 'error', { autoHideDuration: 7000 });
   };
   const handleBuffer = () => {
     console.log('onBuffer');
@@ -305,19 +297,7 @@ function Player({ title, id, src }: Props) {
         onBuffer={handleBuffer}
         onBufferEnd={handleBufferEnd}
         onReady={handleBufferEnd}
-        config={{
-          file: {
-            tracks: [
-              {
-                kind: 'subtitles',
-                src: srt,
-                srcLang: 'en',
-                label: 'en',
-                default: true,
-              },
-            ],
-          },
-        }}
+        config={{ file: { tracks: [...tracksProps] } }}
       />
       {controlsVisible && (
         <PlayerControls
@@ -344,8 +324,10 @@ function Player({ title, id, src }: Props) {
           elapsedTime={elapsedTime}
           totalDuration={totalDuration}
           onChangeSubtitles={handleChangeSubtitles}
+          onSwitchSubtitles={handleSwitchSubtitles}
           onChangeDisplayFormat={handleChangeDisplayFormat}
           title={title}
+          tracks={tracksProps}
         />
       )}
     </div>

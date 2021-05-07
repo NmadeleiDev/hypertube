@@ -13,8 +13,6 @@ import './i18n';
 if (process.env.NODE_ENV === 'production') console.log = () => {};
 export const LIMIT = +(process.env.REACT_APP_LOAD_LIMIT || 5);
 
-// console.log = () => {};
-
 const render = () => {
   const App = require('./App').default;
 

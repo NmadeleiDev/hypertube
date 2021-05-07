@@ -1,5 +1,5 @@
 import { Divider, Grid, makeStyles, Typography } from '@material-ui/core';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 import { IUser } from '../../models/MovieInfo';
 import HorizontalGrid from '../HorizontalGrid/HorizontalGrid';
@@ -13,8 +13,9 @@ import { useTranslation } from 'react-i18next';
 import { primaryColor } from '../../theme';
 import Player from '../Player/Player';
 import { useToast } from '../../hooks/useToast';
-import NativePlayer from '../Player/NativePlayer';
 import ActivePeers from '../Player/ActivePeers';
+import axios from 'axios';
+import { TrackProps } from 'react-player/file';
 
 interface TParams {
   id: string;
@@ -73,6 +74,7 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
   const { t, i18n } = useTranslation();
   const history = useHistory();
   const { toast } = useToast();
+  const [tracks, setTracks] = useState<TrackProps[]>([]);
   const { isAuth } = useSelector((state: RootState) => state.user);
   const { movies, error } = useSelector((state: RootState) => state.movies);
   const movie = movies.find((movie) => movie.en.id === match.params.id);
@@ -96,6 +98,39 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
     if (!headerRef || !headerRef.current) return;
     headerRef.current.scrollIntoView(true);
   }, []);
+
+  // load subtitles
+  useEffect(() => {
+    console.log('[Player] <load subtitles> useEffect');
+    const loadSubtitles = async () => {
+      if (!movie) return;
+      const id = movie.en.id;
+      try {
+        const res = await axios(`/api/loader/subtitles/${id}`);
+        console.log(res.data);
+        if (!res.data.data.length) return;
+
+        const tracks = res.data.data.map(
+          (track: { id: string; language: string }, index: number) => ({
+            kind: 'subtitles',
+            src: `/api/storage/load/${id}/subtitles/${track.id}`,
+            srcLang:
+              track.language === 'unknown'
+                ? !index
+                  ? 'en'
+                  : `lng${index}`
+                : track.language,
+            label: !index ? 'en' : `lng${index}`,
+            default: !index,
+          })
+        );
+        setTracks(tracks);
+      } catch (e) {
+        console.log(e);
+      }
+    };
+    loadSubtitles();
+  }, [movie]);
 
   const mapItemsToLinks = (
     items: (string | IUser)[] | undefined,
@@ -174,14 +209,15 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
         </Grid>
       </Grid>
       <Grid container className={classes.Video}>
-        {/* <NativePlayer id={movie.en.id} /> */}
-        {/* <NativePlayer src={`/api/test/id000`} /> */}
         <ActivePeers movieId={movie.en.id} />
 
-        <Player
-          id={movie.en.id}
-          title={movie[i18n.language as 'en' | 'ru'].title}
-        />
+        {tracks.length ? (
+          <Player
+            id={movie.en.id}
+            tracksProps={tracks}
+            title={movie[i18n.language as 'en' | 'ru'].title}
+          />
+        ) : null}
       </Grid>
       <Grid container direction="column" className={classes.AdditionalInfo}>
         <CategoryHeader text={t`About movie`} />
