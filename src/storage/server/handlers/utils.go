@@ -75,7 +75,7 @@ func GetContentTypeForReqType(reqType string) string {
 	case videoRequest:
 		return "video/mp4"
 	case subtitlesRequest:
-		return "plain/text"
+		return "text/vtt"
 	default:
 		return "plain/text"
 	}
