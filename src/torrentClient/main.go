@@ -55,12 +55,12 @@ func restartInProgressLoads()  {
 
 		go func() {
 			db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, true)
-			defer db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
 
 			err = torrent.DownloadToFile()
 			if err != nil {
 				logrus.Errorf("Error downloading to file: %v", err)
 			} else {
+				db.GetFilesManagerDb().SetInProgressStatusForRecord(torrent.SysInfo.FileId, false)
 				db.GetFilesManagerDb().SetLoadedStatusForRecord(torrent.SysInfo.FileId, true)
 			}
 		}()

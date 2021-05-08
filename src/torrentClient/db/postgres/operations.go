@@ -176,8 +176,8 @@ SELECT file_id FROM %s WHERE in_progress=true`
 	for rows.Next() {
 		var cont string
 
-		if err := rows.Scan(&cont); err != nil {
-			logrus.Errorf("Error scanning file id: %v", err)
+		if scanErr := rows.Scan(&cont); scanErr != nil {
+			logrus.Errorf("Error scanning file id: %v", scanErr)
 			continue
 		}
 
