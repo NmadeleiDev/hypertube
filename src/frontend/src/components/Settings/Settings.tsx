@@ -57,6 +57,8 @@ const Settings = () => {
   const [inputs, setInputs] = useState({
     email: user.email,
     username: user.username,
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
     newPassword: '',
     currentPassword: '',
     confirm: '',
@@ -68,6 +70,8 @@ const Settings = () => {
     currentPassword: true,
     confirm: true,
     username: true,
+    firstName: true,
+    lastName: true,
   });
   const classes = useStyles();
   const { t, i18n } = useTranslation();
@@ -77,10 +81,19 @@ const Settings = () => {
   const history = useHistory();
 
   const validateForm = () => {
-    const { email, username, currentPassword, confirm } = valid;
+    const {
+      email,
+      username,
+      currentPassword,
+      confirm,
+      firstName,
+      lastName,
+    } = valid;
     return inputs.newPassword
-      ? currentPassword && confirm && (email || username)
-      : email || username;
+      ? currentPassword &&
+          confirm &&
+          (email || username || firstName || lastName)
+      : email || username || firstName || lastName;
   };
   const formValid = validateForm();
 
@@ -170,9 +183,11 @@ const Settings = () => {
       }
     };
 
-    const updateUsername = async () => {
+    const updateInfo = async () => {
       const body = {
         username: inputs.username,
+        firstName: inputs.firstName,
+        lastName: inputs.lastName,
       };
       const res = await profile.patch('patch', body, {
         headers: {
@@ -188,6 +203,8 @@ const Settings = () => {
             user: {
               ...user,
               username: inputs.username,
+              firstName: inputs.firstName,
+              lastName: inputs.lastName,
             },
           })
         );
@@ -222,7 +239,12 @@ const Settings = () => {
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (inputs.email !== user.email) updateEmail();
-      if (inputs.username !== user.username) updateUsername();
+      if (
+        inputs.username !== user.username ||
+        inputs.firstName !== user.firstName ||
+        inputs.lastName !== user.lastName
+      )
+        updateInfo();
       if (inputs.newPassword) updatePassword();
       console.log('[Settings] handleSubmit', inputs);
     };
@@ -271,7 +293,53 @@ const Settings = () => {
             rule: {
               minLength: 0,
               maxLength: 20,
-              regex: /^([\w-+.]+)?$/,
+              regex: /^([\w.+-]+)?$/,
+            },
+          },
+        },
+        {
+          name: 'firstName',
+          type: 'text',
+          label: t('First Name'),
+          placeholder: t('Enter first name'),
+          value: inputs.firstName,
+          onChange: handleInput,
+          size: 'small',
+          fullWidth: true,
+          onValidate: (isValid) =>
+            setValid((prev) => ({
+              ...prev,
+              currentPassword: isValid,
+            })),
+          rules: {
+            helperText: t('firstNameError'),
+            rule: {
+              minLength: 0,
+              maxLength: 20,
+              regex: /^([\w.+-]+)?$/,
+            },
+          },
+        },
+        {
+          name: 'lastName',
+          type: 'text',
+          label: t('Last Name'),
+          placeholder: t('Enter last name'),
+          value: inputs.lastName,
+          onChange: handleInput,
+          size: 'small',
+          fullWidth: true,
+          onValidate: (isValid) =>
+            setValid((prev) => ({
+              ...prev,
+              currentPassword: isValid,
+            })),
+          rules: {
+            helperText: t('lastNameError'),
+            rule: {
+              minLength: 0,
+              maxLength: 20,
+              regex: /^([\w.+-]+)?$/,
             },
           },
         },
