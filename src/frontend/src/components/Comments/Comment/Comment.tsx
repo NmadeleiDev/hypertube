@@ -1,4 +1,3 @@
-import React from 'react';
 import { Avatar, Grid, makeStyles, Typography } from '@material-ui/core';
 import { IComment } from '../../../models/MovieInfo';
 import { primaryColor } from '../../../theme';
@@ -24,7 +23,7 @@ const useStyles = makeStyles({
   },
 });
 
-const Comment: React.FC<IComment> = ({ username, text, avatar }) => {
+const Comment = ({ username, text, avatar }: IComment) => {
   const classes = useStyles();
 
   return (

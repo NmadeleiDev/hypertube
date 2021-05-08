@@ -18,7 +18,7 @@ import (
 
 
 func (piece *pieceProgress) readMessage() (error, error) {
-	msg, err := piece.client.Read() // this call blocks
+	msg, err := piece.client.Read()
 	if err != nil {
 		return err, nil
 	}
@@ -75,7 +75,6 @@ func attemptDownloadPiece(c *client.Client, pw *pieceWork) (*pieceProgress, erro
 
 	for state.downloaded < pw.length {
 		c.Conn.SetDeadline(time.Now().Add(30 * time.Second))
-		// If unchoked, send requests until we have enough unfulfilled requests
 		if !state.client.Choked {
 			logrus.Debugf("Downloading from %v. State: idx=%v, downloaded=%v (%v%%)", c.GetShortInfo(), state.index, state.downloaded, (state.downloaded * 100) / pw.length)
 			for state.backlog < MaxBacklog && state.requested < pw.length {
@@ -134,7 +133,6 @@ func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client,
 		if r := recover(); r != nil {
 			logrus.Debugf("Recovered in piece load: %v", r)
 		}
-		//c.Conn.Close()
 	}()
 
 	for {
@@ -148,11 +146,10 @@ func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client,
 			}
 
 			if !c.Bitfield.HasPiece(pw.index) {
-				recyclePiecesChan <- pw // Put piece back on the queue
+				recyclePiecesChan <- pw
 				continue
 			}
 
-			// Download the piece
 			if err := t.LoadStats.AddProcessed(pw.index); err != nil {
 				logrus.Errorf("Failed to add piece idx=%v to processed: %v", pw.index, err)
 				continue
@@ -241,7 +238,6 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 
 	topPriorityPieceChan, recyclePiecesChan := priorityManager.InitSorter(ctx)
 
-	// Start workers as they arrive from Pool
 	go func() {
 		maxWorkers := 40
 		limiterObj := limiter.RateLimiter{}
@@ -289,8 +285,6 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 			begin, end := t.calculateBoundsForPiece(res.index)
 			t.ResultsChan <- LoadedPiece{Data: res.buf, Len: int64(end-begin), StartByte: int64(begin)}
 			db.GetFilesManagerDb().SaveFilePart(t.FileId, res.buf, int64(begin), int64(end-begin), int64(res.index))
-			//db.GetLoadedStateDb().AnnounceLoadedPart(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
-			//db.GetLoadedStateDb().SaveLoadedPartInfo(t.FileId, fmt.Sprint(res.index), int64(begin), int64(end-begin))
 
 			done := t.LoadStats.CountDone()
 			total := t.LoadStats.TotalPieces()

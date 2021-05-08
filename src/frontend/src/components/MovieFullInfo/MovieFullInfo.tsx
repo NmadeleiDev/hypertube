@@ -8,7 +8,11 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store/rootReducer';
 import Comments from '../Comments/Comments';
 import { useAppDispatch } from '../../store/store';
-import { loadMovie, resetError } from '../../store/features/MoviesSlice';
+import {
+  loadMovie,
+  resetError,
+  updateViews,
+} from '../../store/features/MoviesSlice';
 import { useTranslation } from 'react-i18next';
 import { primaryColor } from '../../theme';
 import Player from '../Player/Player';
@@ -75,10 +79,18 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
   const history = useHistory();
   const { toast } = useToast();
   const [tracks, setTracks] = useState<TrackProps[]>([]);
+  const [enablePlayer, setEnablePlayer] = useState(false);
   const { isAuth } = useSelector((state: RootState) => state.user);
   const { movies, error } = useSelector((state: RootState) => state.movies);
   const movie = movies.find((movie) => movie.en.id === match.params.id);
   const headerRef = React.useRef<HTMLHeadingElement | null>(null);
+
+  console.log('[MovieFullInfo] movie');
+  // update movies views
+  useEffect(() => {
+    dispatch(updateViews(match.params.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // if no movies in redux - load some, we've landed on movie's page
   useEffect(() => {
@@ -124,9 +136,11 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
             default: !index,
           })
         );
-        setTracks(tracks);
+        setTracks((_) => [...tracks]);
       } catch (e) {
         console.log(e);
+      } finally {
+        setEnablePlayer(true);
       }
     };
     loadSubtitles();
@@ -211,7 +225,7 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
       <Grid container className={classes.Video}>
         <ActivePeers movieId={movie.en.id} />
 
-        {tracks.length ? (
+        {enablePlayer ? (
           <Player
             id={movie.en.id}
             tracksProps={tracks}

@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-// Unmarshal parses peer IP addresses and ports from a buffer
 func Unmarshal(peersBin []byte) ([]Peer, error) {
 	const peerSize = 6 // 4 for IP, 2 for port
 	numPeers := len(peersBin) / peerSize
@@ -27,7 +26,3 @@ func Unmarshal(peersBin []byte) ([]Peer, error) {
 func (p Peer) GetAddr() string {
 	return net.JoinHostPort(p.IP.String(), strconv.Itoa(int(p.Port)))
 }
-
-//func (p Peer) GetPeerInfo() string {
-//	return
-//}

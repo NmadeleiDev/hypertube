@@ -436,6 +436,11 @@ export const YTSsearch = async (
       log.debug('[YTSsearch] found torrents', torrents);
       const reduced = torrents.reduce((acc: ITorrent[], torrent) => {
         if (!torrent) return acc;
+        // filter out torrents with 0 seeders
+        if (!torrent.torrent.seeds) return acc;
+        // filter out torrents with empty magnet and torrent
+        if (!torrent.torrent.magnet && !torrent.torrent.torrent) return acc;
+        // filter out duplicates
         return !acc.find((movie) => movie.movieTitle === torrent.movieTitle)
           ? [...acc, torrent]
           : acc;

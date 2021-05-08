@@ -153,6 +153,21 @@ export const updateMovieRating = async (
   }
 };
 
+export const updateMovieViews = async (movieId: string) => {
+  try {
+    const res = await query(
+      `UPDATE ${POSTGRES_SCHEME}.movies m SET views=views::INTEGER + 1
+      WHERE m.id=$1 RETURNING id as imdbId, views;`,
+      [movieId]
+    );
+    if (!res.rowCount) log.warn('No movies found');
+    return res.rows;
+  } catch (e) {
+    log.error(e);
+    return null;
+  }
+};
+
 export const selectMovies = async (limit: number = 5, offset: number = 0) => {
   try {
     const res = await query(
@@ -173,7 +188,7 @@ export const selectMovies = async (limit: number = 5, offset: number = 0) => {
       limit $1 offset $2;`,
       [limit, offset]
     );
-    if (!res.rowCount) log.info('No movies with saved torrents found');
+    if (!res.rowCount) log.warn('No movies with saved torrents found');
     return res.rows;
   } catch (e) {
     log.error(e);

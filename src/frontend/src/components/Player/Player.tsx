@@ -12,6 +12,7 @@ const useStyles = makeStyles({
   playerWrapper: {
     position: 'relative',
     width: '100%',
+    minWidth: 610,
   },
   Error: {
     width: '100%',
@@ -28,7 +29,7 @@ const useStyles = makeStyles({
 interface Props {
   title: string;
   id: string | number;
-  tracksProps: TrackProps[];
+  tracksProps?: TrackProps[];
 }
 
 const format = (seconds: number) => {
@@ -274,6 +275,8 @@ function Player({ title, id, tracksProps }: Props) {
       : `-${format(duration - currentTime)}`;
   const totalDuration = format(duration);
 
+  const config = tracksProps ? { file: { tracks: [...tracksProps] } } : {};
+  console.log('[Player] tracks, config', tracksProps, config);
   return error ? (
     <div className={classes.Error}>{t`Cannot load movie`}</div>
   ) : (
@@ -297,7 +300,7 @@ function Player({ title, id, tracksProps }: Props) {
         onBuffer={handleBuffer}
         onBufferEnd={handleBufferEnd}
         onReady={handleBufferEnd}
-        config={{ file: { tracks: [...tracksProps] } }}
+        config={config}
       />
       {controlsVisible && (
         <PlayerControls

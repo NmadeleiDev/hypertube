@@ -69,15 +69,15 @@ export default function addHandlers(app: Express) {
           `[GET /find] found movies for query: ${search}, results: `,
           movies
         );
-        res.json(utils.createSuccessResponse(movies)).status(200);
+        res.status(200).json(utils.createSuccessResponse(movies));
       } else {
         log.info('[GET /find] No movies found');
         res
-          .json(utils.createErrorResponse('Could not find movies'))
-          .status(404);
+          .status(404)
+          .json(utils.createErrorResponse('Could not find movies'));
       }
     } catch (e) {
-      res.json(utils.createErrorResponse('Error getting torrents')).status(500);
+      res.status(500).json(utils.createErrorResponse('Error getting torrents'));
     }
   });
   app.get('/translate', async (req, res) => {
@@ -90,14 +90,14 @@ export default function addHandlers(app: Express) {
       log.info('[GET /translate] ru', ru);
       if (!ru)
         res
-          .json(utils.createErrorResponse('Could not find movies'))
-          .status(404);
-      else res.json(utils.createSuccessResponse(ru)).status(200);
+          .status(404)
+          .json(utils.createErrorResponse('Could not find movies'));
+      else res.status(200).json(utils.createSuccessResponse(ru));
     } catch (e) {
       log.error(e);
       res
-        .json(utils.createErrorResponse('Error translating movie'))
-        .status(500);
+        .status(500)
+        .json(utils.createErrorResponse('Error translating movie'));
     }
   });
 }

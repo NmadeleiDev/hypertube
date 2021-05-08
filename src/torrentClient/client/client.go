@@ -88,7 +88,6 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	}, nil
 }
 
-// Read reads and consumes a message from the connection
 func (c *Client) Read() (*message.Message, error) {
 	msg, err := message.Read(c.Conn)
 	return msg, err
@@ -113,7 +112,6 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 				return false, err
 			}
 
-			//c.SendInterested()
 			if err := c.SendUnchoke(); err != nil {
 				logrus.Errorf("Error sending unchoke: %v", err)
 				c.Peer.IsDead = true
@@ -121,7 +119,7 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 				return false, fmt.Errorf("failed to send unchoke: %v", err)
 			}
 
-			msg, err := c.Read() // this call blocks
+			msg, err := c.Read()
 			if err != nil {
 				logrus.Debugf("Error waiting for peer %v msg in unchoke wait: %v", c.Peer.GetAddr(), err)
 				tries++
@@ -129,7 +127,7 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 				//return false, err
 			}
 
-			if msg == nil { // keep-alive
+			if msg == nil { // keep alive
 				continue
 			}
 
@@ -153,14 +151,12 @@ func (c *Client) WaitForUnchoke(ctx context.Context) (bool, error) {
 	}
 }
 
-// SendRequest sends a Request message to the Peer
 func (c *Client) SendRequest(index, begin, length int) error {
 	req := message.FormatRequest(index, begin, length)
 	_, err := c.Conn.Write(req.Serialize())
 	return err
 }
 
-// SendInterested sends an Interested message to the Peer
 func (c *Client) SendInterested() error {
 	msg := message.Message{ID: message.MsgInterested}
 	_, err := c.Conn.Write(msg.Serialize())
@@ -178,7 +174,6 @@ func (c *Client) SendKeepAlive() error {
 	return nil
 }
 
-// SendNotInterested sends a NotInterested message to the Peer
 func (c *Client) SendNotInterested() error {
 	msg := message.Message{ID: message.MsgNotInterested}
 	_, err := c.Conn.Write(msg.Serialize())
@@ -188,7 +183,6 @@ func (c *Client) SendNotInterested() error {
 	return err
 }
 
-// SendUnchoke sends an Unchoke message to the Peer
 func (c *Client) SendUnchoke() error {
 	msg := message.Message{ID: message.MsgUnchoke}
 	_, err := c.Conn.Write(msg.Serialize())
@@ -198,7 +192,6 @@ func (c *Client) SendUnchoke() error {
 	return err
 }
 
-// SendHave sends a Have message to the Peer
 func (c *Client) SendHave(index int) error {
 	msg := message.FormatHave(index)
 	_, err := c.Conn.Write(msg.Serialize())

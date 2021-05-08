@@ -10,7 +10,13 @@ import store from './store/store';
 
 import './i18n';
 
-if (process.env.NODE_ENV === 'production') console.log = () => {};
+if (process.env.NODE_ENV === 'production') {
+  console.log = () => {};
+  console.error = () => {};
+  console.warn = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+}
 export const LIMIT = +(process.env.REACT_APP_LOAD_LIMIT || 5);
 
 const render = () => {
