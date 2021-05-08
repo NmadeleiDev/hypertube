@@ -214,6 +214,8 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 		PriorityUpdates: t.PieceLoadPriorityUpdates,
 	}
 
+	done := 0
+
 	for index, hash := range t.PieceHashes {
 		length := t.calculatePieceSize(index)
 		piece := &pieceWork{index, hash, length, nil}
@@ -226,6 +228,7 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 				} else {
 					t.ResultsChan <- LoadedPiece{Data: buf, Len: size, StartByte: start}
 					t.LoadStats.ForceSetDone(index)
+					done++
 					continue
 				}
 			}
@@ -275,7 +278,6 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 		}
 	}()
 
-	done := 0
 	for done < len(t.PieceHashes) {
 		select {
 		case <- ctx.Done():
