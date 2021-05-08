@@ -252,7 +252,7 @@ SELECT data, start, size FROM %s WHERE id = $1`, d.PartsTablePathForFile(fileId)
 
 func (d *manager) DropDataPartByIdx(fileId string, idx int) bool {
 	query := fmt.Sprintf(`
-DROP %s WHERE id = $1`, d.PartsTablePathForFile(fileId))
+DELETE FROM %s WHERE id = $1`, d.PartsTablePathForFile(fileId))
 
 	if _, err := d.conn.Exec(query, idx); err != nil {
 		logrus.Errorf("Error dropping data by idx: %v", err)

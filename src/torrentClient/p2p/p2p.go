@@ -214,19 +214,23 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 	}
 
 	for index, hash := range t.PieceHashes {
+		length := t.calculatePieceSize(index)
+		piece := &pieceWork{index, hash, length, nil}
+
 		if IntArrayContain(loadedIdxs, index) {
 			if buf, start, size, ok := db.GetFilesManagerDb().GetPartDataByIdx(t.FileId, index); ok {
-				t.ResultsChan <- LoadedPiece{Data: buf, Len: size, StartByte: start}
-				t.LoadStats.ForceSetDone(index)
-				continue
-			} else {
-				db.GetFilesManagerDb().DropDataPartByIdx(t.FileId, index)
+				if err := checkIntegrity(piece, buf); err != nil {
+					logrus.Errorf("Loaded piece doens't pass integrity check: %v, deleting this part from db", err)
+					db.GetFilesManagerDb().DropDataPartByIdx(t.FileId, index)
+				} else {
+					t.ResultsChan <- LoadedPiece{Data: buf, Len: size, StartByte: start}
+					t.LoadStats.ForceSetDone(index)
+					continue
+				}
 			}
 		}
-		length := t.calculatePieceSize(index)
 		//logrus.Debugf("Prepared piece idx=%v, len=%v", index, length)
-		piece := pieceWork{index, hash, length, nil}
-		priorityManager.Pieces = append(priorityManager.Pieces, &piece)
+		priorityManager.Pieces = append(priorityManager.Pieces, piece)
 	}
 
 	if len(priorityManager.Pieces) == 0 { // значит все уже загружено
