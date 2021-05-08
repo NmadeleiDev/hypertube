@@ -1,6 +1,7 @@
 package torrentfile
 
 import (
+	"context"
 	"net"
 	"net/url"
 
@@ -8,42 +9,48 @@ import (
 )
 
 
-func StartHandlingSocket(conn *net.UDPConn, udpManager *UdpConnManager)  {
+func StartHandlingSocket(ctx context.Context, conn *net.UDPConn, udpManager *UdpConnManager)  {
 	go func() {
-		for {
-			if !udpManager.IsValid() {
-				return
-			}
+		defer close(udpManager.Receive)
 
-			buffer := make([]byte, 1024)
-			n, _, err := conn.ReadFromUDP(buffer)
-			if err != nil {
-				logrus.Errorf("Error reading from conn: %v", err)
+		for {
+			select {
+			case <- ctx.Done():
 				return
-			} else {
-				logrus.Infof("Read %v bytes", n)
-				udpManager.Receive <- buffer[:n]
+			default:
+				buffer := make([]byte, 1024)
+				n, _, err := conn.ReadFromUDP(buffer)
+				if err != nil {
+					logrus.Errorf("Error reading from conn: %v", err)
+					return
+				} else {
+					logrus.Infof("Read %v bytes", n)
+					udpManager.Receive <- buffer[:n]
+				}
 			}
 		}
 	}()
 
 	go func() {
+		defer close(udpManager.Send)
+
 		for {
-			msg := <- udpManager.Send
-			if !udpManager.IsValid() {
+			select {
+			case <- ctx.Done():
 				return
-			}
-			if n, err := conn.Write(msg); err != nil {
-				logrus.Errorf("Error write msg: %v", err)
-				return
-			} else {
-				logrus.Infof("Wrote %v bytes", n)
+			case msg := <- udpManager.Send:
+				if n, err := conn.Write(msg); err != nil {
+					logrus.Errorf("Error write msg: %v", err)
+					return
+				} else {
+					logrus.Infof("Wrote %v bytes", n)
+				}
 			}
 		}
 	}()
 }
 
-func OpenUdpSocket(tUrl *url.URL) (*UdpConnManager, error) {
+func OpenUdpSocket(ctx context.Context, tUrl *url.URL) (*UdpConnManager, error) {
 	addr := tUrl.Host
 	destinationAddress, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
@@ -59,22 +66,11 @@ func OpenUdpSocket(tUrl *url.URL) (*UdpConnManager, error) {
 		logrus.Infof("Connection with %v opened (%v)", *destinationAddress, tUrl.String())
 	}
 
-	exitChan := make(chan byte)
 	receive := make(chan []byte, 10)
 	send := make(chan []byte, 10)
 
-	manager := &UdpConnManager{Receive: receive, Send: send, ExitChan: exitChan, isValid: true}
+	manager := &UdpConnManager{Receive: receive, Send: send}
 
-	go func() {
-		<- exitChan
-		logrus.Info("Exiting from udp socket.")
-		manager.SetValid(false)
-		connection.Close()
-		close(receive)
-		close(send)
-		close(exitChan)
-	}()
-
-	StartHandlingSocket(connection, manager)
+	StartHandlingSocket(ctx, connection, manager)
 	return manager, nil
 }

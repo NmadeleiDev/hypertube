@@ -2,6 +2,7 @@ package torrentfile
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -42,7 +43,7 @@ type Tracker struct {
 	Length      int
 }
 
-func (t *Tracker) CallFittingScheme() ([]peers.Peer, error) {
+func (t *Tracker) CallFittingScheme(ctx context.Context) ([]peers.Peer, error) {
 	trackerUrl, err := url.Parse(t.Announce)
 	if err != nil {
 		logrus.Errorf("Error parse tracker url: %v", err)
@@ -52,32 +53,31 @@ func (t *Tracker) CallFittingScheme() ([]peers.Peer, error) {
 	if trackerUrl.Scheme == "http" {
 		return t.callHttpTracker()
 	} else if trackerUrl.Scheme == "udp" {
-		return t.callUdpTracker()
+		return t.callUdpTracker(ctx)
 	} else {
 		return nil, fmt.Errorf("unsupported url scheme: %v; url: %v", trackerUrl.Scheme, t.Announce)
 	}
 }
 
-func (t *Tracker) callUdpTracker() ([]peers.Peer, error) {
+func (t *Tracker) callUdpTracker(ctx context.Context) ([]peers.Peer, error) {
 	trackerUrl, err := url.Parse(t.Announce)
 	if err != nil {
 		logrus.Errorf("Error parsing tracker url (%v): %v", t.Announce, err)
 		return nil, err
 	}
-	t.UdpManager, err = OpenUdpSocket(trackerUrl)
+	connCtx, connCancel := context.WithCancel(ctx)
+	defer connCancel()
+
+	t.UdpManager, err = OpenUdpSocket(connCtx, trackerUrl)
 	if err != nil {
 		return nil, err
 	}
-
-	defer func() {
-		t.UdpManager.ExitChan <- 1
-	}()
 
 	if err := t.makeConnectUdpReq(); err != nil {
 		return nil, err
 	}
 
-	t.makeScrapeUdpReq()
+	//t.makeScrapeUdpReq()
 
 	parsedPeers, err := t.makeAnnounceUdpReq()
 	return parsedPeers, err
@@ -118,19 +118,22 @@ func (t *Tracker) makeConnectUdpReq() error {
 
 	var body []byte
 
-	timer := time.NewTimer(time.Second * 3)
+	timer := time.NewTimer(time.Second * 4)
 	select {
 	case <- timer.C:
-		return fmt.Errorf("tracker call timed out")
+		return fmt.Errorf("%v tracker udp conn call timed out", t.Announce)
 	case data := <- t.UdpManager.Receive:
 		body = data
 		timer.Stop()
 	}
 
-	transId := binary.BigEndian.Uint32(body[4:9])
+	if body == nil || len(body) < 16 {
+		return fmt.Errorf("got invalid body from %v tracker: %v (%v)", t.Announce, body, len(body))
+	}
+
+	transId := binary.BigEndian.Uint32(body[4:8])
 	if transId != t.TransactionId {
 		logrus.Errorf("Tracker resp trans_id (%v) != saved trans_id (%v)", transId, t.TransactionId)
-		// выйти?
 	}
 	t.ConnectionId = binary.BigEndian.Uint64(body[8:])
 
@@ -151,7 +154,7 @@ func (t *Tracker) makeAnnounceUdpReq() ([]peers.Peer, error) {
 
 	select {
 	case <- timer.C:
-		return nil, fmt.Errorf("tracker call timed out")
+		return nil, fmt.Errorf("%v tracker announce call timed out", t.Announce)
 	case data := <- t.UdpManager.Receive:
 		body = data
 		timer.Stop()
@@ -160,7 +163,6 @@ func (t *Tracker) makeAnnounceUdpReq() ([]peers.Peer, error) {
 	transId := binary.BigEndian.Uint32(body[4:8])
 	if transId != t.TransactionId {
 		logrus.Errorf("Tracker resp trans id (%v) != saved trans id (%v)", transId, t.TransactionId)
-		// выйти?
 	}
 	interval := binary.BigEndian.Uint32(body[8:12])
 	leechers := binary.BigEndian.Uint32(body[12:16])
@@ -187,7 +189,7 @@ func (t *Tracker) makeScrapeUdpReq() {
 
 	select {
 	case <- timer.C:
-		logrus.Errorf("tracker call timed out")
+		logrus.Errorf("%v tracker scrape call timed out", t.Announce)
 		return
 	case data := <- t.UdpManager.Receive:
 		body = data

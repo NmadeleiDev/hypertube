@@ -126,24 +126,6 @@ type DownloadUtils struct {
 type UdpConnManager struct {
 	Receive chan []byte
 	Send chan []byte
-	ExitChan chan byte
-
-	mu      sync.Mutex
-	isValid bool
-}
-
-func (u *UdpConnManager) SetValid(val bool) {
-	u.mu.Lock()
-	u.isValid = val
-	u.mu.Unlock()
-}
-
-func (u *UdpConnManager) IsValid() bool {
-	u.mu.Lock()
-	val := u.isValid
-	u.mu.Unlock()
-
-	return val
 }
 
 type bencodeInfoSingleFile struct {

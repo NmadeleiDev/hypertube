@@ -52,7 +52,7 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 	trackersUsed := make([]string, 0, len(announceList))
 
 	for _, announce := range announceList {
-		if StrArrayIdx(trackersUsed, announce) > 0 {
+		if StrArrayIdx(trackersUsed, announce) >= 0 {
 			continue
 		} else {
 			trackersUsed = append(trackersUsed, announce)
@@ -79,7 +79,7 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 					return
 				case <- timer.C:
 					logrus.Debugf("Calling %v after timer call (int=%v min=%v)", trackerInstance.Announce, trackerInstance.TrackerCallInterval, time.Minute)
-					rawPeers, err := trackerInstance.CallFittingScheme()
+					rawPeers, err := trackerInstance.CallFittingScheme(ctx)
 					if err != nil {
 						logrus.Errorf("Error requesting peers: %v", err)
 						return
@@ -100,7 +100,6 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 			}
 		}(ctx, tracker)
 	}
-	logrus.Debugf("")
 }
 
 func (pi *PeersInitializer) InitPeer(ctx context.Context, peer *peers.Peer) (*client.Client, bool) {

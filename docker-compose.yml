@@ -23,8 +23,6 @@ services:
     hostname: search
     links:
       - postgres-db
-#    ports:
-#      - ${SEARCH_API_PORT}:2222
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_PORT: ${POSTGRES_PORT}
@@ -49,8 +47,6 @@ services:
     links:
       - postgres-db
       - search
-#    ports:
-#      - ${MOVIES_API_PORT}:2222
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_PORT: ${POSTGRES_PORT}
@@ -77,8 +73,6 @@ services:
       - postgres-db
       - redis-db
       - torrent-client
-#    ports:
-#      - ${STORAGE_API_PORT}:2222
     volumes:
       - ${FILES_VOL_DIR}:${FILES_DIR}:rw
     environment:
@@ -102,18 +96,6 @@ services:
       - docker_net
     restart: always
 
-  magnet-converter:
-    build:
-      context: ./src/magnetCoverter
-      dockerfile: Dockerfile
-    links:
-      - postgres-db
-    ports:
-      - ${MAGNET_CONVERTER_PORT}:50051
-    networks:
-      - docker_net
-    restart: always
-
   torrent-client:
     build:
       context: ./src/torrentClient
@@ -122,8 +104,6 @@ services:
     links:
       - postgres-db
       - redis-db
-#    ports:
-#      - ${TORRENT_CLIENT_API_PORT}:2222
     volumes:
       - ${FILES_VOL_DIR}:${FILES_DIR}:rw
     environment:
@@ -174,7 +154,6 @@ services:
       - movies
       - storage
       - torrent-client
-      - magnet-converter
       - auth
     networks:
       - docker_net

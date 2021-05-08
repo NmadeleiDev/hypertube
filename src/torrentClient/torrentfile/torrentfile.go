@@ -36,6 +36,7 @@ func (t *TorrentFile) DownloadToFile() error {
 	peersPoolObj := PeersPool{}
 	peersPoolObj.Init(t)
 	defer peersPoolObj.DestroyPool()
+
 	poolCtx, poolCancel := context.WithCancel(downloadCtx)
 	defer poolCancel()
 	go peersPoolObj.StartRefreshing(poolCtx)
@@ -60,8 +61,7 @@ func (t *TorrentFile) DownloadToFile() error {
 	t.CreateFileBoundariesMapping()
 
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
-	//defer db.GetFilesManagerDb().RemoveFilePartsPlace(torrent.FileId)
-	//logrus.Infof("Prepared table for parts, starting download")
+
 	videoFile := t.getHeaviestFile()
 	db.GetFilesManagerDb().SetFileNameForRecord(fileId, videoFile.EncodeFileName())
 
