@@ -344,6 +344,8 @@ func getUserPhotoFb(accessToken, userId string) (*string, *errors.Error) {
 		return nil, errors.AccessDenied.SetHidden("Чтение фотографии пользователя facebook провалено").SetOrigin(err)
 	}
 	imageBody := string(respBody)
+	print("image body ")
+	println(imageBody)
 	return &imageBody, nil
 }
 
@@ -361,18 +363,18 @@ func getUserFb(token tokenFb) (*model.UserFb, *errors.Error) {
 		return nil, Err
 	}
 
-	imageBodyPtr, Err := getUserPhotoFb(token.AccessToken, profileId.IdString)
-	if Err != nil {
-		return nil, Err
-	}
+	// imageBodyPtr, Err := getUserPhotoFb(token.AccessToken, profileId.IdString)
+	// if Err != nil {
+	// 	return nil, Err
+	// }
 
 	return &model.UserFb{
 		Email:     profile.Email,
 		Fname:     profile.Fname,
 		Lname:     profile.Lname,
 		Username:  profile.Username,
-		ImageBody: imageBodyPtr,
-		// ImageBody: &profile.ImageBody.Data.Url,
+		// ImageBody: imageBodyPtr,
+		ImageBody: &profile.ImageBody.Data.Url,
 		UserFbModel: model.UserFbModel{
 			UserFbId:    profileId.IdUint,
 			AccessToken: &token.AccessToken,

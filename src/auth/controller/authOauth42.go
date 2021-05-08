@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"strconv"
 	"time"
-	"fmt"
 )
 
 type requestParams struct {

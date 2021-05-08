@@ -19,6 +19,8 @@ type Config struct {
 	FacebookSecret       string `conf:"facebookSecret"`
 	VkClientId           string `conf:"vkClientId"`
 	VkSecret             string `conf:"vkSecret"`
+	GoogleClientId       string `conf:"googleClientId"`
+	GoogleSecret         string `conf:"googleSecret"`
 }
 
 var cfg *Config
