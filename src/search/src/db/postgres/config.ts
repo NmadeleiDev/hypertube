@@ -7,6 +7,8 @@ const POSTGRES_HOST = process.env.POSTGRES_HOST || 'localhost';
 const POSTGRES_PORT = process.env.POSTGRES_PORT || '5432';
 const POSTGRES_DB = process.env.POSTGRES_DB || 'hypertube';
 const POSTGRES_SCHEME = process.env.POSTGRES_SCHEME || 'hypertube';
+const POSTGRES_USERS_SCHEME =
+  process.env.POSPOSTGRES_USERS_SCHEMETGRES_SCHEME || 'public';
 
 export const DSN = `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
 
@@ -60,14 +62,21 @@ export const initDatabase = () => {
     seeds     INTEGER DEFAULT 0,
     peers     INTEGER DEFAULT 0,
     size      NUMERIC,
-    CHECK (magnet IS NOT NULL OR torrent IS NOT NULL)
+    CHECK (torrent IS NOT NULL)
   );`;
 
   const createRatingTable = `CREATE TABLE IF NOT EXISTS ${POSTGRES_SCHEME}.user_ratings (
     id        SERIAL PRIMARY KEY,
-    userid    INTEGER NOT NULL,
+    userid    INTEGER NOT NULL REFERENCES ${POSTGRES_USERS_SCHEME}.movies(id),
     movieid   VARCHAR(16) NOT NULL REFERENCES ${POSTGRES_SCHEME}.movies(id),
     vote    integer NOT NULL,
+    UNIQUE (userid, movieid)
+  );`;
+
+  const createViewsTable = `CREATE TABLE IF NOT EXISTS ${POSTGRES_SCHEME}.views (
+    id        SERIAL PRIMARY KEY,
+    userid    INTEGER NOT NULL,
+    movieid   VARCHAR(16) NOT NULL REFERENCES ${POSTGRES_SCHEME}.movies(id),
     UNIQUE (userid, movieid)
   );`;
   log.debug('[initDatabase]');
@@ -77,6 +86,7 @@ export const initDatabase = () => {
   setTimeout(() => {
     query(createCommentsTable);
     query(createRatingTable);
+    query(createViewsTable);
     query(createTorrentsTable);
     query(createKinopoiskMoviesTable);
   }, 5000);

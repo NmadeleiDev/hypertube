@@ -15,12 +15,16 @@ export function createErrorResponse(data: any): httpResponse {
 }
 
 export const getUserIdFromToken = (token: string) => {
-  return +JSON.parse(
-    Buffer.from(
-      Buffer.from(token, 'base64').toString().split('.')[0],
-      'base64'
-    ).toString()
-  ).userId;
+  try {
+    return +JSON.parse(
+      Buffer.from(
+        Buffer.from(token, 'base64').toString().split('.')[0],
+        'base64'
+      ).toString()
+    ).userId;
+  } catch (e) {
+    return 0;
+  }
 };
 
 export const isIMovie = (movie: IMovie | unknown): movie is IMovie => {

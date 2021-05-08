@@ -1,17 +1,17 @@
-import axios from "axios";
+import axios from 'axios';
 import {
   getKinopoiskMovieFromDB,
   saveKinopoiskMovieToDB,
-} from "../db/postgres/postgres";
-import log from "../logger/logger";
-import { IKinopoiskMovie, IMovie } from "../model/model";
-import { ITorrent } from "./torrents";
+} from '../db/postgres/postgres';
+import log from '../logger/logger';
+import { IKinopoiskMovie, IMovie } from '../model/model';
+import { ITorrent } from './torrents';
 
 const api = axios.create({
-  baseURL: "https://kinopoiskapiunofficial.tech/api/v2.1/films/",
+  baseURL: 'https://kinopoiskapiunofficial.tech/api/v2.1/films/',
   withCredentials: true,
   headers: {
-    "X-API-KEY": process.env.KINOPOISK_API_KEY,
+    'X-API-KEY': process.env.KINOPOISK_API_KEY,
   },
   validateStatus: (status) => status >= 200 && status < 500,
 });
@@ -91,7 +91,7 @@ export interface IKinopoiskCommonFilmData {
   filmLength: string;
   slogan: string;
   description: string;
-  type?: "FILM" | "TV_SHOW" | "UNKNOWN";
+  type?: 'FILM' | 'TV_SHOW' | 'UNKNOWN';
   ratingMpaa: string;
   ratingAgeLimits: number;
   premiereRu: string;
@@ -149,15 +149,15 @@ const searchKinopoiskMovie = async (
   keyword: string
 ): Promise<IKinopoiskSearchFilmData[] | null> => {
   try {
-    const res = await api("search-by-keyword", {
+    const res = await api('search-by-keyword', {
       params: {
         keyword,
         page: 1,
       },
     });
-    if (!res || !res.data) throw new Error("Kinopoisk fetch error");
-    else if (res.status === 401) throw new Error("Empty access token");
-    else if (res.status === 404) throw new Error("Movie not found");
+    if (!res || !res.data) throw new Error('Kinopoisk fetch error');
+    else if (res.status === 401) throw new Error('Empty access token');
+    else if (res.status === 404) throw new Error('Movie not found');
     else if (res.status === 429) {
       // wait a sec, too many requests
       setTimeout(() => {
@@ -165,8 +165,8 @@ const searchKinopoiskMovie = async (
       }, 1000);
     }
     const data = res.data as IKinopoiskSearchFilmResponse;
-    log.debug("searchKinopoiskMovie", data);
-    if (!data.searchFilmsCountResult) throw new Error("Zero movies found");
+    log.debug('searchKinopoiskMovie', data);
+    if (!data.searchFilmsCountResult) throw new Error('Zero movies found');
     return data.films;
   } catch (e) {
     log.error(e);
@@ -178,11 +178,11 @@ const getKinopoiskMovieById = async (
   filmId: number
 ): Promise<IKinopoiskFilmResponse | null> => {
   try {
-    log.debug("[getKinopoiskMovieById] filmId", filmId);
+    log.debug('[getKinopoiskMovieById] filmId', filmId);
     const res = await api(`${filmId}`);
-    if (!res || !res.data) throw new Error("Kinopoisk fetch error");
-    else if (res.status === 401) throw new Error("Empty access token");
-    else if (res.status === 404) throw new Error("Movie not found");
+    if (!res || !res.data) throw new Error('Kinopoisk fetch error');
+    else if (res.status === 401) throw new Error('Empty access token');
+    else if (res.status === 404) throw new Error('Movie not found');
     // else if (res.status === 429) {
     //   // wait a sec, too many requests
     //   setTimeout(() => {
@@ -190,7 +190,7 @@ const getKinopoiskMovieById = async (
     //   }, 1000);
     // }
     const data = res.data as IKinopoiskFilmResponse;
-    log.debug("getKinopoiskMovieById", data);
+    log.debug('getKinopoiskMovieById', data);
     return data;
   } catch (e) {
     log.error(e);
@@ -203,10 +203,11 @@ export const kinopoiskToIMovie = (
   torrent?: ITorrent
 ): IMovie => {
   return {
-    id: movie.data.filmId + "",
+    id: movie.data.filmId + '',
     title: movie.data.nameRu,
     img: movie.data.posterUrlPreview,
-    src: "",
+    src: '',
+    isViewed: false,
     info: {
       avalibility: torrent?.torrent.seeds || 0,
       year: +movie.data.year,
@@ -217,7 +218,7 @@ export const kinopoiskToIMovie = (
       length: 0,
       pgRating: null,
       countries: [],
-      description: movie.data.description || "",
+      description: movie.data.description || '',
     },
   };
 };
@@ -227,7 +228,8 @@ export const KinoDBToIMovie = (movie: IKinopoiskMovie): IMovie => {
     id: movie.kinoid,
     title: movie.nameru,
     img: movie.posterurlpreview,
-    src: "",
+    src: '',
+    isViewed: false,
     info: {
       avalibility: 0,
       year: 0,
@@ -238,7 +240,7 @@ export const KinoDBToIMovie = (movie: IKinopoiskMovie): IMovie => {
       length: 0,
       pgRating: null,
       countries: [],
-      description: movie.description || "",
+      description: movie.description || '',
     },
   };
 };
@@ -251,7 +253,7 @@ export const getKinopoiskMovieByImdbid = async (
     const movies = await searchKinopoiskMovie(title);
     if (!movies || !movies.length) return null;
     log.debug(
-      "[translateMovie] found similar movies for a title",
+      '[translateMovie] found similar movies for a title',
       title,
       movies
     );
@@ -277,11 +279,11 @@ export const translateMovie = async (
     const imdbId = en.id;
 
     const movie = await getKinopoiskMovieFromDB(imdbId);
-    log.info("getKinopoiskMovieFromDB result:", movie);
+    log.info('getKinopoiskMovieFromDB result:', movie);
     if (movie) {
       return { en, ru: KinoDBToIMovie(movie) };
     }
-    log.info("Cannot find matching movie in DB, searching in web");
+    log.info('Cannot find matching movie in DB, searching in web');
     let ru = await getKinopoiskMovieByImdbid(title, imdbId);
     if (!ru) ru = en;
     return { en, ru };

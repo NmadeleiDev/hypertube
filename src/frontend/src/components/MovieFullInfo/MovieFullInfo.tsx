@@ -11,6 +11,7 @@ import { useAppDispatch } from '../../store/store';
 import {
   loadMovie,
   resetError,
+  updateMovie,
   updateViews,
 } from '../../store/features/MoviesSlice';
 import { useTranslation } from 'react-i18next';
@@ -85,16 +86,17 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
   const movie = movies.find((movie) => movie.en.id === match.params.id);
   const headerRef = React.useRef<HTMLHeadingElement | null>(null);
 
-  console.log('[MovieFullInfo] movie');
-  // update movies views
-  useEffect(() => {
-    dispatch(updateViews(match.params.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // if no movies in redux - load some, we've landed on movie's page
   useEffect(() => {
     if (!movie) dispatch(loadMovie(match.params.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // update movies views
+  useEffect(() => {
+    if (!movie) return;
+    dispatch(updateViews(match.params.id));
+    dispatch(updateMovie({ id: movie.en.id, isViewed: true }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

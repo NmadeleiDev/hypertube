@@ -4,6 +4,7 @@ import { movies, search as axiosSearch } from '../../axios';
 import { IComment, ITranslatedMovie } from '../../models/MovieInfo';
 import { AppDispatch } from '../store';
 import { CountriesKeys, GenresKeys } from './FilterSlice';
+import { getToken } from './UserSlice';
 
 export interface MoviesItems {
   search?: ITranslatedMovie[];
@@ -22,7 +23,8 @@ export interface ErrorItem {
 
 export interface UpdateMoviesItem {
   id: string;
-  views: number;
+  views?: number;
+  isViewed?: boolean;
 }
 
 export interface MoviesState {
@@ -134,9 +136,10 @@ const MoviesSlice = createSlice({
       }
     },
     updateMovie(state, { payload }: PayloadAction<UpdateMoviesItem>) {
-      const { id, views } = payload;
+      const { id, views, isViewed } = payload;
       const movie = state.movies.find((movie) => movie.en.id === id);
-      if (movie) movie.en.info.views = views;
+      if (movie && views) movie.en.info.views = views;
+      if (movie && isViewed) movie.en.isViewed = isViewed;
     },
     updateComments(state, { payload }: PayloadAction<CommentsItems>) {
       state.loading = false;
@@ -197,18 +200,30 @@ const loadMoviesAsync = async (
           category: 'All',
           search: params?.search,
         },
+        headers: {
+          accessToken: getToken(),
+        },
       });
     else if (params?.letter)
       res = await movies(`byname`, {
         params,
+        headers: {
+          accessToken: getToken(),
+        },
       });
     else if (params?.genre)
       res = await movies(`bygenre`, {
         params,
+        headers: {
+          accessToken: getToken(),
+        },
       });
     else
       res = await movies('movies', {
         params,
+        headers: {
+          accessToken: getToken(),
+        },
       });
 
     // console.log(res.data);
@@ -304,7 +319,15 @@ export const loadMovie = (id: string) => async (dispatch: AppDispatch) => {
 export const updateViews = (movieId: string) => async (
   dispatch: AppDispatch
 ) => {
-  const res = await axios.patch('/api/movies/views', { movieId });
+  const res = await axios.patch(
+    '/api/movies/views',
+    { movieId },
+    {
+      headers: {
+        accessToken: getToken(),
+      },
+    }
+  );
   console.log(res.data);
   if (res.data.status) {
     dispatch(updateMovie({ id: movieId, views: +res.data.data[0].views }));

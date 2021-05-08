@@ -111,6 +111,7 @@ const AlphabetNav = () => {
   }, 100);
 
   const horizontalScrollHandler = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     e.currentTarget.scrollTo({
       top: 0,
       left: e.currentTarget.scrollLeft + e.deltaY * 4,

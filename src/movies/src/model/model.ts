@@ -68,6 +68,7 @@ export interface IDBMovie {
   images: string;
   imdbrating: string;
   maxcomments: string;
+  isviewed: string;
 }
 
 export interface IDBTorrent {
@@ -100,6 +101,7 @@ export interface IMovie {
   title: string;
   img: string;
   src: string;
+  isViewed: boolean;
   info: IMovieInfo;
 }
 

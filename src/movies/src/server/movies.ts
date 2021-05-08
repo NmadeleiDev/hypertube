@@ -16,13 +16,14 @@ import {
   ITranslatedMovie,
 } from '../model/model';
 import axios from 'axios';
-import { isIMovie } from './utils';
+import { getUserIdFromToken, isIMovie } from './utils';
 
 interface IMoviesQuery {
   letter?: string;
   genre?: string;
   limit: number;
   offset: number;
+  token: string;
 }
 
 export const getTranslatedMovies = async ({
@@ -30,14 +31,15 @@ export const getTranslatedMovies = async ({
   genre,
   limit,
   offset,
+  token,
 }: IMoviesQuery) => {
-  const response = await getMovies(limit, offset, letter, genre);
+  const response = await getMovies(token, limit, offset, letter, genre);
   log.debug('[getTranslatedMovies] getMovies response', response);
   const ens: IMovie[] = response.map((movie) => dbToIMovie(movie));
   log.info(`[getTranslatedMovies] en movies for query ${genre}`, ens);
 
   const movies: ITranslatedMovie[] = await Promise.all(
-    ens.map((en) => getMovieInfo(en.id))
+    ens.map((en) => getMovieInfo(en.id, token))
   );
   log.info('[getTranslatedMovies] got translated movies', movies);
   return movies;
@@ -67,16 +69,17 @@ export const loadKinopoiskTranslation = async (en: IMovie): Promise<IMovie> => {
 };
 
 export const getMovieInfo = async (
-  movieid: string
+  movieId: string,
+  token: string
 ): Promise<ITranslatedMovie> => {
-  log.debug('[getMovieInfo]', movieid);
-  if (!movieid) throw new Error('comment id is missing');
+  log.debug('[getMovieInfo]', movieId);
+  if (!movieId) throw new Error('comment id is missing');
   try {
     let movie = null;
-    const enMovie = await selectMovieFromDB(movieid);
+    const enMovie = await selectMovieFromDB({ movieId, token });
     if (!enMovie) throw new Error('En movie not found');
     const en = dbToIMovie(enMovie);
-    let ruMovie = await getKinopoiskMovieFromDB(movieid);
+    let ruMovie = await getKinopoiskMovieFromDB(movieId);
     if (ruMovie) {
       const ru = KinoDBToIMovie(ruMovie);
       movie = { en, ru };
@@ -97,15 +100,20 @@ export const getMovieInfo = async (
 };
 
 export const getMovies = async (
+  token: string,
   limit: number = 5,
   offset: number = 0,
   letter?: string,
   genre?: string
 ): Promise<IDBMovie[] | null> => {
   try {
-    if (letter) return await selectMoviesByLetter(letter, limit, offset);
-    else if (genre) return await selectMoviesByGenre(genre, limit, offset);
-    else return await selectMovies(limit, offset);
+    const userId = getUserIdFromToken(token);
+    log.debug(`userId: ${userId}, token: ${token}`);
+    if (letter)
+      return await selectMoviesByLetter({ letter, limit, offset, token });
+    else if (genre)
+      return await selectMoviesByGenre({ token, genre, limit, offset });
+    else return await selectMovies(userId, limit, offset);
   } catch (e) {
     log.error(e);
     return null;
@@ -118,6 +126,7 @@ export const KinoDBToIMovie = (movie: IKinopoiskMovie): IMovie => {
     title: movie.nameru,
     img: movie.posterurlpreview,
     src: '',
+    isViewed: false,
     info: {
       avalibility: 0,
       year: 0,
@@ -138,7 +147,7 @@ export const dbToIMovie = (
   comments?: IFrontComment[],
   torrent?: IDBTorrent
 ): IMovie => {
-  log.trace('[dbToIMovie]', row);
+  log.debug('[dbToIMovie]', row);
   const defaultNumberOfCommentsToLoad = 5;
   const avalibility = torrent ? torrent.seeds + torrent.peers * 0.1 : 0;
   return {
@@ -146,6 +155,7 @@ export const dbToIMovie = (
     title: row.title,
     img: row.image,
     src: '',
+    isViewed: !!+row.isviewed,
     info: {
       avalibility: avalibility,
       year: +row.year,

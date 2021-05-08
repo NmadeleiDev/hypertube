@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { ITranslatedMovie, IUser } from '../../models/MovieInfo';
 import { primaryColor } from '../../theme';
 import Rating from '../Rating/Rating';
+import { Visibility } from '@material-ui/icons';
 
 interface MovieCardMediumProps {
   card: ITranslatedMovie;
@@ -58,11 +59,15 @@ const useStyles = makeStyles({
     height: '15rem',
     flexWrap: 'nowrap',
   },
+  CaptionWrapper: {
+    marginBottom: 10,
+    width: '100%',
+    color: 'inherit',
+  },
   Caption: {
     fontSize: '1.5rem',
     textDecoration: 'none',
     color: 'inherit',
-    marginBottom: 10,
   },
   Text: {
     fontSize: '1rem',
@@ -89,6 +94,7 @@ const useStyles = makeStyles({
     fontWeight: 'inherit',
     color: 'inherit',
     textTransform: 'capitalize',
+    textDecoration: 'none',
     '&:hover': {
       color: primaryColor.light,
     },
@@ -99,7 +105,7 @@ const MovieCardMedium = ({ card }: MovieCardMediumProps) => {
   const classes = useStyles();
   const { t, i18n } = useTranslation();
 
-  const { id, img, info } = card.en;
+  const { id, img, info, isViewed } = card.en;
   const title = card[i18n.language as 'en' | 'ru'].title;
   const description = card[i18n.language as 'en' | 'ru'].info.description;
 
@@ -127,11 +133,19 @@ const MovieCardMedium = ({ card }: MovieCardMediumProps) => {
       </NavLink>
       <Grid container direction="column" className={classes.Info}>
         <Grid container alignItems="baseline" justify="space-between">
-          <NavLink to={`/movies/${id}`} className={classes.Caption}>
-            <Typography variant="caption" className={classes.Caption}>
-              {title}
-            </Typography>
-          </NavLink>
+          <Grid
+            container
+            alignItems="center"
+            justify="space-between"
+            className={classes.CaptionWrapper}
+          >
+            <NavLink to={`/movies/${id}`} className={classes.Link}>
+              <Typography variant="caption" className={classes.Caption}>
+                {title}
+              </Typography>
+            </NavLink>
+            {isViewed && <Visibility />}
+          </Grid>
           <Rating
             movieId={id}
             imdbRating={info.imdbRating}

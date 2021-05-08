@@ -13,6 +13,7 @@ import {
   IRating,
   updateMovieRating,
   updateMovieViews,
+  updateUserMovieViews,
 } from '../db/postgres/movies';
 import { getMovieInfo, getTranslatedMovies } from './movies';
 
@@ -22,16 +23,18 @@ export function addMoviesHandlers(app: Express) {
     const limit = +req.query.limit || 5;
     const offset = +req.query.offset || 0;
     const id = (req.query.id as string) || null;
+    const headers = req.headers;
 
     try {
+      const token = (headers.accesstoken as string) || '';
       if (id) {
-        const movie = await getMovieInfo(id);
+        const movie = await getMovieInfo(id, token);
         log.debug('[GET /movies] movieById:', movie);
         if (movie) res.status(200).json(createSuccessResponse([movie]));
         else res.status(404).json(createErrorResponse(null));
         return;
       }
-      const movies = await getTranslatedMovies({ limit, offset });
+      const movies = await getTranslatedMovies({ token, limit, offset });
       log.info('[/movies] got translated movies', movies);
 
       if (movies) res.status(200).json(createSuccessResponse(movies));
@@ -45,9 +48,11 @@ export function addMoviesHandlers(app: Express) {
     const genre = (req.query.genre as string) || undefined;
     const limit = +req.query.limit || 5;
     const offset = +req.query.offset || 0;
+    const headers = req.headers;
     log.debug('genre:', genre);
     try {
-      const movies = await getTranslatedMovies({ limit, offset, genre });
+      const token = (headers.accesstoken as string) || '';
+      const movies = await getTranslatedMovies({ token, limit, offset, genre });
       log.info('[/bygenre] got translated movies', movies);
 
       if (movies) res.status(200).json(createSuccessResponse(movies));
@@ -61,9 +66,16 @@ export function addMoviesHandlers(app: Express) {
     const limit = +req.query.limit || 5;
     const offset = +req.query.offset || 0;
     const letter = (req.query.letter as string) || undefined;
+    const headers = req.headers;
     log.debug('letter:', letter);
     try {
-      const movies = await getTranslatedMovies({ limit, offset, letter });
+      const token = (headers.accesstoken as string) || '';
+      const movies = await getTranslatedMovies({
+        token,
+        limit,
+        offset,
+        letter,
+      });
       log.info('[/byname] got translated movies', movies);
 
       if (movies) res.status(200).json(createSuccessResponse(movies));
@@ -100,18 +112,22 @@ export function addRatingHandlers(app: Express) {
     }
   });
   app.patch('/views', async (req, res) => {
-    log.debug(req.body);
+    const headers = req.headers;
+    const cookies = req.cookies;
+    log.debug(req.body, headers, cookies);
     try {
+      const token = (headers.accesstoken as string) || '';
       const movieid = (req.body?.movieId as string) || null;
       log.debug(`movieid: ${movieid}`);
-      if (!movieid)
-        return res.status(400).json(createErrorResponse('movieId is required'));
+      if (!movieid || !token)
+        return res
+          .status(400)
+          .json(createErrorResponse('accessToken and movieId are required'));
 
-      const newViews: {
-        imdbId: string;
-        views: string;
-      }[] = await updateMovieViews(movieid);
-      res.status(200).json(createSuccessResponse(newViews));
+      updateUserMovieViews(movieid, token);
+      updateMovieViews(movieid).then((views) => {
+        res.status(200).json(createSuccessResponse(views));
+      });
     } catch (e) {
       log.error(`Error getting movies: ${e}`);
       res.status(500).json(createErrorResponse('Error getting movies'));

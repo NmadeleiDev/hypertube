@@ -67,6 +67,7 @@ export interface IDBMovie {
   images: string;
   imdbrating: string;
   avalibility: string;
+  isviewed: boolean;
 }
 
 export interface IKinopoiskMovie {
@@ -84,6 +85,7 @@ export interface IMovie {
   title: string;
   img: string;
   src: string;
+  isViewed: boolean;
   info: IMovieInfo;
 }
 

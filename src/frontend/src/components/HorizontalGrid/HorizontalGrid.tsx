@@ -53,10 +53,24 @@ const HorizontalGrid = ({ sources, name, type }: Props) => {
   const classes = useStyles();
   const { t } = useTranslation();
 
+  const horizontalScrollHandler = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.currentTarget.scrollTo({
+      top: 0,
+      left: e.currentTarget.scrollLeft + e.deltaY * 4,
+      behavior: 'smooth',
+    });
+  };
+
   return (
     <Grid container direction="column" className={classes.root}>
       <CategoryHeader text={t(`${type}s`)} />
-      <Grid container wrap="nowrap" className={classes.HorizontalScroll}>
+      <Grid
+        container
+        wrap="nowrap"
+        onWheel={horizontalScrollHandler}
+        className={classes.HorizontalScroll}
+      >
         {sources?.length
           ? sources.map((item: string, index: number) => (
               <GridItem key={item + index} src={item} name={name} type={type} />

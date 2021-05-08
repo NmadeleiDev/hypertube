@@ -9,6 +9,7 @@ export interface IMovie {
   title: string;
   img: string;
   src: string;
+  isViewed: boolean;
   info: IMovieInfo;
 }
 
@@ -34,11 +35,6 @@ export interface IMovieInfo {
   stars?: string;
   cast?: IUser[];
   keywords?: string[];
-}
-
-interface IBuffer {
-  type: string;
-  data: Buffer;
 }
 export interface IComment {
   commentid: number;

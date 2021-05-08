@@ -3,8 +3,7 @@ import { DSN } from './config';
 import log from '../../logger/logger';
 import { IMDBMovie } from '../../server/imdb';
 import { ITorrent, parseSize } from '../../server/torrents';
-import { IDBMovie, IKinopoiskMovie, IMovie } from '../../model/model';
-import { utf8ToHex, atob } from '../../server/utils';
+import { IDBMovie, IKinopoiskMovie } from '../../model/model';
 import { IKinopoiskFilmResponse } from '../../server/kinopoisk';
 const POSTGRES_SCHEME = process.env.POSTGRES_SCHEME || 'hypertube';
 

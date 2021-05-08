@@ -191,6 +191,7 @@ export const imdbToIMovie = (
     title: movie.title,
     img: movie.image,
     src: '',
+    isViewed: false,
     info: {
       avalibility: torrent?.torrent.seeds || 0,
       year: +movie.year,
@@ -219,6 +220,7 @@ export const dbToIMovie = (row: IDBMovie, torrent?: ITorrent): IMovie => {
     title: row.title,
     img: row.image,
     src: '',
+    isViewed: !!row.isviewed,
     info: {
       avalibility: +row.avalibility || torrent?.torrent.seeds || 0,
       year: +row.year,
