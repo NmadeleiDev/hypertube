@@ -71,22 +71,24 @@ const SnackMessage = React.forwardRef<HTMLDivElement, Props>(({ id }, ref) => {
   const selected = notifications.find((el) => el.key === id);
   const { text, variant, header } = { ...selected };
 
+  const displayedText = text?.endsWith(' - ') ? text.slice(0, -3) : text;
+
   const handleDismiss = () => {
     closeSnackbar(id);
   };
 
   return (
     <Paper ref={ref} className={classes.root}>
-      <Card className={classnames(classes.card, classes[variant])}>
+      <Card className={classnames(classes.card, classes[variant || 'success'])}>
         <CardActions classes={{ root: classes.actionRoot }}>
           {header && (
             <Typography variant="subtitle2" className={classes.header}>
               {header}:
             </Typography>
           )}
-          {text && (
+          {displayedText && (
             <Typography variant="body1" className={classes.text}>
-              {text}
+              {displayedText}
             </Typography>
           )}
         </CardActions>
