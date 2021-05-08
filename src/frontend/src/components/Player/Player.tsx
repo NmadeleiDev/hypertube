@@ -285,42 +285,23 @@ function Player({ title, id, tracksProps }: Props) {
       className={classes.playerWrapper}
       onMouseMove={handleMouseMove}
     >
-      {tracksProps ? (
-        <ReactPlayer
-          ref={playerRef}
-          width="100%"
-          height="100%"
-          url={videoUrl}
-          muted={muted}
-          playing={playing}
-          volume={volume}
-          controls={false}
-          playbackRate={playbackRate}
-          onProgress={handleProgress}
-          onError={handleError}
-          onBuffer={handleBuffer}
-          onBufferEnd={handleBufferEnd}
-          onReady={handleBufferEnd}
-          config={{ file: { tracks: [...tracksProps] } }}
-        />
-      ) : (
-        <ReactPlayer
-          ref={playerRef}
-          width="100%"
-          height="100%"
-          url={videoUrl}
-          muted={muted}
-          playing={playing}
-          volume={volume}
-          controls={false}
-          playbackRate={playbackRate}
-          onProgress={handleProgress}
-          onError={handleError}
-          onBuffer={handleBuffer}
-          onBufferEnd={handleBufferEnd}
-          onReady={handleBufferEnd}
-        />
-      )}
+      <ReactPlayer
+        ref={playerRef}
+        width="100%"
+        height="100%"
+        url={videoUrl}
+        muted={muted}
+        playing={playing}
+        volume={volume}
+        controls={false}
+        playbackRate={playbackRate}
+        onProgress={handleProgress}
+        onError={handleError}
+        onBuffer={handleBuffer}
+        onBufferEnd={handleBufferEnd}
+        onReady={handleBufferEnd}
+        config={config}
+      />
       {controlsVisible && (
         <PlayerControls
           ref={controlsRef}

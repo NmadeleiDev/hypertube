@@ -135,9 +135,7 @@ const MoviesSlice = createSlice({
     },
     updateMovie(state, { payload }: PayloadAction<UpdateMoviesItem>) {
       const { id, views } = payload;
-      const movie = state.movies.find(
-        (movie: ITranslatedMovie) => movie.en.id === id
-      );
+      const movie = state.movies.find((movie) => movie.en.id === id);
       if (movie) movie.en.info.views = views;
     },
     updateComments(state, { payload }: PayloadAction<CommentsItems>) {
@@ -148,10 +146,17 @@ const MoviesSlice = createSlice({
         throw new Error('[movies:updateComments] no comments in payload');
       const movie = state.movies.find((movie) => movie.en.id === payload.id);
       if (!movie) throw new Error('[movies:updateComments] no movie found');
-      const newComments = payload.comments.filter((comment) =>
-        movie.en.info.comments
-          ? !movie.en.info.comments.find((el) => el.id === comment.id)
-          : !!comment
+      const newComments = payload.comments.filter((comment) => {
+        return movie.en.info.comments
+          ? !movie.en.info.comments.find(
+              (el) => el.commentid === comment.commentid
+            )
+          : true;
+      });
+      console.log(
+        '[updateComments] newComments',
+        newComments,
+        payload.comments
       );
       movie.en.info.comments = movie.en.info.comments
         ? [...movie.en.info.comments, ...newComments]

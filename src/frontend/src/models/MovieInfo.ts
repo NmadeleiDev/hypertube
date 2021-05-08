@@ -35,8 +35,13 @@ export interface IMovieInfo {
   cast?: IUser[];
   keywords?: string[];
 }
+
+interface IBuffer {
+  type: string;
+  data: Buffer;
+}
 export interface IComment {
-  id: number;
+  commentid: number;
   username: string;
   avatar?: string;
   movieid: string;

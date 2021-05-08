@@ -79,6 +79,7 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
   const history = useHistory();
   const { toast } = useToast();
   const [tracks, setTracks] = useState<TrackProps[]>([]);
+  const [enablePlayer, setEnablePlayer] = useState(false);
   const { isAuth } = useSelector((state: RootState) => state.user);
   const { movies, error } = useSelector((state: RootState) => state.movies);
   const movie = movies.find((movie) => movie.en.id === match.params.id);
@@ -135,9 +136,11 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
             default: !index,
           })
         );
-        setTracks(tracks);
+        setTracks((_) => [...tracks]);
       } catch (e) {
         console.log(e);
+      } finally {
+        setEnablePlayer(true);
       }
     };
     loadSubtitles();
@@ -222,19 +225,13 @@ const MovieFullInfo = ({ match }: RouteComponentProps<TParams>) => {
       <Grid container className={classes.Video}>
         <ActivePeers movieId={movie.en.id} />
 
-        {tracks.length ? (
+        {enablePlayer ? (
           <Player
             id={movie.en.id}
             tracksProps={tracks}
             title={movie[i18n.language as 'en' | 'ru'].title}
           />
-        ) : (
-          <Player
-            id={movie.en.id}
-            // tracksProps={[]}
-            title={movie[i18n.language as 'en' | 'ru'].title}
-          />
-        )}
+        ) : null}
       </Grid>
       <Grid container direction="column" className={classes.AdditionalInfo}>
         <CategoryHeader text={t`About movie`} />

@@ -76,7 +76,7 @@ const Comments: React.FC<CommentsProps> = ({ movie }) => {
   console.log('[Comments]', movie.info.comments);
   const content = movie.info.comments?.length ? (
     movie.info.comments.map((comment) => (
-      <Comment {...comment} key={comment.id} />
+      <Comment {...comment} key={comment.commentid} />
     ))
   ) : (
     <Typography variant="body1" style={{ fontSize: '1.3rem' }}>

@@ -11,10 +11,10 @@ export const selectCommentById = async (id: number): Promise<IFrontComment> => {
   try {
     const res = await query(
       `SELECT
-      id,
+      id as commentid,
       movieid,
       text,
-      u.image_body AS avatar,
+      encode(u.image_body, 'escape')::TEXT AS avatar,
       time,
       u.username AS username
     FROM
@@ -45,7 +45,7 @@ export const selectCommentsByMovieID = async (
         id as commentid,
         movieid,
         text,
-        u.image_body AS avatar,
+        encode(u.image_body, 'escape')::TEXT AS avatar,
         time,
         u.username AS username
       FROM
