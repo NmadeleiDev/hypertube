@@ -52,7 +52,7 @@ func (f *fileReader) IsPartWritten(fileName string, part []byte, start int64) bo
 	}
 
 	slices := db.GetLoadedStateDb().GetSliceIndexesForFile(fileName)
-	//logrus.Debugf("Got file %v slices: %v", fileName, slices)
+	logrus.Debugf("Got file %v slices: %v", fileName, slices)
 	partStart := start
 	partEnd := start + int64(len(part))
 	nSlices := len(slices)
@@ -65,10 +65,14 @@ func (f *fileReader) IsPartWritten(fileName string, part []byte, start int64) bo
 			prevSliceVal = int(slices[i-1])
 		}
 		if slices[i] > partStart && slices[i] < partEnd {
-			left := prevSliceVal - int(start)
+			left := int64(prevSliceVal) - start + 1
 			right := slices[i] - start
 			if left < 0 {
 				left = 0
+			}
+			if left >= right - 1 {
+				logrus.Errorf("WTF! left >= right - 1 (%v %v)", left, right)
+				continue
 			}
 
 			if i == 0 && !f.HasNotNullBytes(part[:right]) {
