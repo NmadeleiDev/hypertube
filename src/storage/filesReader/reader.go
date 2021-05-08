@@ -65,7 +65,7 @@ func (f *fileReader) IsPartWritten(fileName string, part []byte, start int64) bo
 			prevSliceVal = int(slices[i-1])
 		}
 		if slices[i] > partStart && slices[i] < partEnd {
-			left := int64(prevSliceVal) - start + 1
+			left := int64(prevSliceVal) - start // + 1
 			right := slices[i] - start
 			if left < 0 {
 				left = 0

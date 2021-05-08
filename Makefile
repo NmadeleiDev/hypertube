@@ -48,6 +48,4 @@ down: ## stop the project (docker-compose)
 push:
 	git add docker-compose.yml .gitignore nginx/config/* nginx/Dockerfile main_backend/* media_backend/* .env* README.md && git commit -m "minor fixed" && git push
 
-all: build-front up
-
-.DEFAULT_GOAL := all
+.DEFAULT_GOAL := up
