@@ -110,7 +110,7 @@ func (f *fileReader) WaitForWholeFileWritten(ctx context.Context, fileName strin
 				return
 			case event, ok := <-watcher.Events:
 				if !ok {
-					resultsChan <- resultStruct{Data: nil, Err: fmt.Errorf("ok is false during watching event")}
+					logrus.Errorf("ok is false during watching event")
 				}
 
 				buf, err := f.ReadWholeFile(fileName)
