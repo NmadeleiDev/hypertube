@@ -146,6 +146,7 @@ func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client,
 			}
 
 			if !c.Bitfield.HasPiece(pw.index) {
+				logrus.Debugf("Returning piece idx=%v because peer %v doesn't have it", pw.index, c.GetShortInfo())
 				recyclePiecesChan <- pw
 				continue
 			}

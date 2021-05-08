@@ -125,6 +125,22 @@ func LoadingStatsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		fileId := mux.Vars(r)["file_id"]
 
+		_, isLoaded, ok := db.GetFilesManagerDb().GetFileStatus(fileId)
+		if isLoaded {
+			SendDataResponse(w, struct {
+				ActivePeers	int `json:"activePeers"`
+				LoadedPercent	int `json:"loadedPercent"`
+				DonePieces	[]int `json:"donePieces"`
+				InProgressPieces	[]int `json:"inProgressPieces"`
+			}{
+				ActivePeers: 0,
+				LoadedPercent: 100,
+				DonePieces: nil,
+				InProgressPieces: nil,
+			})
+			return
+		}
+
 		stats, ok := loadMaster.GetMaster().GetStatsForEntry(fileId)
 		logrus.Debugf("Got (ok=%v) %v stats: %v", ok, fileId, stats)
 		if !ok {

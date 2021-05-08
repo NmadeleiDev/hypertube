@@ -23,6 +23,7 @@ func (t *TorrentFile) DownloadToFile() error {
 
 	fileId := t.GetFileId()
 	db.GetFilesManagerDb().SetInProgressStatusForRecord(fileId, true)
+	defer db.GetFilesManagerDb().SetInProgressStatusForRecord(fileId, false)
 
 	loadEntry, ok := loadMaster.GetMaster().AddLoadEntry(fileId, downloadCancel, len(t.PieceHashes))
 	if !ok {
@@ -69,7 +70,6 @@ func (t *TorrentFile) DownloadToFile() error {
 	if err := torrent.Download(downloadCtx); err != nil {
 		return fmt.Errorf("file download error: %v", err)
 	}
-	db.GetFilesManagerDb().SetInProgressStatusForRecord(fileId, false)
 	db.GetFilesManagerDb().SetLoadedStatusForRecord(fileId, true)
 	logrus.Infof("Download for %v completed!", fileId)
 	return nil

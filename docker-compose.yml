@@ -20,6 +20,7 @@ services:
     build:
       context: ./src/search
       dockerfile: Dockerfile
+    hostname: search
     links:
       - postgres-db
 #    ports:
@@ -44,6 +45,7 @@ services:
     build:
       context: ./src/movies
       dockerfile: Dockerfile
+    hostname: movies
     links:
       - postgres-db
       - search
@@ -198,7 +200,7 @@ services:
     image: postgres:9.6.17
     hostname: postgres-db
     volumes:
-      - ./data/pgsql:${PG_DATA_PATH}:Z
+      - ./data/pgsql:${PG_DATA_PATH}
     ports:
       - ${POSTGRES_PORT}:${POSTGRES_PORT}
     environment:
@@ -207,7 +209,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      PGDATA: ${PGDATA}
+#      PGDATA: ${PGDATA}
     networks:
       - docker_net
     restart: on-failure
