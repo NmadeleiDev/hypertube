@@ -17,7 +17,7 @@ import (
 
 
 func completeHandshake(conn net.Conn, infohash, peerID [20]byte) (*handshake.Handshake, error) {
-	conn.SetDeadline(time.Now().Add(3 * time.Second))
+	conn.SetDeadline(time.Now().Add(4 * time.Second))
 	defer conn.SetDeadline(time.Time{}) // Disable the deadline
 
 	req := handshake.New(infohash, peerID)

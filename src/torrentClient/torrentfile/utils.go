@@ -10,3 +10,12 @@ func UnfoldArray(src [][]string) []string {
 	return res
 }
 
+func StrArrayIdx(haystack []string, needle string) int {
+	for i, item := range haystack {
+		if item == needle {
+			return i
+		}
+	}
+
+	return -1
+}

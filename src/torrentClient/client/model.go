@@ -3,14 +3,13 @@ package client
 import (
 	"fmt"
 	"net"
-	"sync"
 
 	"torrentClient/bitfield"
 	"torrentClient/peers"
 )
 
 type Client struct {
-	Mu       sync.Mutex
+	//Mu       sync.Mutex
 	Conn     net.Conn
 	Choked   bool
 	Bitfield bitfield.Bitfield

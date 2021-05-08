@@ -177,10 +177,11 @@ func (t *TorrentMeta) startDownloadWorker(ctx context.Context, c *client.Client,
 				continue
 			}
 
-			if err := t.LoadStats.SetDone(pw.index); err != nil {
-				logrus.Errorf("Failed to set piece idx=%v as done: %v", err, pw.index)
+			if setErr := t.LoadStats.SetDone(pw.index); setErr != nil {
+				logrus.Errorf("Failed to set piece idx=%v as done: %v", setErr, pw.index)
 			}
-			c.SendHave(pw.index)
+
+			_ = c.SendHave(pw.index)
 			results <- &pieceResult{pw.index, loadState.buf}
 		}
 	}
@@ -286,11 +287,11 @@ func (t *TorrentMeta) Download(ctx context.Context) error {
 			t.ResultsChan <- LoadedPiece{Data: res.buf, Len: int64(end-begin), StartByte: int64(begin)}
 			db.GetFilesManagerDb().SaveFilePart(t.FileId, res.buf, int64(begin), int64(end-begin), int64(res.index))
 
-			done := t.LoadStats.CountDone()
-			total := t.LoadStats.TotalPieces()
-			percent := t.LoadStats.GetLoadedPercent()
-			activePeers := t.LoadStats.GetNumOfActivePeers()
-			logrus.Infof("(%v of %v = %d%%) Downloaded piece idx=%d from %v peers", done, total, percent, res.index, activePeers)
+			//done := t.LoadStats.CountDone()
+			//total := t.LoadStats.TotalPieces()
+			//percent := t.LoadStats.GetLoadedPercent()
+			//activePeers := t.LoadStats.GetNumOfActivePeers()
+			//logrus.Infof("(%v of %v = %d%%) Downloaded piece idx=%d from %v peers", done, total, percent, res.index, activePeers)
 		}
 	}
 	return nil

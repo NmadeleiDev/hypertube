@@ -27,7 +27,7 @@ func GetWriter() *FsWriter {
 }
 
 func (w *FsWriter) StartWaitingForData() {
-	w.DataChan = make(chan WriteTask, 1000)
+	w.DataChan = make(chan WriteTask, 100)
 
 	for data := range w.DataChan {
 		w.WriteDataToFile(data.FileName, data.Data, data.Offset)
@@ -60,7 +60,6 @@ func (w *FsWriter) WriteDataToFile(fileName string, data []byte, offset int64) e
 		logrus.Errorf("Error open file: %v", err)
 		return err
 	}
-
 	defer file.Close()
 	dataLen := len(data)
 

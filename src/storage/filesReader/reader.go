@@ -47,7 +47,7 @@ func (f *fileReader) HasNotNullBytes(src []byte) bool {
 }
 
 func (f *fileReader) IsPartWritten(fileName string, part []byte, start int64) bool {
-	if part == nil {
+	if part == nil || !f.HasNotNullBytes(part) {
 		return false
 	}
 

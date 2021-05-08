@@ -12,11 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	reconnectAttemptWait = time.Second * 30
-	reconnectAttempts = 5
-)
-
 var generalTrackerList = []string{"udp://tracker.torrent.eu.org:451/announce", "udp://tracker.doko.moe:6969/announce", "udp://thetracker.org:80/announce", "udp://santost12.xyz:6969/announce", "udp://bt.xxx-tracker.com:2710/announce", "udp://tracker.vanitycore.co:6969/announce", "udp://zephir.monocul.us:6969/announce", "http://grifon.info:80/announce", "udp://bt.aoeex.com:8000/announce", "udp://tracker.tiny-vps.com:6969/announce", "udp://tracker.tvunderground.org.ru:3218/announce", "udp://tracker.halfchub.club:6969/announce", "udp://retracker.nts.su:2710/announce", "udp://wambo.club:1337/announce", "udp://tracker.dutchtracking.com:6969/announce", "udp://tc.animereactor.ru:8082/announce", "udp://tracker.justseed.it:1337/announce", "udp://tracker.leechers-paradise.org:6969/announce", "udp://tracker.opentrackr.org:1337/announce", "https://open.kickasstracker.com:443/announce", "udp://tracker.coppersurfer.tk:6969/announce", "udp://open.stealth.si:80/announce", "http://retracker.mgts.by:80/announce", "udp://inferno.demonoid.pw:3418/announce", "udp://tracker.cypherpunks.ru:6969/announce", "udp://tracker.grepler.com:6969/announce", "udp://tracker.flashtorrents.org:6969/announce", "udp://tracker.yoshi210.com:6969/announce", "udp://tracker.tiny-vps.com:6969/announce", "udp://tracker.internetwarriors.net:1337/announce", "udp://mgtracker.org:2710/announce", "http://tracker.yoshi210.com:6969/announce", "http://tracker.tiny-vps.com:6969/announce", "udp://tracker.filetracker.pl:8089/announce", "udp://tracker.ex.ua:80/announce", "http://mgtracker.org:2710/announce", "udp://tracker.aletorrenty.pl:2710/announce", "http://tracker.filetracker.pl:8089/announce", "http://tracker.ex.ua/announce", "http://mgtracker.org:6969/announce", "http://retracker.krs-ix.ru:80/announce", "udp://tracker2.indowebster.com:6969/announce", "http://thetracker.org:80/announce", "http://tracker.bittor.pw:1337/announce", "udp://tracker.kicks-ass.net:80/announce", "udp://tracker.aletorrenty.pl:2710/announce", "http://tracker.aletorrenty.pl:2710/announce", "http://tracker.bittorrent.am/announce", "udp://tracker.kicks-ass.net:80/announce", "http://tracker.kicks-ass.net/announce", "http://tracker.baravik.org:6970/announce", "http://tracker.dutchtracking.com/announce", "http://tracker.dutchtracking.com:80/announce", "udp://tracker4.piratux.com:6969/announce", "http://tracker.internetwarriors.net:1337/announce", "udp://tracker.skyts.net:6969/announce", "http://tracker.dutchtracking.nl/announce", "http://tracker2.itzmx.com:6961/announce", "http://tracker2.wasabii.com.tw:6969/announce", "http://www.wareztorrent.com:80/announce", "udp://bt.xxx-tracker.com:2710/announce", "udp://tracker.eddie4.nl:6969/announce", "udp://tracker.grepler.com:6969/announce", "udp://tracker.mg64.net:2710/announce", "udp://tracker.flashtorrents.org:6969/announce", "http://tracker.tfile.me/announce", "http://tracker1.wasabii.com.tw:6969/announce", "udp://tracker.bittor.pw:1337/announce", "http://tracker.tvunderground.org.ru:3218/announce", "http://tracker.grepler.com:6969/announce", "http://tracker.flashtorrents.org:6969/announce", "http://retracker.gorcomnet.ru/announce", "udp://tracker.sktorrent.net:6969/announce", "udp://tracker.sktorrent.net:6969", "udp://public.popcorn-tracker.org:6969/announce", "udp://tracker.ilibr.org:80/announce", "udp://tracker.kuroy.me:5944/announce", "udp://tracker.mg64.net:6969/announce", "udp://tracker.cyberia.is:6969/announce", "http://tracker.devil-torrents.pl:80/announce", "udp://tracker2.christianbro.pw:6969/announce", "udp://retracker.lanta-net.ru:2710/announce", "udp://tracker.internetwarriors.net:1337/announce", "udp://ulfbrueggemann.no-ip.org:6969/announce", "http://torrentsmd.eu:8080/announce", "udp://peerfect.org:6969/announce", "udp://tracker.swateam.org.uk:2710/announce", "http://ns349743.ip-91-121-106.eu:80/announce", "http://torrentsmd.me:8080/announce", "http://agusiq-torrents.pl:6969/announce", "http://fxtt.ru:80/announce", "udp://tracker.vanitycore.co:6969/announce", "udp://explodie.org:6969"}
 
 type PeersPool struct {
@@ -54,9 +49,15 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 	copy(announceList[1 + len(p.torrent.AnnounceList):], generalTrackerList)
 
 	sysInfo := PoolSysInfo{calledPeers: make(map[string]bool, 50)}
-	//trackersCalled := make([]string, 0, len(announceList))
+	trackersUsed := make([]string, 0, len(announceList))
 
 	for _, announce := range announceList {
+		if StrArrayIdx(trackersUsed, announce) > 0 {
+			continue
+		} else {
+			trackersUsed = append(trackersUsed, announce)
+		}
+
 		tracker := Tracker{
 			Announce: announce,
 			TransactionId: 0,
@@ -77,8 +78,8 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 				case <- ctx.Done():
 					return
 				case <- timer.C:
+					logrus.Debugf("Calling %v after timer call (int=%v min=%v)", trackerInstance.Announce, trackerInstance.TrackerCallInterval, time.Minute)
 					rawPeers, err := trackerInstance.CallFittingScheme()
-					//trackersCalled = append(trackersCalled, trackerInstance.Announce)
 					if err != nil {
 						logrus.Errorf("Error requesting peers: %v", err)
 						return
@@ -86,16 +87,15 @@ func (p *PeersPool) StartRefreshing(ctx context.Context)  {
 					logrus.Debugf("Got peers from tracker(call int=%v) %v: %v", trackerInstance.TrackerCallInterval, trackerInstance.Announce, rawPeers)
 
 					for _, peer := range rawPeers {
-						if sysInfo.IsPeerCalled(peer.GetAddr()) {
-							continue
+						if !sysInfo.IsPeerCalled(peer.GetAddr()) {
+							p.ClientMaker.RawPeersChan <- peer
+							sysInfo.AddCalledPeer(peer.GetAddr())
 						}
-						p.ClientMaker.RawPeersChan <- peer
-						sysInfo.AddCalledPeer(peer.GetAddr())
 					}
 					if trackerInstance.TrackerCallInterval < time.Minute {
 						trackerInstance.TrackerCallInterval = time.Minute
 					}
-					timer.Reset(time.Second * trackerInstance.TrackerCallInterval)
+					timer.Reset(trackerInstance.TrackerCallInterval)
 				}
 			}
 		}(ctx, tracker)
@@ -163,6 +163,7 @@ func (pi *PeersInitializer) ListenForRawPeers(ctx context.Context) {
 			return
 		case rawPeer := <- pi.RawPeersChan:
 			peerToInit := rawPeer
+			logrus.Debugf("Got raw peer: %v", peerToInit.GetAddr())
 
 			limiterObj.Add()
 			logrus.Debugf("Trying to init peer %v, peersInProgress=%v", rawPeer.GetAddr(), limiterObj.GetVal())
@@ -178,7 +179,7 @@ func (pi *PeersInitializer) ListenForRawPeers(ctx context.Context) {
 				if ok {
 					peer.IsDead = false
 					pi.InitializedPeersChan <- activeClient
-					logrus.Infof("Wrote peer %v to active clients chan; peers in progress=%v", activeClient.GetShortInfo(), limiterObj.GetVal())
+					logrus.Debugf("Wrote peer %v to active clients chan; peers in progress=%v", activeClient.GetShortInfo(), limiterObj.GetVal())
 				} else {
 					logrus.Debugf("Failed to init peer %v, peersInProgress=%v", peer.GetAddr(), limiterObj.GetVal())
 					peer.IsDead = true

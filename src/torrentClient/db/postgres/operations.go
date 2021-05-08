@@ -155,7 +155,7 @@ func (d *manager) GetFileStatus(fileId string) (inProgress bool, isLoaded bool, 
 SELECT in_progress, is_loaded FROM %s WHERE file_id=$1`
 
 	if err := d.conn.QueryRow(fmt.Sprintf(query, d.LoadedFilesTablePath()), fileId).Scan(&inProgress, &isLoaded); err != nil {
-		logrus.Errorf("Error saving file loaded status: %v", err)
+		logrus.Errorf("Error getting file loaded status: %v", err)
 		return false, false, false
 	}
 	return inProgress, isLoaded, true
@@ -167,7 +167,7 @@ SELECT file_id FROM %s WHERE in_progress=true`
 
 	rows, err := d.conn.Query(fmt.Sprintf(query, d.LoadedFilesTablePath()))
 	if err != nil {
-		logrus.Errorf("Error saving file loaded status: %v", err)
+		logrus.Errorf("Error getting in progress file ids: %v", err)
 		return nil, false
 	}
 

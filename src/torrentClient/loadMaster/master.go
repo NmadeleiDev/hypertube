@@ -45,10 +45,12 @@ func (m *LoadsMaster) Init() {
 
 func (m *LoadsMaster) AddLoadEntry(fileId string, ctxCancel context.CancelFunc, totalPieces int) (*LoadEntry, bool) {
 	m.mu.Lock()
-	if _, exists := m.loads[fileId]; exists {
+	_, exists := m.loads[fileId]
+	m.mu.Unlock()
+
+	if exists {
 		return nil, false
 	}
-	m.mu.Unlock()
 
 	loadEntry := &LoadEntry{
 		ExecutionCtxCancel: ctxCancel,
@@ -66,11 +68,15 @@ func (m *LoadsMaster) AddLoadEntry(fileId string, ctxCancel context.CancelFunc, 
 
 func (m *LoadsMaster) StopLoad(fileId string) bool {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	entry, exists := m.loads[fileId]
+	m.mu.Unlock()
 
-	if entry, exists := m.loads[fileId]; exists {
+	if exists {
 		entry.ExecutionCtxCancel()
+
+		m.mu.Lock()
 		delete(m.loads, fileId)
+		m.mu.Unlock()
 		return true
 	} else {
 		return false
@@ -124,11 +130,10 @@ func (l *LoadEntry) GetLoadedPieces() (res []int) {
 
 func (l *LoadEntry) GetInProgressPieces() (res []int) {
 	total := l.TotalPieces()
+	res = make([]int, 0, total)
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
-
-	res = make([]int, 0, total)
 	for k, v := range l.ProcessedPieces {
 		if !v {
 			res = append(res, k)
@@ -146,6 +151,7 @@ func (l *LoadEntry) GetNumOfActivePeers() (res int) {
 
 func (l *LoadEntry) CountDone() (count int) {
 	l.mu.Lock()
+	l.GetInProgressPieces()
 	defer l.mu.Unlock()
 
 	for _, v := range l.ProcessedPieces {
@@ -158,15 +164,17 @@ func (l *LoadEntry) CountDone() (count int) {
 
 func (l *LoadEntry) SetDone(idx int) (err error) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	ready, exists := l.ProcessedPieces[idx]
+	l.mu.Unlock()
+
 	if !exists {
 		err = fmt.Errorf("tryied to set idx=%v as done, but it is not processed yet", idx)
 	} else if ready {
 		err = fmt.Errorf("tryied to set idx=%v as done, but it is already set as done", idx)
 	} else {
+		l.mu.Lock()
 		l.ProcessedPieces[idx] = true
+		l.mu.Unlock()
 		err = nil
 	}
 	return err
@@ -180,13 +188,15 @@ func (l *LoadEntry) ForceSetDone(idx int) {
 
 func (l *LoadEntry) AddProcessed(idx int) (err error) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	_, exists := l.ProcessedPieces[idx]
+	l.mu.Unlock()
+
 	if exists {
 		err = fmt.Errorf("tryied to add idx=%v to process, but it is already there", idx)
 	} else {
+		l.mu.Lock()
 		l.ProcessedPieces[idx] = false
+		l.mu.Unlock()
 		err = nil
 	}
 	return err
@@ -194,13 +204,15 @@ func (l *LoadEntry) AddProcessed(idx int) (err error) {
 
 func (l *LoadEntry) DeleteProcessed(idx int) (err error) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	_, exists := l.ProcessedPieces[idx]
+	l.mu.Unlock()
+
 	if !exists {
 		err = fmt.Errorf("tryied to delete idx=%v from process, but it is not there: %v", idx, l.ProcessedPieces)
 	} else {
+		l.mu.Lock()
 		delete(l.ProcessedPieces, idx)
+		l.mu.Unlock()
 		logrus.Debugf("Deleted processed piece idx=%v", idx)
 		err = nil
 	}
@@ -217,23 +229,20 @@ func (l *LoadEntry) TotalPieces() int {
 
 func (l *LoadEntry) SetTotalPieces(val int) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.totalPieces = val
+	l.mu.Unlock()
 }
 
 
 func (l *LoadEntry) IncrActivePeers() {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.NumOfActivePeers ++
+	l.mu.Unlock()
 }
 
 func (l *LoadEntry) DecrActivePeers() {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.NumOfActivePeers --
+	l.mu.Unlock()
 }
 

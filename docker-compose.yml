@@ -22,8 +22,8 @@ services:
       dockerfile: Dockerfile
     links:
       - postgres-db
-    ports:
-      - ${SEARCH_API_PORT}:2222
+#    ports:
+#      - ${SEARCH_API_PORT}:2222
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_PORT: ${POSTGRES_PORT}
@@ -47,8 +47,8 @@ services:
     links:
       - postgres-db
       - search
-    ports:
-      - ${MOVIES_API_PORT}:2222
+#    ports:
+#      - ${MOVIES_API_PORT}:2222
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_PORT: ${POSTGRES_PORT}
@@ -75,8 +75,8 @@ services:
       - postgres-db
       - redis-db
       - torrent-client
-    ports:
-      - ${STORAGE_API_PORT}:2222
+#    ports:
+#      - ${STORAGE_API_PORT}:2222
     volumes:
       - ${FILES_VOL_DIR}:${FILES_DIR}:rw
     environment:
@@ -120,8 +120,8 @@ services:
     links:
       - postgres-db
       - redis-db
-    ports:
-      - ${TORRENT_CLIENT_API_PORT}:2222
+#    ports:
+#      - ${TORRENT_CLIENT_API_PORT}:2222
     volumes:
       - ${FILES_VOL_DIR}:${FILES_DIR}:rw
     environment:
@@ -181,9 +181,6 @@ services:
       - storage
       - search
       - movies
-    # environment:
-    #   MOVIES_API_PORT: ${MOVIES_API_PORT}
-    #   SEARCH_API_PORT: ${SEARCH_API_PORT}
 
   redis-db:
     image: redis:${REDIS_VERSION}
