@@ -20,7 +20,7 @@ const ActivePeers = ({ movieId }: Props) => {
   useEffect(() => {
     if (!movieId) return;
     const timeout = setTimeout(() => {
-      if (!state.activePeers) {
+      if (!state.activePeers || state.loadedPercent < 100) {
         toast({ text: t`loadingTimeoutWarning` }, 'warning', {
           autoHideDuration: 7000,
         });
