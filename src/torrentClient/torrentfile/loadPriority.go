@@ -29,7 +29,7 @@ func (p *LoadPriority) StartPriorityUpdating(ctx context.Context) chan int {
 			case <- ctx.Done():
 				return
 			case update := <- inputChan:
-				logrus.Debugf("Got priority update in StartPriorityUpdating: %v", update)
+				logrus.Debugf("Got priority update in StartPriorityUpdating: %v; files: %v", update, boundaries)
 				for _, file := range boundaries {
 					if file.FileName == update.FileName {
 						if update.ByteIdx > (file.End - file.Start) {
@@ -42,7 +42,9 @@ func (p *LoadPriority) StartPriorityUpdating(ctx context.Context) chan int {
 							logrus.Errorf("Wow! pieceIdx (%v) > int64(len(p.torrentFile.PieceHashes)) (%v)", pieceIdx, nPieces)
 							continue
 						}
+						logrus.Debugf("Sending priority update for file %v, piece %v", file.FileName, pieceIdx)
 						outputChan <- pieceIdx
+						logrus.Debugf("Priority update for file %v, piece %v sended successfully!", file.FileName, pieceIdx)
 					}
 				}
 			}

@@ -43,6 +43,8 @@ func (t *TorrentFile) DownloadToFile() error {
 
 	priorityManager := LoadPriority{torrentFile: t}
 
+	t.CreateFileBoundariesMapping()
+
 	torrent := p2p.TorrentMeta{
 		ActivatedClientsChan:     peersPoolObj.ClientMaker.InitializedPeersChan,
 		DeadPeersChan: 			peersPoolObj.ClientMaker.DeadPeersChan,
@@ -57,9 +59,6 @@ func (t *TorrentFile) DownloadToFile() error {
 		ResultsChan:              make(chan p2p.LoadedPiece, 100),
 		LoadStats:                loadEntry,
 	}
-
-	t.CreateFileBoundariesMapping()
-
 	db.GetFilesManagerDb().PreparePlaceForFile(torrent.FileId)
 
 	videoFile := t.getHeaviestFile()

@@ -64,9 +64,8 @@ func (s *prioritySorter) InitSorter(ctx context.Context) (topPriorityPieceChan, 
 
 func (s *prioritySorter) UpdateTopPieceIndex(newTopIdx int) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.topPieceIdx = newTopIdx
+	s.mu.Unlock()
 }
 
 func (s *prioritySorter) RecalculateTopPiece() {
