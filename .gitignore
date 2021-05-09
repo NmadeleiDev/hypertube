@@ -7,7 +7,6 @@ tests
 node_modules/
 dist/
 build/
-static/
 .DS_Store
 
 docker-compose.yml
