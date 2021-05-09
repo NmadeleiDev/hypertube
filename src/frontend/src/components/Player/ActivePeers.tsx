@@ -1,9 +1,28 @@
-import { Grid, Typography } from '@material-ui/core';
-import { useEffect, useState } from 'react';
+import {
+  Box,
+  Grid,
+  LinearProgress,
+  makeStyles,
+  Typography,
+} from '@material-ui/core';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { inherits } from 'util';
 import { useToast } from '../../hooks/useToast';
 import { loadActivePeers } from '../../store/features/MoviesSlice';
 
+const useStyles = makeStyles({
+  root: {
+    width: '100%',
+  },
+  Text: {
+    marginRight: 5,
+    display: 'inline-block',
+  },
+  Progress: {
+    marginBottom: 2,
+  },
+});
 interface Props {
   movieId?: string | number;
 }
@@ -13,6 +32,7 @@ const STATS_REQUEST_INTERVAL = 10000;
 
 const initialState = { activePeers: 0, loadedPercent: 0 };
 const ActivePeers = ({ movieId }: Props) => {
+  const classes = useStyles();
   const [state, setState] = useState(initialState);
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -40,11 +60,26 @@ const ActivePeers = ({ movieId }: Props) => {
   }, []);
 
   return (
-    <Grid container>
-      <Typography style={{ marginRight: 5 }}>
-        Active peers: {state.activePeers}
-      </Typography>
-      <Typography>Percent loaded: {state.loadedPercent}%</Typography>
+    <Grid container direction="column" className={classes.root}>
+      <Box>
+        <Typography component="span" className={classes.Text}>
+          Active peers:
+        </Typography>
+        <Typography
+          className={classes.Text}
+          style={{ color: state.activePeers < 5 ? 'darkred' : 'darkgreen' }}
+        >
+          {state.activePeers}
+        </Typography>
+      </Box>
+      <Box>
+        <Typography className={classes.Text}>Loaded:</Typography>
+        <LinearProgress
+          className={classes.Progress}
+          variant="determinate"
+          value={state.loadedPercent}
+        />
+      </Box>
     </Grid>
   );
 };
