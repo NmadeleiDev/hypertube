@@ -81,18 +81,9 @@ const Settings = () => {
   const history = useHistory();
 
   const validateForm = () => {
-    const {
-      email,
-      username,
-      currentPassword,
-      confirm,
-      firstName,
-      lastName,
-    } = valid;
+    const { email, username, confirm, firstName, lastName } = valid;
     return inputs.newPassword
-      ? currentPassword &&
-          confirm &&
-          (email || username || firstName || lastName)
+      ? confirm && (email || username || firstName || lastName)
       : email || username || firstName || lastName;
   };
   const formValid = validateForm();
@@ -403,7 +394,7 @@ const Settings = () => {
           rules: {
             helperText: t('currentPasswordError'),
             rule: {
-              minLength: inputs.newPassword.length ? 1 : 0,
+              minLength: 0,
               maxLength: 25,
             },
           },
