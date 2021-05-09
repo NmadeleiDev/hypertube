@@ -25,6 +25,7 @@ const useStyles = makeStyles((theme: Theme) =>
       display: 'inline-flex',
       flexWrap: 'nowrap',
       overflowX: 'scroll',
+      scrollbarWidth: 'none',
       '&::-webkit-scrollbar': {
         display: 'none',
       },
