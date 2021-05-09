@@ -38,7 +38,7 @@ init-front:
 	cd src/frontend && npm i
 
 build-front: init-front
-	cd src/frontend && npm run build && cp -R build/* ../nginx/static/
+	cd src/frontend && npm run build && cp -R build ../nginx/static
 
 init-up: up-back init-front up-front
 

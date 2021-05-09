@@ -8,7 +8,7 @@ import {
   MenuItem,
   Popover,
   Slider,
-  Tooltip,
+  // Tooltip,
   Typography,
   withStyles,
 } from '@material-ui/core';
@@ -64,43 +64,43 @@ const useStyles = makeStyles({
   },
 });
 
-interface ValueProps {
-  open: boolean;
-  value: string;
-  children: JSX.Element;
-}
+// interface ValueProps {
+//   open: boolean;
+//   value: string;
+//   children: JSX.Element;
+// }
 
-const ValueLabelComponent: React.FC<ValueProps> = (props2) => {
-  // debugger
-  const { children, open, value } = props2;
+// const ValueLabelComponent: React.FC<ValueProps> = (props2) => {
+//   // debugger
+//   const { children, open, value } = props2;
 
-  return (
-    <Tooltip open={open} enterTouchDelay={0} placement="top" title={value}>
-      {children}
-    </Tooltip>
+//   return (
+//     <Tooltip open={open} enterTouchDelay={0} placement="top" title={value}>
+//       {children}
+//     </Tooltip>
 
-    // <Popover
-    //   id="mouse-over-popover"
-    //   // style={{
-    //   //   paper: { padding: 5 },
-    //   // }}
-    //   open={open}
-    //   // anchorEl={anchorEl}
-    //   anchorOrigin={{
-    //     vertical: 'bottom',
-    //     horizontal: 'left',
-    //   }}
-    //   transformOrigin={{
-    //     vertical: 'top',
-    //     horizontal: 'left',
-    //   }}
-    //   // onClose={handlePopoverClose}
-    //   disableRestoreFocus
-    // >
-    //   {children}
-    // </Popover>
-  );
-};
+//     // <Popover
+//     //   id="mouse-over-popover"
+//     //   // style={{
+//     //   //   paper: { padding: 5 },
+//     //   // }}
+//     //   open={open}
+//     //   // anchorEl={anchorEl}
+//     //   anchorOrigin={{
+//     //     vertical: 'bottom',
+//     //     horizontal: 'left',
+//     //   }}
+//     //   transformOrigin={{
+//     //     vertical: 'top',
+//     //     horizontal: 'left',
+//     //   }}
+//     //   // onClose={handlePopoverClose}
+//     //   disableRestoreFocus
+//     // >
+//     //   {children}
+//     // </Popover>
+//   );
+// };
 
 const PrettoSlider = withStyles({
   root: {
@@ -253,12 +253,11 @@ const PlayerControls = forwardRef<HTMLDivElement, Props>((props, ref) => {
       >
         <Grid item xs={12}>
           <PrettoSlider
-            // disabled={props.loading}
             min={0}
             max={100}
-            ValueLabelComponent={(props2) => (
-              <ValueLabelComponent {...props2} value={props.elapsedTime} />
-            )}
+            // ValueLabelComponent={(props2) => (
+            //   <ValueLabelComponent {...props2} value={props.elapsedTime} />
+            // )}
             value={props.played * 100}
             onChange={(e, value) => props.onSeek(value)}
             onMouseDown={props.onSeekMouseDown}
