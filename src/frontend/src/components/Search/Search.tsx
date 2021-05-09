@@ -20,6 +20,8 @@ import { useAppDispatch } from '../../store/store';
 import { theme } from '../../theme';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/rootReducer';
+import axios from 'axios';
+import { gCancelToken } from '../..';
 
 const useStyles = makeStyles({
   root: {
@@ -77,7 +79,9 @@ const Search = () => {
     if (e.key === 'Enter') {
       console.log(`Searching for: ${search}`);
       const filter = { search };
-      dispatch(loadMovies({ filter }));
+      const source = axios.CancelToken.source();
+      dispatch(loadMovies({ filter, source }));
+      gCancelToken.source = source;
       history.push(encodeURI(`/search/${search}`));
       setSearch('');
     }

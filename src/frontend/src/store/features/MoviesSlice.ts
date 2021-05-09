@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import axios from 'axios';
+import axios, { CancelTokenSource } from 'axios';
+import { gCancelToken } from '../..';
 import { movies, search as axiosSearch } from '../../axios';
 import { IComment, ITranslatedMovie } from '../../models/MovieInfo';
 import { AppDispatch } from '../store';
@@ -27,6 +28,10 @@ export interface UpdateMoviesItem {
   isViewed?: boolean;
 }
 
+export interface CancelTokenItem {
+  source: CancelTokenSource | null;
+}
+
 export interface MoviesState {
   loading: boolean;
   error: string | null;
@@ -35,6 +40,7 @@ export interface MoviesState {
   popular: string[];
   byName: string[];
   isEndOfMovies: boolean;
+  // cancelToken: CancelTokenSource | null;
 }
 
 export interface IMoviesResponse {
@@ -67,6 +73,7 @@ const initialState = {
   popular: [],
   byName: [],
   isEndOfMovies: false,
+  cancelToken: null,
 } as MoviesState;
 
 const MoviesSlice = createSlice({
@@ -189,51 +196,51 @@ const MoviesSlice = createSlice({
 });
 
 const loadMoviesAsync = async (
-  params?: IFilter
+  params?: IFilter,
+  source?: CancelTokenSource
 ): Promise<IMoviesResponse | null> => {
-  try {
-    console.log('[loadMoviesAsync] params', params);
-    let res = null;
-    if (params?.search)
-      res = await axiosSearch('find', {
-        params: {
-          category: 'All',
-          search: params?.search,
-        },
-        headers: {
-          accessToken: getToken(),
-        },
-      });
-    else if (params?.letter)
-      res = await movies(`byname`, {
-        params,
-        headers: {
-          accessToken: getToken(),
-        },
-      });
-    else if (params?.genre)
-      res = await movies(`bygenre`, {
-        params,
-        headers: {
-          accessToken: getToken(),
-        },
-      });
-    else
-      res = await movies('movies', {
-        params,
-        headers: {
-          accessToken: getToken(),
-        },
-      });
+  console.log('[loadMoviesAsync] params', params);
+  let res = null;
+  if (params?.search)
+    res = await axiosSearch('find', {
+      cancelToken: source?.token,
+      params: {
+        category: 'All',
+        search: params?.search,
+      },
+      headers: {
+        accessToken: getToken(),
+      },
+    });
+  else if (params?.letter)
+    res = await movies(`byname`, {
+      cancelToken: source?.token,
+      params,
+      headers: {
+        accessToken: getToken(),
+      },
+    });
+  else if (params?.genre)
+    res = await movies(`bygenre`, {
+      cancelToken: source?.token,
+      params,
+      headers: {
+        accessToken: getToken(),
+      },
+    });
+  else
+    res = await movies('movies', {
+      cancelToken: source?.token,
+      params,
+      headers: {
+        accessToken: getToken(),
+      },
+    });
 
-    // console.log(res.data);
-    if (res.status === 404) return { data: [], status: false };
-    else if (res.status >= 400) return null;
-    else return res.data;
-  } catch (e) {
-    console.log(e);
-    return null;
-  }
+  // console.log(res.data);
+  if (res.status === 404) return { data: [], status: false };
+  else if (res.status >= 400) return null;
+  else return res.data;
 };
 
 export const loadMovies = ({
@@ -242,15 +249,31 @@ export const loadMovies = ({
     offset: 0,
   },
   callback,
+  source,
 }: {
   filter?: IFilter;
   callback?: (arg0: boolean) => void;
+  source?: CancelTokenSource;
 }) => async (dispatch: AppDispatch) => {
+  console.log('[loadMovies] start loading', new Date().getTime());
   dispatch(startLoading());
   const limit = filter.limit || 20;
   console.log('[loadMovies] filter', filter);
-  const movies = await loadMoviesAsync(filter);
+  let movies;
   console.log('[loadMovies] res', movies);
+
+  try {
+    movies = await loadMoviesAsync(filter, source);
+  } catch (e) {
+    if (axios.isCancel(e)) {
+      console.log('[loadMovies] request is cancelled', new Date().getTime());
+      dispatch(stopLoading());
+      gCancelToken.source = null;
+      return;
+    }
+    console.log(e);
+    return null;
+  }
 
   if (movies && !movies.status && movies.data?.length === 0) {
     // 404
