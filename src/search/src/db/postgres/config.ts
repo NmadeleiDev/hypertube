@@ -67,7 +67,7 @@ export const initDatabase = () => {
 
   const createRatingTable = `CREATE TABLE IF NOT EXISTS ${POSTGRES_SCHEME}.user_ratings (
     id        SERIAL PRIMARY KEY,
-    userid    INTEGER NOT NULL REFERENCES ${POSTGRES_USERS_SCHEME}.movies(id),
+    userid    INTEGER NOT NULL REFERENCES ${POSTGRES_USERS_SCHEME}.users(id),
     movieid   VARCHAR(16) NOT NULL REFERENCES ${POSTGRES_SCHEME}.movies(id),
     vote    integer NOT NULL,
     UNIQUE (userid, movieid)
